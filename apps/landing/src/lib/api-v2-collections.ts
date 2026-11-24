@@ -47,6 +47,8 @@ const CollectionRecords = z.object({
     z.object({
       record_key: z.string(),
       data: z.record(z.string(), RecordValue),
+      // Optional, so a contact block's read doesn't depend on it.
+      updated_at: z.string().optional(),
     }),
   ),
 })

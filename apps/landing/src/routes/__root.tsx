@@ -87,15 +87,21 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     // The public category tree (api_v2 mode) holds no grant, so even a token
     // navigation reads it through the shared query. It never rejects: an
     // outage is a value the routes that list categories show, and every other
-    // route ignores.
-    const categoryTree = queryClient.fetchQuery(categoryTreeQuery())
+    // route ignores. Each branch starts it only once it knows it won't
+    // redirect (#3858): a redirect ends the request, the SSR integration then
+    // clears this QueryClient, and a read still in flight is cancelled with a
+    // CancelledError that nothing handles, which exits the server process.
+    const categoryTree = () => queryClient.fetchQuery(categoryTreeQuery())
 
     if (search.preview !== undefined) {
       const { level, redirectTo } = await resolveViewLevel()
       if (redirectTo) throw redirect({ href: redirectTo })
-      const serviceStatuses = await getServiceStatuses()
+      const [serviceStatuses, tree] = await Promise.all([
+        getServiceStatuses(),
+        categoryTree(),
+      ])
 
-      return { level, serviceStatuses, categoryTree: await categoryTree }
+      return { level, serviceStatuses, categoryTree: tree }
     }
 
     const [level, serviceStatuses, tree] = await Promise.all([
@@ -117,7 +123,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         staleTime: ROOT_SERVICE_STATUSES_STALE_MS,
         gcTime: ROOT_SERVICE_STATUSES_STALE_MS,
       }),
-      categoryTree,
+      categoryTree(),
     ])
 
     return { level, serviceStatuses, categoryTree: tree }

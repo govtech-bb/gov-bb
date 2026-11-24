@@ -7,6 +7,8 @@
 // stay unit-testable.
 import { defaultValidationMessage } from '@govtech-bb/form-validation'
 import {
+  ALL_EVENT_NAMES,
+  ALL_PAGE_URLS,
   FUNNEL_WINDOW_MIN,
   UmamiClient,
   aggregateFormEvents,
@@ -17,8 +19,17 @@ import {
   canonicalEvent,
   eventFormKey,
   eventName,
+  humanizeStep,
+  isSubmitErrorCode,
+  liveTools,
+  MIN_QUERY_COUNT,
+  shapeJourneyList,
+  shapeSearch,
+  shapeTools,
+  shapeWaterAlerts,
   startOfDayInTz,
   tallyFieldErrors,
+  totalFor,
   tzOffsetMs,
   weightedAverage,
   weightedSum,
@@ -27,13 +38,18 @@ import {
   type FunnelStage,
   type FunnelStepResult,
   type JourneyPath,
+  type JourneyRow,
   type PageRow,
   type Range,
+  type SearchStats,
   type SourceRow,
+  type Tool,
+  type ToolEventRows,
   type ToolId,
+  type ToolRow,
+  type WaterAlertFunnel,
 } from '@govtech-bb/umami-analytics'
 import { memoize } from './cache'
-import { liveTools, pathMatchesPrefix, type Tool } from './tools-config'
 import { isExcludedPath } from './page-exclusions'
 import type { ServiceIndexEntry } from '@govtech-bb/content'
 
@@ -225,92 +241,10 @@ export interface FormDetailData {
 
 // --- search analytics ------------------------------------------------------
 
-/** One row of the top-queries table. */
-export interface SearchQueryRow {
-  query: string
-  /** `search` events (results rendered) for this query in the window. */
-  searches: number
-  /** `search-result-click` events for this query. */
-  clicks: number
-  /** clicks ÷ searches, 0–1; 0 when no searches. */
-  ctr: number
-  /** observed to return zero results (`search-no-results` event). */
-  zeroResult: boolean
-}
-
-export interface SearchData {
-  /** total `search` events (results rendered) in the window. */
-  searches: number
-  /** total `search-result-click` events in the window. */
-  clicks: number
-  /** clicks ÷ searches, 0–1; the overall click-through rate. */
-  ctr: number
-  /** share of searches returning zero results, 0–1. */
-  zeroResultRate: number
-  /** top queries by search count. */
-  queries: SearchQueryRow[]
+export interface SearchData extends SearchStats {
   generatedAt: string
   window: string
   range: string
-}
-
-/**
- * Join the four search event-value distributions into the search view. Counts
- * come from summing each distribution's `total` (the `value` is the query text
- * or the result count, not a weight). The overall zero-result rate is taken from
- * the historical `search` `results` distribution (value 0), while the per-query
- * zero-result flag comes from the `search-no-results` event — the only
- * query-keyed signal, since Umami can't cross-tabulate query × results.
- */
-export function shapeSearch(
-  queryRows: EventDataValue[],
-  resultsRows: EventDataValue[],
-  clickRows: EventDataValue[],
-  noResultRows: EventDataValue[],
-  topN = 20,
-): Omit<SearchData, 'generatedAt' | 'window' | 'range'> {
-  const clicksByQuery = new Map<string, number>()
-  for (const r of clickRows) {
-    const q = String(r.value)
-    clicksByQuery.set(q, (clicksByQuery.get(q) ?? 0) + r.total)
-  }
-  const zeroResultQueries = new Set(noResultRows.map((r) => String(r.value)))
-
-  const clicks = clickRows.reduce((s, r) => s + r.total, 0)
-  const resultsEvents = resultsRows.reduce((s, r) => s + r.total, 0)
-  const queryEvents = queryRows.reduce((s, r) => s + r.total, 0)
-  const zeroResults = resultsRows
-    .filter((r) => Number(r.value) === 0)
-    .reduce((s, r) => s + r.total, 0)
-
-  // Total searches from whichever distribution is more complete. The `results`
-  // property has tiny cardinality (a few counts) so it can't be row-capped,
-  // while the high-cardinality `query` distribution can be — taking the max
-  // stops a truncated or failed call from deflating the total and inflating CTR.
-  const searches = Math.max(queryEvents, resultsEvents)
-
-  const queries: SearchQueryRow[] = queryRows
-    .map((r) => {
-      const query = String(r.value)
-      const clicksForQuery = clicksByQuery.get(query) ?? 0
-      return {
-        query,
-        searches: r.total,
-        clicks: clicksForQuery,
-        ctr: r.total ? clicksForQuery / r.total : 0,
-        zeroResult: zeroResultQueries.has(query),
-      }
-    })
-    .sort((a, b) => b.searches - a.searches)
-    .slice(0, topN)
-
-  return {
-    searches,
-    clicks,
-    ctr: searches ? clicks / searches : 0,
-    zeroResultRate: resultsEvents ? zeroResults / resultsEvents : 0,
-    queries,
-  }
 }
 
 // --- pure shapers (unit-tested) --------------------------------------------
@@ -391,15 +325,10 @@ export function buildStepFunnel(
   return stages
 }
 
-// The current app emits `errors: network | payment-init | server`; older data
-// put other strings (e.g. field validation messages) here, so anything off this
-// list is bucketed as "other" (#1916 asks for network/payment/server/other).
-const KNOWN_SUBMIT_ERROR_REASONS = new Set([
-  'network',
-  'payment-init',
-  'server',
-])
-
+// The forms app sends one of SUBMIT_ERROR_CODES as `errors` (validation,
+// network, server, payment-init — the same list /stats uses, #3826). Older data
+// put other strings (e.g. field validation messages) here, and anyone can send
+// Umami events, so anything off the list is bucketed as "other" (#1916).
 export function shapeSubmitError(
   submitTotal: number,
   errorTotal: number,
@@ -409,7 +338,7 @@ export function shapeSubmitError(
   const tally = new Map<string, number>()
   for (const r of reasonRows) {
     const raw = String(r.value)
-    const reason = KNOWN_SUBMIT_ERROR_REASONS.has(raw) ? raw : 'other'
+    const reason = isSubmitErrorCode(raw) ? raw : 'other'
     tally.set(reason, (tally.get(reason) ?? 0) + r.total)
   }
   const byReason = [...tally.entries()]
@@ -471,44 +400,6 @@ export interface FlowData {
 const SEP = '\u241F' // node-id separator
 const LSEP = '\u241E' // link-key separator
 const OTHER = '__other__'
-
-function humanizeSlug(s: string): string {
-  const spaced = s.replace(/[-_]/g, ' ').trim()
-  return spaced ? spaced[0].toUpperCase() + spaced.slice(1) : s
-}
-
-/**
- * Turn a raw journey step (path or `<form>:<event>`) into a short label. The
- * generic "Start" (form-start event or a `/…/start` page) and "Form"
- * (`/…/form` page) steps are qualified with their root service — e.g.
- * "Get birth certificate · Start" — so they're not ambiguous in the flow. Pass
- * `qualifyGoal = false` (used by the journey breadcrumb list, where the
- * preceding step already gives the context) to get the bare "Start"/"Form".
- */
-export function humanizeStep(raw: string, qualifyGoal = true): string {
-  if (!raw) return ''
-  if (!raw.startsWith('/') && raw.includes(':')) {
-    const form = raw.slice(0, raw.indexOf(':'))
-    // Canonicalise so a long-id form's compact code (#2682, e.g. `fstrt`/`sview`)
-    // resolves to its real event rather than rendering as "Fstrt".
-    const event = canonicalEvent(raw.slice(raw.indexOf(':') + 1))
-    if (event === 'form-start')
-      return qualifyGoal ? `${humanizeSlug(form)} · Start` : 'Start'
-    return humanizeSlug(event)
-  }
-  const path = raw.split('?')[0].replace(/\/+$/, '')
-  const segs = path.split('/').filter(Boolean)
-  if (!segs.length) return 'Home'
-  const last = segs[segs.length - 1]
-  // A form's start/form page: qualify with the service segment above it.
-  if ((last === 'start' || last === 'form') && segs.length >= 2) {
-    const step = last === 'start' ? 'Start' : 'Form'
-    return qualifyGoal
-      ? `${humanizeSlug(segs[segs.length - 2])} · ${step}`
-      : step
-  }
-  return humanizeSlug(last)
-}
 
 /**
  * Build a layered flow (Sankey) from journey paths. Column `c` is the c-th step
@@ -633,67 +524,6 @@ export function shapeFlow(
     pct: total ? n.value / total : 0,
   }))
   return { nodes, links, total }
-}
-
-/** One row of the "most common journeys" table: an ordered step breadcrumb. */
-export interface JourneyRow {
-  items: string[]
-  sessions: number
-  share: number
-  /** raw path of the entry step, for the referrer lookup. */
-  entryPath: string
-  /** top referrers to the entry page (filled by fetchOverviewData). */
-  topSources: SourceRow[]
-}
-
-/**
- * The top multi-step journeys as an ordered breadcrumb list (the table view of
- * the flow). Uses **page navigation only** — the `form-start` (and other) events
- * are dropped, so a form visit reads as its pages (service → Start → Form) and
- * the many event-ordering variants merge into one row instead of fragmenting.
- * Single-page visits (bounces) are excluded so the list is actual journeys, and
- * "Start"/"Form" are the `/…/start` and `/…/form` pages. Identical sequences
- * merge; share is of all listed (multi-step) journeys.
- */
-export function shapeJourneyList(
-  journeys: JourneyPath[],
-  depth = 4,
-  topN = 12,
-): JourneyRow[] {
-  const merged = new Map<
-    string,
-    { items: string[]; sessions: number; entryPath: string }
-  >()
-  for (const j of journeys) {
-    const items: string[] = []
-    let entryPath = ''
-    for (const it of j.items) {
-      // page paths only — events (…:form-start, chat-*, search) are excluded.
-      if (!it || !it.startsWith('/')) continue
-      // Qualify only the entry step, so a journey that begins on a `/…/start`
-      // or `/…/form` page shows the service ("Get birth certificate · Start")
-      // rather than a bare "Start"; later steps stay bare (context is implied).
-      const first = items.length === 0
-      const label = humanizeStep(it, first)
-      if (items[items.length - 1] === label) continue
-      if (first) entryPath = it.split('?')[0]
-      items.push(label)
-      if (items.length >= depth) break
-    }
-    // A journey is a path — drop single-page visits (bounces).
-    if (items.length < 2) continue
-    const key = items.join('␟')
-    const existing = merged.get(key)
-    if (existing) existing.sessions += j.count
-    else merged.set(key, { items, sessions: j.count, entryPath })
-  }
-  const all = [...merged.values()].sort((a, b) => b.sessions - a.sessions)
-  const total = all.reduce((s, r) => s + r.sessions, 0)
-  return all.slice(0, topN).map((r) => ({
-    ...r,
-    topSources: [],
-    share: total ? r.sessions / total : 0,
-  }))
 }
 
 /** Drop the null padding the journey report returns and keep form-relevant paths. */
@@ -879,9 +709,9 @@ export async function fetchOverviewData(
     const [statsRaw, urls, forms, landingEvents, journeyRows] =
       await Promise.all([
         client.stats(cfg.landingWebsiteId, r) as Promise<UmamiStats>,
-        client.metricsUrls(cfg.landingWebsiteId, r),
+        client.metricsUrls(cfg.landingWebsiteId, r, ALL_PAGE_URLS),
         fetchFormList(cfg),
-        client.metricsEvents(cfg.landingWebsiteId, r),
+        client.metricsEvents(cfg.landingWebsiteId, r, ALL_EVENT_NAMES),
         client.reportJourney(cfg.landingWebsiteId, { steps: 4, range: r }),
       ])
     // Distinct-visitor starts/completions per form (funnel report per form),
@@ -993,184 +823,12 @@ export async function fetchFormsData(
 
 // --- tools (#2119) ---------------------------------------------------------
 
-/** One interactive tool's traffic on the "Tools" tab. */
-export interface ToolRow {
-  name: string
-  /** the tool's canonical entry path (the row links here). */
-  path: string
-  pageviews: number
-  /**
-   * Distinct visitors, SUMMED across the tool's sub-pages. Exact for
-   * single-page tools; may overcount a visitor who hits several sub-pages of a
-   * multi-page tool — surfaced with a caveat in the UI. True prefix-distinct isn't available from Umami's per-path metrics.
-   */
-  visitors: number
-  topSources: SourceRow[]
-  /**
-   * The tool's own events (ADR 0138). Null when it sent no `tool-result`,
-   * `tool-action` or `tool-error` in the window — the "no tool events" state,
-   * which every tool shows until it is instrumented.
-   */
-  events: ToolEventStats | null
-}
-
-/** What visitors got from a tool and did with it, from its `tool-*` events. */
-export interface ToolEventStats {
-  /** `tool-result` events. */
-  results: number
-  /**
-   * Share of results with the tool's `noResultOutcome` (no matches, not
-   * eligible), 0–1. Null when the tool has no such outcome or no results.
-   */
-  noResultRate: number | null
-  /** The most-sent `tool-action`; null when there were none. */
-  topAction: { action: string; count: number } | null
-  /** `tool-error` events. */
-  errors: number
-  /** errors ÷ (results + errors), 0–1, like a form's submit error rate. */
-  errorRate: number | null
-}
-
-/** The water outage alert sign-up funnel, as the water tool sends it (#3510). */
-export interface WaterAlertFunnel {
-  /** `tool-action` `subscribe-submit`. */
-  submitted: number
-  /** `tool-result` `subscribe-sent`: the confirmation email went out. */
-  sent: number
-  /** `tool-result` `confirmed` (sent only at step `confirm`). */
-  confirmed: number
-  /** `tool-result` `unsubscribed` (sent only at step `unsubscribe`). */
-  unsubscribed: number
-}
-
-/** The tool-event value rows read from Umami for the Tools tab. */
-export interface ToolEventRows {
-  /** The `tool` values of each event: its count per tool, for every tool. */
-  resultsByTool: EventDataValue[]
-  actionsByTool: EventDataValue[]
-  errorsByTool: EventDataValue[]
-  /** Per tool, the `outcome` values of its `tool-result` events. */
-  outcomes: Map<ToolId, EventDataValue[]>
-  /** Per tool, the `action` values of its `tool-action` events. */
-  actions: Map<ToolId, EventDataValue[]>
-}
-
 export interface ToolsData {
   tools: ToolRow[]
   /** Null when its breakdown could not be read from Umami. */
   waterAlerts: WaterAlertFunnel | null
   range: string
   window: string
-}
-
-/** The summed count of the rows whose value is `value`. */
-function totalFor(rows: EventDataValue[], value: string): number {
-  return rows
-    .filter((r) => String(r.value) === value)
-    .reduce((s, r) => s + r.total, 0)
-}
-
-/**
- * A tool's own outcome or action rows, or undefined when they can't be
- * trusted: the query failed (no entry), or the rows add up to more than the
- * tool's own count, as they would if Umami ignored the `tool` filter. The
- * table then shows a dash rather than a wrong number.
- */
-function breakdownFor(
-  rows: Map<ToolId, EventDataValue[]>,
-  tool: Tool,
-  count: number,
-): EventDataValue[] | undefined {
-  const own = rows.get(tool.id)
-  return own && own.reduce((s, r) => s + r.total, 0) <= count ? own : undefined
-}
-
-/**
- * One tool's event metrics, or null when it sent no tool events (the empty
- * state). Counts come from the every-tool `tool` values; the no-result rate and
- * top action from the tool's own outcome and action values.
- */
-export function shapeToolEvents(
-  tool: Tool,
-  rows: ToolEventRows,
-): ToolEventStats | null {
-  const results = totalFor(rows.resultsByTool, tool.id)
-  const actionCount = totalFor(rows.actionsByTool, tool.id)
-  const errors = totalFor(rows.errorsByTool, tool.id)
-  if (results + actionCount + errors === 0) return null
-  const outcomes = breakdownFor(rows.outcomes, tool, results)
-  const top = breakdownFor(rows.actions, tool, actionCount)?.reduce<
-    EventDataValue | undefined
-  >((best, r) => (!best || r.total > best.total ? r : best), undefined)
-  return {
-    results,
-    noResultRate:
-      tool.noResultOutcome && outcomes && results
-        ? totalFor(outcomes, tool.noResultOutcome) / results
-        : null,
-    topAction: top ? { action: String(top.value), count: top.total } : null,
-    errors,
-    errorRate: results + errors ? errors / (results + errors) : null,
-  }
-}
-
-/**
- * The alert sign-up funnel from the water tool's outcome and action values.
- * Each outcome is sent at one step only, so the outcome alone tells a confirm
- * or unsubscribe result apart. Null when a breakdown query failed (no entry
- * although the tool sent that event), so the page says so instead of showing
- * zeros that read as "no emails went out".
- */
-export function shapeWaterAlerts(rows: ToolEventRows): WaterAlertFunnel | null {
-  const id: ToolId = 'water-outages'
-  const outcomes = rows.outcomes.get(id)
-  const actions = rows.actions.get(id)
-  if (
-    (!outcomes && totalFor(rows.resultsByTool, id) > 0) ||
-    (!actions && totalFor(rows.actionsByTool, id) > 0)
-  ) {
-    return null
-  }
-  return {
-    submitted: totalFor(actions ?? [], 'subscribe-submit'),
-    sent: totalFor(outcomes ?? [], 'subscribe-sent'),
-    confirmed: totalFor(outcomes ?? [], 'confirmed'),
-    unsubscribed: totalFor(outcomes ?? [], 'unsubscribed'),
-  }
-}
-
-/**
- * Roll landing URL rows up into one row per tool: sum pageviews + visitors for
- * every URL under the tool's route prefix, attach the tool's entry-path
- * referrers as its top source, and its event metrics. Pure — the caller
- * supplies the URL rows, a `primaryPath → referrers` map and the tool-event
- * rows, so it's fully unit-testable. Every tool is returned (zeroes when it has
- * no traffic) so owners always see it listed.
- */
-export function shapeTools(
-  tools: Tool[],
-  urlRows: ExpandedRow[],
-  sourcesByPath: Map<string, SourceRow[]>,
-  eventRows: ToolEventRows,
-): ToolRow[] {
-  return tools.map((tool) => {
-    let pageviews = 0
-    let visitors = 0
-    for (const row of urlRows) {
-      const path = row.x ?? row.name ?? ''
-      if (!pathMatchesPrefix(path, tool.prefix)) continue
-      pageviews += row.pageviews ?? row.y ?? 0
-      visitors += row.visitors ?? 0
-    }
-    return {
-      name: tool.name,
-      path: tool.primaryPath,
-      pageviews,
-      visitors,
-      topSources: sourcesByPath.get(tool.primaryPath) ?? [],
-      events: shapeToolEvents(tool, eventRows),
-    }
-  })
 }
 
 /**
@@ -1235,7 +893,8 @@ export async function fetchToolsData(
     const r = rangeForKey(range)
     const tools = liveTools()
     const [urlRows, eventRows] = await Promise.all([
-      client.metricsUrls(cfg.landingWebsiteId, r),
+      // ALL_PAGE_URLS, so a tool's quiet sub-pages count towards its visitors.
+      client.metricsUrls(cfg.landingWebsiteId, r, ALL_PAGE_URLS),
       fetchToolEventRows(client, cfg.landingWebsiteId, tools, r),
     ])
     // One referrers call per tool entry path (throttled by the client), like
@@ -1366,7 +1025,7 @@ export async function fetchPagesData(
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
     const [urlRows, registry] = await Promise.all([
-      client.metricsUrls(cfg.landingWebsiteId, r),
+      client.metricsUrls(cfg.landingWebsiteId, r, ALL_PAGE_URLS),
       fetchServicesIndex(cfg),
     ])
     // First pass yields the kept content-page paths; fetch each page's
@@ -1416,8 +1075,12 @@ export async function fetchSearchData(
         eventValues(client, wid, 'search-no-results', 'query', r),
       ],
     )
+    const stats = shapeSearch(queryRows, resultsRows, clickRows, noResultRows)
     return {
-      ...shapeSearch(queryRows, resultsRows, clickRows, noResultRows),
+      ...stats,
+      // Totals count every search; the list leaves out any query seen fewer
+      // than MIN_QUERY_COUNT times, which could be one person's name (ADR 0111).
+      queries: stats.queries.filter((q) => q.searches >= MIN_QUERY_COUNT),
       generatedAt: new Date().toISOString(),
       window: rangeLabel(range),
       range,
@@ -1456,7 +1119,7 @@ export async function fetchFormDetailData(
         window: FUNNEL_WINDOW_MIN,
         range: r,
       }),
-      client.metricsEvents(cfg.formsWebsiteId, r),
+      client.metricsEvents(cfg.formsWebsiteId, r, ALL_EVENT_NAMES),
       eventValues(
         client,
         cfg.formsWebsiteId,

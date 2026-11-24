@@ -56,6 +56,16 @@ describe("JourneyService", () => {
     expect(logged(stdout)[0]).not.toHaveProperty("journey_id");
   });
 
+  it("logs the referring site's host name", () => {
+    expect(service.record(event({ referrer: "google.com" }), BROWSER)).toBe(1);
+    expect(logged(stdout)[0]).toMatchObject({ referrer: "google.com" });
+  });
+
+  it("still accepts an event without a referrer", () => {
+    expect(service.record(event(), BROWSER)).toBe(1);
+    expect(logged(stdout)[0]).not.toHaveProperty("referrer");
+  });
+
   it("accepts the text/plain JSON string that sendBeacon sends", () => {
     expect(service.record(JSON.stringify(event()), BROWSER)).toBe(1);
   });
@@ -134,6 +144,13 @@ describe("JourneyService", () => {
       event({ journey_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" }),
     ],
     ["unknown top-level field", event({ email: "a@b.com" })],
+    [
+      "referrer that is a full URL",
+      event({ referrer: "https://mail.example/?token=abc" }),
+    ],
+    ["referrer with a path", event({ referrer: "example.com/x" })],
+    ["referrer in capitals", event({ referrer: "Google.com" })],
+    ["referrer with no dot", event({ referrer: "localhost" })],
     ["nested prop", event({ props: { form: { id: "x" } } })],
     [
       "too many props",

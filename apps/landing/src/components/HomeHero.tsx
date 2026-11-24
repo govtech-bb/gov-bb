@@ -324,17 +324,22 @@ export function HomeHero({
                     Popular searches:
                   </p>
                   <ul className="home-hero__suggestions-list" role="list">
-                    {popularSearches.map(({ query }) => (
+                    {popularSearches.map(({ query }, index) => (
                       <li key={query}>
                         <a
                           className="govbb-link"
                           href={`/search-results?${new URLSearchParams({ q: query })}`}
-                          onClick={() =>
+                          onClick={() => {
+                            trackEvent('search-popular-select', {
+                              query,
+                              position: index + 1,
+                              source: SOURCE,
+                            })
                             trackEvent('search-submit', {
                               query,
                               source: SOURCE,
                             })
-                          }
+                          }}
                         >
                           {query}
                         </a>

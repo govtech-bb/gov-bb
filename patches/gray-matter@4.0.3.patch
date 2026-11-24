@@ -1,7 +1,35 @@
+diff --git a/index.js b/index.js
+index 7d4933198abcd2811d1d44a300831d1ee352afc1..8db44db60f5575bcba3ead216291a6f6f3267f86 100644
+--- a/index.js
++++ b/index.js
+@@ -40,14 +40,16 @@ function matter(input, options) {
+       file.orig = cached.orig;
+       return file;
+     }
+-
+-    // only cache if there are no options passed. if we cache when options
+-    // are passed, we would need to also cache options values, which would
+-    // negate any performance benefits of caching
+-    matter.cache[file.content] = file;
+   }
+ 
+-  return parseMatter(file, options);
++  // only cache if there are no options passed, and only after a successful
++  // parse, so input that fails to parse fails every time
++  const key = file.content;
++  const parsed = parseMatter(file, options);
++  if (!options) {
++    matter.cache[key] = parsed;
++  }
++  return parsed;
+ }
+ 
+ /**
 diff --git a/lib/engines.js b/lib/engines.js
+index 38f993db06cf364191ac635a6590c2d29303297d..7c02ad5b1c70c74df8dc61880fc7630afddf601c 100644
 --- a/lib/engines.js
 +++ b/lib/engines.js
-@@ -13,8 +13,8 @@
+@@ -13,8 +13,8 @@ const engines = exports = module.exports;
   */
  
  engines.yaml = {
@@ -12,3 +40,25 @@ diff --git a/lib/engines.js b/lib/engines.js
  };
  
  /**
+@@ -34,19 +34,8 @@ engines.json = {
+  */
+ 
+ engines.javascript = {
+-  parse: function parse(str, options, wrap) {
+-    /* eslint no-eval: 0 */
+-    try {
+-      if (wrap !== false) {
+-        str = '(function() {\nreturn ' + str.trim() + ';\n}());';
+-      }
+-      return eval(str) || {};
+-    } catch (err) {
+-      if (wrap !== false && /(unexpected|identifier)/i.test(err.message)) {
+-        return parse(str, options, false);
+-      }
+-      throw new SyntaxError(err);
+-    }
++  parse: function() {
++    throw new Error('JavaScript front matter is not supported; use YAML');
+   },
+   stringify: function() {
+     throw new Error('stringifying JavaScript is not supported');

@@ -56,6 +56,40 @@ describe("UmamiClient.reportFunnel", () => {
   });
 });
 
+describe("UmamiClient.metricsEvents", () => {
+  it("asks for 500 event names unless told otherwise", async () => {
+    const fetchSpy = mockFetchOnce([{ x: "f:form-start", y: 3 }]);
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = new UmamiClient({ apiKey: "k" });
+    expect(await client.metricsEvents("w1", range)).toEqual([
+      { x: "f:form-start", y: 3 },
+    ]);
+    await client.metricsEvents("w1", range, 10_000);
+    const limits = fetchSpy.mock.calls.map(([url]) =>
+      new URL(String(url)).searchParams.get("limit"),
+    );
+    expect(limits).toEqual(["500", "10000"]);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("UmamiClient.metricsUrls", () => {
+  it("asks for 500 page URLs unless told otherwise", async () => {
+    const fetchSpy = mockFetchOnce([{ x: "/a", pageviews: 3, visitors: 2 }]);
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = new UmamiClient({ apiKey: "k" });
+    expect(await client.metricsUrls("w1", range)).toEqual([
+      { x: "/a", pageviews: 3, visitors: 2 },
+    ]);
+    await client.metricsUrls("w1", range, 10_000);
+    const limits = fetchSpy.mock.calls.map(([url]) =>
+      new URL(String(url)).searchParams.get("limit"),
+    );
+    expect(limits).toEqual(["500", "10000"]);
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("UmamiClient.reportJourney", () => {
   it("POSTs the journey envelope and returns paths", async () => {
     const fetchSpy = mockFetchOnce([{ items: ["/", "/a"], count: 12 }]);

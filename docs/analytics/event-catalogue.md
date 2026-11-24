@@ -72,7 +72,7 @@ landing sends. Every event here has a `form` (the form ID) and a `category`
 | `form-file-remove`       | `form`, `category`, `step`, `field`                     | The citizen removes a file.                                                                                                                                                                                                                               |
 | `form-review`            | `form`, `category`, `duration_seconds`                  | The citizen leaves check your answers. `duration_seconds` is the time spent there.                                                                                                                                                                        |
 | `form-submit`            | `form`, `category`, `duration_seconds`                  | The submission is accepted. `duration_seconds` is the time since `form-start`.                                                                                                                                                                            |
-| `form-submit-error`      | `form`, `category`, `errors`                            | The submission fails. `errors` is `validation`, `network`, or the reason the API gave.                                                                                                                                                                    |
+| `form-submit-error`      | `form`, `category`, `errors`                            | The submission fails. `errors` is `validation` (the API rejected an answer, shown on its step), `network` (no readable response: offline, or a gateway error the browser blocked), `server` (any other error: an HTTP error status, 5xx and 429 too, a rejected answer that matches no step, or the API said the submission failed) or `payment-init` (the payment could not start): `SUBMIT_ERROR_CODES`. |
 | `payment-initiated`      | `form`, `category`, `amount`                            | The citizen selects Continue to payment on the confirmation page.                                                                                                                                                                                         |
 | `payment-returned`       | `form`, `category`, `outcome`                           | The citizen comes back from EzPay. `outcome` is `success` or `failed`.                                                                                                                                                                                    |
 | `form-confirmation-view` | `form`, `category`, `outcome`, `hasPayment`             | The confirmation page is shown, once per visit to it: the end of the journey. `outcome` is the submission or payment state.                                                                                                                               |
@@ -91,12 +91,16 @@ Where a citizen was stopped before reaching a service.
 
 ## Search
 
-On landing. Every `query` is masked (see above).
+On landing. Every `query` is masked (see above). `search` and
+`search-no-results` are sent once per query per tab session (`sessionStorage`),
+so Back or a reload does not count the same search again. A new tab starts a
+new session.
 
 | Event                      | Data                                           | Fires when                                                                                                                          |
 | -------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `search-submit`            | `query`, `source`                              | A search is submitted, from a search box or a homepage "Popular searches" link. `source` is where: `home`, `services` or `results`. |
 | `search-suggestion-select` | `query`, `title`, `href`, `position`, `source` | The citizen picks a suggestion under the search box. `query` is what they had typed.                                                |
+| `search-popular-select`    | `query`, `position`, `source`                  | The citizen picks a homepage "Popular searches" link, which also sends `search-submit`. `position` counts the links shown from 1.   |
 | `search`                   | `query`, `results`                             | The search results page loads. `results` is the number of results.                                                                  |
 | `search-no-results`        | `query`                                        | The search results page has no results.                                                                                             |
 | `search-result-click`      | `query`, `position`, `href`                    | The citizen selects a search result. `position` starts at 1.                                                                        |

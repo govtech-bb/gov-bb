@@ -2,14 +2,25 @@
  * After an estate import, proves the API serves every snapshot page at the
  * level this environment should have (#3235): frontmatter, overlaid with the
  * environment's `service_status` (#3188), made as hidden as any ancestor.
+ * It also compares each page the preview token reads with the snapshot, and
+ * reports snapshot pages api_v2 doesn't serve and pages it serves that the
+ * snapshot lacks (#3710). Draft pages get a status check only.
  *
- * `PREVIEW_SECRET=… tsx scripts/check-import.ts --base-url <api_v2> --forms-api <api v1>`
+ * `PREVIEW_SECRET=… tsx scripts/check-import.ts --base-url <api_v2> --forms-api <api v1> [--json]`
+ *
+ * `--json` prints only `{ source, differences }` to stdout; the rest goes to
+ * stderr. Run it with `pnpm -s`, or pnpm's banner lands on stdout too.
  *
  * The secret comes from the environment only and is never printed.
  */
 
 import { parseArgs } from "node:util";
+import {
+  estateDifferences,
+  type Difference,
+} from "../src/modules/estate-drift";
 import type { Visibility } from "../src/modules/page";
+import { PublicPage } from "../src/modules/page-visibility";
 import {
   ServiceStatuses,
   applyServiceStatuses,
@@ -33,8 +44,10 @@ async function main() {
     options: {
       "base-url": { type: "string" },
       "forms-api": { type: "string" },
+      json: { type: "boolean" },
     },
   });
+  const log = values.json ? console.error : console.log;
   const baseUrl = values["base-url"]?.replace(/\/+$/, "");
   const formsApi = values["forms-api"]?.replace(/\/+$/, "");
   const secret = process.env.PREVIEW_SECRET;
@@ -72,6 +85,9 @@ async function main() {
       : page.visibility;
   };
 
+  // Each page the token read: the page, or null for a 404 (never a draft's,
+  // never a 301, a 5xx or an error: those are FAILs, not "missing").
+  const served = new Map<string, PublicPage | null>();
   const totals = new Map(
     LEVELS.map((level) => [level, { pages: 0, failing: 0 }]),
   );
@@ -83,15 +99,32 @@ async function main() {
     let ok = true;
     for (const [i, token] of [undefined, secret].entries()) {
       const want = MATRIX[level][i];
-      const got = await read(baseUrl, page.url, token);
+      const got = await read(
+        baseUrl,
+        `/pages?url=${encodeURIComponent(page.url)}`,
+        token,
+      );
       if (got.status === 401 && token) {
         throw new Stop(
           `preview token refused by ${baseUrl}: PREVIEW_SECRET is wrong, or unset on the API`,
         );
       }
       if (got.status === 429) throw new Stop(`rate limited by ${baseUrl}`);
-      const problem = got.status === 200 ? bodyProblem(got.body, level) : null;
+      // A 200 the schema refuses is a FAIL, never compared.
+      const parsed = got.status === 200 ? PublicPage.safeParse(got.body) : null;
+      const problem =
+        got.status === 200
+          ? (bodyProblem(got.body, level) ??
+            (parsed?.success ? null : "not a page"))
+          : null;
       if (got.status !== want || problem) ok = false;
+      if (token) {
+        if (parsed?.success) {
+          served.set(page.url, parsed.data);
+        } else if (got.status === 404 && level !== "draft") {
+          served.set(page.url, null);
+        }
+      }
       results.push(
         `${token ? "token" : "no token"} ${got.status}${problem ? ` (${problem})` : ""}`,
       );
@@ -100,36 +133,68 @@ async function main() {
     total.pages++;
     if (!ok) {
       total.failing++;
-      console.log(`FAIL ${page.url} expected ${level}: ${results.join(", ")}`);
+      log(`FAIL ${page.url} expected ${level}: ${results.join(", ")}`);
     }
   }
 
+  const catalog = await read(baseUrl, "/catalog", secret);
+  if (catalog.status === 429) throw new Stop(`rate limited by ${baseUrl}`);
+  const entries = (catalog.body as { pages?: { url: string }[] } | undefined)
+    ?.pages;
+  if (catalog.status !== 200 || !Array.isArray(entries)) {
+    throw new Stop(`catalog: ${catalog.status} from ${baseUrl}`);
+  }
+  const differences = estateDifferences(
+    ESTATE,
+    served,
+    entries.map((entry) => entry.url),
+  );
+  for (const difference of differences) log(diffRow(difference));
+
   let failing = 0;
   for (const [level, total] of totals) {
-    console.log(`${level}: ${total.pages} pages, ${total.failing} failing`);
+    log(`${level}: ${total.pages} pages, ${total.failing} failing`);
     failing += total.failing;
   }
-  console.log(
+  log(`${differences.length} differences in ${served.size} pages compared`);
+  log(
     `${failing} failing of ${pages.length} pages in snapshot ${ESTATE_SOURCE}`,
   );
-  process.exitCode = failing ? 1 : 0;
+  if (values.json) {
+    console.log(JSON.stringify({ source: ESTATE_SOURCE, differences }));
+  }
+  process.exitCode = failing || differences.length ? 1 : 0;
 }
 
-/** One `GET /pages?url=`; a network error comes back as status `ERR …`. */
+/** One DIFF row; a field row quotes where the two sides first differ. */
+function diffRow(difference: Difference): string {
+  if (difference.kind !== "field") {
+    return `DIFF ${difference.url} ${difference.kind}`;
+  }
+  const { expected, actual } = difference;
+  let at = 0;
+  if (expected !== null && actual !== null) {
+    while (expected[at] === actual[at]) at++;
+  }
+  const excerpt = (text: string | null) =>
+    text === null
+      ? "null"
+      : JSON.stringify(text.slice(Math.max(0, at - 20), at + 40));
+  return `DIFF ${difference.url} ${difference.field}: snapshot ${excerpt(expected)} api_v2 ${excerpt(actual)}`;
+}
+
+/** One GET of `path`; a network error comes back as status `ERR …`. */
 async function read(
   baseUrl: string,
-  url: string,
+  path: string,
   token: string | undefined,
 ): Promise<{ status: number | string; body?: unknown }> {
   try {
-    const response = await fetch(
-      `${baseUrl}/pages?url=${encodeURIComponent(url)}`,
-      {
-        headers: token ? { [PREVIEW_TOKEN]: token } : {},
-        redirect: "manual",
-        signal: AbortSignal.timeout(15_000),
-      },
-    );
+    const response = await fetch(`${baseUrl}${path}`, {
+      headers: token ? { [PREVIEW_TOKEN]: token } : {},
+      redirect: "manual",
+      signal: AbortSignal.timeout(15_000),
+    });
     // A 200 that isn't JSON stays a 200; bodyProblem names it.
     const body =
       response.status === 200
