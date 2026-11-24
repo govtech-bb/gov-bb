@@ -15,7 +15,8 @@
  *   visibility after the service_status overlay; a public one as preview,
  *   because nobody may create a page public that they wrote.
  * - `conflict`: anyone but `system` changed the page, it has a pending
- *   revision, or api_v2 has it but doesn't serve it. It is left as it is.
+ *   revision, or api_v2 has the url but doesn't serve it or can't give its
+ *   id. It is left as it is.
  * - `unchanged`.
  * - `removed`: api_v2 serves it and the snapshot lacks it. Never deleted.
  * - `failed`: api_v2 refused a request.
@@ -85,6 +86,12 @@ async function main() {
   }
   const session = process.env.EDITOR_SESSION;
   if (!session) throw new Stop("EDITOR_SESSION is not set in the environment");
+  // fetch quotes a header value it refuses in its error, so refuse it first.
+  if (!/^[\x20-\x7e]+$/.test(session)) {
+    throw new Stop(
+      "EDITOR_SESSION has a character a header can't carry, such as a line break: copy it again",
+    );
+  }
 
   let check;
   try {
@@ -196,6 +203,8 @@ async function main() {
     "/editor/site-pages",
   );
   for (const page of site.pages) ids.set(page.url, page.id);
+  // Every stored url, so a page the indexes above miss is never created twice.
+  const paths = new Set(await need(z.array(z.string()), "/editor/page-paths"));
   const categories = new Map(
     (
       await need(
@@ -255,7 +264,11 @@ async function main() {
     };
   };
 
+  let submitted = 0;
   async function update(page: SeedPage, id: string, fields: string[]) {
+    // The page before its history: a save between the two reads moves its
+    // version, so the PUT is refused rather than overwriting it.
+    const current = await call(Saved, "GET", `/pages/${id}`);
     const history = await call(
       z.object({
         entries: z.array(
@@ -273,7 +286,6 @@ async function main() {
     if (editors.size > 0) {
       return row("conflict", page.url, `changed by ${[...editors].join(", ")}`);
     }
-    const current = await call(Saved, "GET", `/pages/${id}`);
     if (current.pending_revision) {
       return row(
         "conflict",
@@ -294,9 +306,17 @@ async function main() {
       return row("unchanged", page.url, "api_v2 already has these fields");
     }
     if (isPublic) {
-      await call(z.unknown(), "POST", `/pages/${id}/revision/submit`, {
-        expected_version: saved.version,
-      });
+      try {
+        await call(z.unknown(), "POST", `/pages/${id}/revision/submit`, {
+          expected_version: saved.version,
+        });
+      } catch (error) {
+        if (!(error instanceof Refused)) throw error;
+        throw new Refused(
+          `saved as a draft revision, but not submitted (${error.message}): submit it in the editor`,
+        );
+      }
+      submitted++;
     }
     row("updated", page.url, what);
   }
@@ -310,14 +330,13 @@ async function main() {
       visibility === page.visibility
         ? visibility
         : "preview, until an approver makes it public";
-    if (page.visibility === "public") makePublic.push(page.url);
-    if (!apply) {
+    if (apply) {
+      ids.set(page.url, (await call(Saved, "POST", "/pages", body)).id);
+    } else {
       // Its children can be created after it.
       ids.set(page.url, "(new)");
-      return row("created", page.url, what);
     }
-    const created = await call(Saved, "POST", "/pages", body);
-    ids.set(page.url, created.id);
+    if (page.visibility === "public") makePublic.push(page.url);
     row("created", page.url, what);
   }
 
@@ -331,10 +350,17 @@ async function main() {
   };
 
   const toCreate: SeedPage[] = [];
+  const toUpdate: [SeedPage, string, string[]][] = [];
   for (const page of pages) {
     const id = ids.get(page.url);
     const fields = changed.get(page.url);
-    if (id === undefined) {
+    if (id === undefined && paths.has(page.url)) {
+      row(
+        "conflict",
+        page.url,
+        "api_v2 has this url, but not where this script looks for pages; check it in the editor",
+      );
+    } else if (id === undefined) {
       toCreate.push(page);
     } else if (missing.has(page.url)) {
       row(
@@ -343,12 +369,13 @@ async function main() {
         "api_v2 has it but doesn't serve it: its visibility, or a page above it, differs from the snapshot",
       );
     } else if (fields) {
-      await run(page, () => update(page, id, fields));
+      toUpdate.push([page, id, fields]);
     } else {
       row("unchanged", page.url);
     }
   }
-  // Parents before their sub-pages.
+  // Creates first, so an update can move a page under a new one; parents
+  // before their sub-pages.
   const byUrl = new Map(pages.map((page) => [page.url, page]));
   const depth = (page: SeedPage): number => {
     const parent = page.parent ? byUrl.get(page.parent) : undefined;
@@ -356,6 +383,9 @@ async function main() {
   };
   toCreate.sort((a, b) => depth(a) - depth(b));
   for (const page of toCreate) await run(page, () => create(page));
+  for (const [page, id, fields] of toUpdate) {
+    await run(page, () => update(page, id, fields));
+  }
 
   for (const url of removed) {
     row(
@@ -381,7 +411,9 @@ async function main() {
       z.object({ revisions: z.array(z.unknown()) }),
       "/revisions?status=submitted",
     );
-    console.log(`${queue.revisions.length} revisions waiting for approval`);
+    console.log(
+      `${queue.revisions.length} revisions waiting for approval, ${submitted} from this run`,
+    );
   } else {
     console.log(
       "Dry run: nothing was written. Pass --apply to make these changes.",

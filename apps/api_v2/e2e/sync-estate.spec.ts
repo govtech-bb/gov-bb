@@ -211,6 +211,17 @@ describe.skipIf(!HAS_DATABASE)("sync-estate", () => {
     expect(output).not.toContain("not-a-real-session-value");
   }, 60_000);
 
+  it("refuses a session a header can't carry without printing it", async () => {
+    const { code, output } = await sync(
+      file([]),
+      [],
+      "better-auth.session_token=line\nbreak-secret-value",
+    );
+    expect(code, output).toBe(1);
+    expect(output).toContain("EDITOR_SESSION has a character");
+    expect(output).not.toContain("break-secret-value");
+  }, 60_000);
+
   it("reports a page api_v2 has but doesn't serve as a conflict", async () => {
     const draft = ESTATE.pages.find((page) => page.visibility === "draft")!;
     const { code, output } = await sync(
@@ -262,7 +273,9 @@ describe.skipIf(!HAS_DATABASE)("sync-estate", () => {
     expect(output).toMatch(new RegExp(`^conflict ${editedByEditor}\\b`, "m"));
     expect(output).toMatch(new RegExp(`^conflict ${pendingRevision}\\b`, "m"));
     expect(output).toMatch(new RegExp(`^removed ${extra}\\b`, "m"));
-    expect(output).toMatch(/^1 revisions waiting for approval$/m);
+    expect(output).toMatch(
+      /^1 revisions waiting for approval, 1 from this run$/m,
+    );
     expect(output).toContain(`make public: ${newPublic}`);
     expect(output).not.toContain(operator.token);
 
@@ -328,5 +341,46 @@ describe.skipIf(!HAS_DATABASE)("sync-estate", () => {
     expect([...new Set(left)].sort()).toEqual(
       [editedByEditor, pendingRevision, extra].sort(),
     );
+  }, 60_000);
+
+  it("creates a new parent before its new sub-page", async () => {
+    // Children before their parent in the file, to prove the ordering.
+    const child = ESTATE.pages.find((page) => {
+      const parent = ESTATE.pages.find((p) => p.url === page.parent);
+      return (
+        page.visibility === "preview" &&
+        parent?.visibility === "preview" &&
+        !parent.parent &&
+        ESTATE.pages.filter((p) => p.parent === parent.url).length === 1 &&
+        !ESTATE.pages.some((p) => p.parent === page.url)
+      );
+    });
+    expect(child, "the snapshot has no such preview pair").toBeDefined();
+    const parent = child!.parent!;
+    for (const url of [child!.url, parent])
+      await databaseQuery(
+        env.database,
+        "delete from content_pages where url = $1",
+        [url],
+      );
+    const { code, output } = await sync(
+      file([
+        { kind: "missing", url: child!.url },
+        { kind: "missing", url: parent },
+      ]),
+      ["--apply"],
+    );
+    expect(code, output).toBe(0);
+    expect(output.indexOf(`created ${parent}:`)).toBeGreaterThan(-1);
+    expect(output.indexOf(`created ${parent}:`)).toBeLessThan(
+      output.indexOf(`created ${child!.url}:`),
+    );
+    const [row] = (await databaseQuery(
+      env.database,
+      `select p.url from content_pages c join content_pages p on p.id = c.parent_id
+        where c.url = $1`,
+      [child!.url],
+    )) as { url: string }[];
+    expect(row?.url).toBe(parent);
   }, 60_000);
 });

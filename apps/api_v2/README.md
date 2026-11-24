@@ -678,12 +678,18 @@ Use it only before the environment's cutover: #3311 for sandbox, #3227 for stagi
 What it does:
 
 - It reads the check's `--json` output, and refuses one made from a different `estate.json`.
-- For each page with a field difference, it reads `GET /pages/:id/history` and `GET /pages/:id`. If anyone but `system` ever changed the page, or the page has a pending revision, it reports a `conflict` and leaves the page as it is. Otherwise it saves the snapshot's fields with `PUT /pages/:id` and the page's `version`, keeping the page's visibility. A non-public page is written at once. On a public page the save is a pending revision, which the script submits; an approver other than you publishes it (ADR 0134).
-- For each snapshot page api_v2 doesn't have, drafts included, it creates the page at its snapshot visibility after the `service_status` overlay. Nobody may create a page public that they wrote, so a public one is created as `preview`, and an approver other than you makes it public.
-- A snapshot page api_v2 has but doesn't serve (`missing` in the check) is a `conflict`: its visibility, or a page above it, differs.
+- For each page with a field difference, it reads `GET /pages/:id` and then `GET /pages/:id/history`. If anyone but `system` ever changed the page, or the page has a pending revision, it reports a `conflict` and leaves the page as it is. Otherwise it saves the snapshot's fields with `PUT /pages/:id` and the page's `version`, keeping the page's visibility. A non-public page is written at once. On a public page the save is a pending revision, which the script submits; an approver other than you publishes it (ADR 0134).
+- For each snapshot page api_v2 doesn't have, drafts included, it creates the page, before any update at its snapshot visibility after the `service_status` overlay. Nobody may create a page public that they wrote, so a public one is created as `preview`, and an approver other than you makes it public.
+- A snapshot page api_v2 has but doesn't serve (`missing` in the check) is a `conflict`: its visibility, or a page above it, differs. So is a url that `GET /editor/page-paths` lists but the script can't find an id for.
 - A page api_v2 serves that the snapshot doesn't have (`extra` in the check) is reported as `removed`. It is never deleted.
 
-It doesn't see changes to a draft page's fields, because the check doesn't compare drafts. It doesn't create categories: a page whose category api_v2 lacks is `failed`. A page you synced before is a `conflict` the next time, because your earlier change is in its history.
+Its limits:
+
+- It doesn't see changes to a draft page's fields, or to any page's frontmatter (`lede`, `keywords` and the others), visibility or `published_at`, because the check doesn't compare them. An update does write the snapshot's frontmatter.
+- It can't tell a page that is new in the snapshot from one an editor deleted or moved to another url: there is no history to read for a url with no page. It creates both. Check every `create` row of the dry run with the editors before `--apply`.
+- A created page gets no `published_at` from the snapshot; it is dated when it first goes public.
+- It doesn't create categories: a page whose category api_v2 lacks is `failed`.
+- A page you synced before is a `conflict` the next time, because your earlier change is in its history.
 
 1. **Check.** On a checkout of the commit the environment's api_v2 runs now (step 6 above), write the differences:
 
@@ -707,9 +713,9 @@ It doesn't see changes to a draft page's fields, because the check doesn't compa
    pnpm --filter @govtech-bb/api-v2 sync-estate --base-url https://<api origin> --editor-origin https://<editor origin> --forms-api "$FORMS_API" --differences "$PWD/differences.json"
    ```
 
-   It prints one row per snapshot page, `update`, `create`, `conflict` or `unchanged`, then a `removed` row for each `extra` page, with the reason after a colon. Then the counts, the pages an approver must make public, and `Dry run: nothing was written.` A refused request is a `failed` row and exits 1; a wrong or expired session (`refused EDITOR_SESSION`), a role without `editor`, or differences from another snapshot stop the run before any write. Talk to the editors of each `conflict` page: fix it with them in the editor, never with `--force`.
+   It prints one row per snapshot page, `update`, `create`, `conflict` or `unchanged`, then a `removed` row for each `extra` page, with the reason after a colon. Then the counts, the pages an approver must make public, and `Dry run: nothing was written.` A refused request is a `failed` row and exits 1; a wrong or expired session (`refused EDITOR_SESSION`), a role without `editor`, or differences from another snapshot stop the run before any write. Only writes check the Origin, so the dry run can't catch a wrong `--editor-origin`: with `--apply`, it makes every write a `failed` row with a 403. Talk to the editors of each `conflict` page: fix it with them in the editor, never with `import-estate --force`.
 
-4. **Apply.** Run step 3's command with `--apply`. The rows read `updated` and `created`, and the last line is `N revisions waiting for approval`.
+4. **Apply.** Run step 3's command with `--apply`. The rows read `updated` and `created`, and the last line is `N revisions waiting for approval, M from this run`. If saving a public page worked but submitting it didn't, its `failed` row says so: submit that draft revision in the editor.
 5. **Approve.** An approver other than you publishes each revision in editor_v2's review queue, and makes public each page the run listed.
 6. **Check again.** Run step 1's command. What is left is the `conflict` and `removed` pages, until you and the editors resolve them; then it exits 0. Paste the outputs of steps 1, 3, 4 and 6 on the issue.
 
