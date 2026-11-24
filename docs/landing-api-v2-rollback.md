@@ -37,12 +37,14 @@ Three other switches change at a cutover. Each one can be rolled back on its own
    ```sql
    SELECT entity_kind, entity_id, action, actor, occurred_at
    FROM change_events
-   WHERE entity_kind IN ('content_page', 'category')
+   WHERE entity_kind IN ('content_page', 'category', 'collection_record')
      AND occurred_at >= '<cutover start>'
    ORDER BY occurred_at;
    ```
 
    Anything that must hold while landing serves the markdown needs a second change: a takedown becomes a `disabled` page row (after step 4, or with api v1's `PUT /service_status`), and wording becomes a markdown PR. In prod, a markdown PR needs `CONTENT_FREEZE` lifted first ("The markdown freeze" in the api_v2 README).
+
+   Data-collection records have no markdown copy at all. With `VITE_API_V2_URL` unset, landing reads no collections, so the bank holiday calendar shows only the calculated statutory holidays (`resolvePublicHolidays` in `apps/landing/src/lib/public-holidays.ts`). A one-off holiday an editor added to the `public-holidays` collection (#3205) disappears. If it must stay visible during the rollback, it needs a code change in `apps/landing/src/lib/bank-holidays.ts`.
 
 3. **Unset `VITE_API_V2_URL`.** Open an alpha-infra PR that removes the line from the environment's landing branch. Sandbox and staging apply on merge, and `@govtech-bb/platform-infra` can approve them. Prod's stack needs a CODEOWNERS approval outside that team.
 
@@ -57,12 +59,14 @@ Three other switches change at a cutover. Each one can be rolled back on its own
 5. **Confirm landing serves the markdown.** When the build has finished, every rendered page and category listing should send `x-content-source: static`:
 
    ```sh
-   for p in / /business-trade /health-and-emergency-services/find-an-open-pharmacy; do
+   for p in /family-birth-relationships/register-a-birth /business-trade /health-and-emergency-services/find-an-open-pharmacy; do
      curl -s -o /dev/null -D - "https://<site origin>$p" | grep -i x-content-source
    done
    ```
 
-   Then run the landing smoke tests (#3152) against the environment. A page with `api_v2` or `api_v2-stale` means the build didn't pick the change up: check the variable is gone from the branch and the build that ran is the one after the change.
+   The home page sends no `x-content-source`, so don't use it for this check. Every page should report `static`. A page with `api_v2` or `api_v2-stale` means the build didn't pick the change up: check the variable is gone from the branch and the build that ran is the one after the change.
+
+   Don't use the api_v2 smoke suite (`pnpm --filter @govtech-bb/landing test:smoke --project live`, #3140) to confirm a rollback. It checks that pages came from api_v2, so on a rolled-back site every check fails by design.
 
 6. **Record it.** On the environment's switch issue (#3311, #3227 or #3228), note the time, the alpha-infra PR, the build, the step 5 output and what step 2 carried over.
 
@@ -70,7 +74,7 @@ Three other switches change at a cutover. Each one can be rolled back on its own
 
 Visitors see the markdown on landing's deployed commit, with page visibility from `service_status`. In sandbox and staging the markdown keeps changing on `main` until the prod import freezes it. In prod it is frozen at the prod import (#3230), so the site goes back to the content of that day plus any PRs merged after the freeze is lifted.
 
-Page edits, new pages, category changes and visibility changes made in editor_v2 since the cutover stop showing. They are not lost: they stay in api_v2's database and editor_v2 keeps working, so they come back when landing switches back. A visibility change made in editor_v2 is not written back to `service_status` (ADR 0110, "After cutover"), so step 2 is the only way it holds during the rollback.
+Page edits, new pages, category changes and visibility changes made in editor_v2 since the cutover stop showing, and so do data-collection records such as one-off public holidays (step 2). They are not lost: they stay in api_v2's database and editor_v2 keeps working, so they come back when landing switches back. A visibility change made in editor_v2 is not written back to `service_status` (ADR 0110, "After cutover"), so step 2 is the only way it holds during the rollback.
 
 Reviewers' preview links keep working, because the markdown path honours the same `PREVIEW_SECRET`.
 
