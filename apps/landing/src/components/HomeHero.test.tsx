@@ -110,17 +110,17 @@ describe('HomeHero', () => {
   })
 
   it('offers no suggestions for search text after a trip through Ask', () => {
+    const options = () => screen.queryAllByRole('option', { hidden: true })
     renderHero()
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
     fireEvent.input(searchInput(), { target: { value: 'birth' } })
-    expect(suggestMock).toHaveBeenCalled()
+    expect(options()).not.toHaveLength(0)
 
-    suggestMock.mockClear()
     fireEvent.click(screen.getByRole('radio', { name: 'Ask Assistant' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
 
     expect(searchInput()).toHaveProperty('value', 'birth')
-    expect(suggestMock).not.toHaveBeenCalled()
+    expect(options()).toHaveLength(0)
   })
 
   it("suggests from api_v2's search documents once they load", async () => {
@@ -247,6 +247,35 @@ describe('HomeHero', () => {
     })
   })
 
+  // Without :has(), both boxes are on screen whichever mode is checked.
+  it('suggests for the search box while Ask is checked', () => {
+    renderHero()
+
+    fireEvent.input(searchInput(), { target: { value: 'birth' } })
+
+    expect(suggestMock).toHaveBeenLastCalledWith(
+      'birth',
+      'public',
+      new Map(),
+      undefined,
+    )
+  })
+
+  it('submits each box with its own text', () => {
+    renderHero()
+    fireEvent.input(searchInput(), { target: { value: 'birth' } })
+    fireEvent.change(askInput(), { target: { value: 'Renew a passport' } })
+
+    fireEvent.submit(searchInput())
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/search-results',
+      search: { q: 'birth' },
+    })
+
+    fireEvent.submit(askInput())
+    expect(assignedHref).toBe(`${new URL('/', CHAT_URL)}?q=Renew+a+passport`)
+  })
+
   it('tracks and searches for a picked suggestion', () => {
     renderHero()
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
@@ -333,14 +362,20 @@ describe('HomeHero', () => {
     expect(chatStatus().textContent).toBe('')
   })
 
-  it('checks the chat again when the tab comes back', async () => {
+  it.each([
+    ['the window regains focus', () => fireEvent(window, new Event('focus'))],
+    [
+      'the tab becomes visible',
+      () => fireEvent(document, new Event('visibilitychange')),
+    ],
+  ])('checks the chat again when %s', async (_, comeBack) => {
     stubChatHealth(false)
     renderHero()
     const send = screen.getByRole<HTMLButtonElement>('button', { name: 'Send' })
     await waitFor(() => expect(send.disabled).toBe(true))
 
     stubChatHealth(true)
-    fireEvent(window, new Event('focus'))
+    comeBack()
 
     await waitFor(() => expect(send.disabled).toBe(false))
     expect(screen.getByRole('link', { name: QUESTION })).toBeTruthy()
@@ -389,6 +424,111 @@ describe('HomeHero', () => {
     expect(
       screen.getByRole('link', { name: 'Financial assistance' }),
     ).toBeTruthy()
+  })
+})
+
+describe('HomeHero suggestion separators', () => {
+  class ResizeObserverStub {
+    static instances: Array<ResizeObserverStub> = []
+    targets: Array<Element> = []
+    disconnect = vi.fn()
+    constructor(readonly callback: () => void) {
+      ResizeObserverStub.instances.push(this)
+    }
+    observe(target: Element) {
+      this.targets.push(target)
+    }
+  }
+
+  // jsdom does no layout, so each item is put on a line by hand.
+  const placeOnLine = (element: Element, line: number) => {
+    element.getBoundingClientRect = () => new DOMRect(0, line * 24, 100, 24)
+  }
+  const label = () => screen.getByText('Try asking:')
+  const row = () => label().parentElement!
+  const observerOf = (element: Element) =>
+    ResizeObserverStub.instances.find(({ targets }) =>
+      targets.includes(element),
+    )!
+  const lineEnds = () => [...row().querySelectorAll('[data-line-end]')]
+
+  beforeEach(() => {
+    ResizeObserverStub.instances = []
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+  })
+
+  it('marks each item whose next item starts a new line', () => {
+    renderHero(['First question', 'Second question'])
+    const [first, second] = within(row()).getAllByRole('listitem')
+
+    placeOnLine(label(), 0)
+    placeOnLine(first, 0)
+    placeOnLine(second, 1)
+    observerOf(row()).callback()
+    expect(lineEnds()).toEqual([first])
+
+    placeOnLine(second, 0)
+    observerOf(row()).callback()
+    expect(lineEnds()).toEqual([])
+
+    placeOnLine(first, 1)
+    placeOnLine(second, 1)
+    observerOf(row()).callback()
+    expect(lineEnds()).toEqual([label()])
+  })
+
+  it('watches the new questions when they change', () => {
+    const { rerender, unmount } = renderHero([
+      'First question',
+      'Second question',
+    ])
+    const before = observerOf(row())
+
+    rerender(
+      <HomeHero
+        questions={['First question', 'Third question']}
+        viewer="public"
+        overlay={new Map()}
+      />,
+    )
+    expect(before.disconnect).toHaveBeenCalled()
+    const [first, third] = within(row()).getAllByRole('listitem')
+    const after = observerOf(row())
+    expect(observerOf(third)).toBe(after)
+
+    placeOnLine(label(), 0)
+    placeOnLine(first, 0)
+    placeOnLine(third, 1)
+    after.callback()
+    expect(lineEnds()).toEqual([first])
+
+    unmount()
+    expect(after.disconnect).toHaveBeenCalled()
+  })
+
+  it('marks the line end when a replacement popular search wraps', () => {
+    const hero = (secondService: string) => (
+      <HomeHero
+        questions={[]}
+        viewer="public"
+        overlay={new Map()}
+        servedServices={['get-birth-certificate', secondService]}
+      />
+    )
+    const { rerender } = render(hero('post-office-redirection-individual'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+    rerender(hero('apply-financial-assistance'))
+
+    const popularLabel = screen.getByText('Popular searches:')
+    const popularRow = popularLabel.parentElement!
+    const [first, added] = within(popularRow).getAllByRole('listitem')
+    expect(added.textContent).toBe('Financial assistance')
+
+    placeOnLine(popularLabel, 0)
+    placeOnLine(first, 0)
+    placeOnLine(added, 1)
+    observerOf(popularRow).callback()
+    expect(first.hasAttribute('data-line-end')).toBe(true)
   })
 })
 

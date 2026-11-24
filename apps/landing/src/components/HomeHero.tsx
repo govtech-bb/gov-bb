@@ -1,6 +1,4 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { RefObject } from 'react'
-import { flushSync } from 'react-dom'
 import {
   Autocomplete,
   Button,
@@ -8,27 +6,19 @@ import {
   Input,
   StatusBanner,
 } from '@govtech-bb/react'
+import { POPULAR_SEARCHES } from '../content/popular-searches'
 import { isVisible, PAGES } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { trackEvent } from '../lib/analytics'
 import { CHAT_URL } from '../lib/chat-url'
 import type { ApiV2SearchDocument } from '../lib/api-v2-site'
+import { HomeHeroSuggestions } from './HomeHeroSuggestions'
 import { useServiceSearch } from './useServiceSearch'
 import './HomeHero.css'
 
 const MAX_QUESTION_LENGTH = 2000
 const SOURCE = 'home'
 const OFFLINE_MESSAGE = 'The assistant is not available right now.'
-
-// Each search leads to one service, so it's hidden while that service is.
-export const POPULAR_SEARCHES = [
-  { query: 'Birth certificates', serviceId: 'get-birth-certificate' },
-  {
-    query: 'Redirect my mail',
-    serviceId: 'post-office-redirection-individual',
-  },
-  { query: 'Financial assistance', serviceId: 'apply-financial-assistance' },
-]
 
 type Mode = 'search' | 'ask'
 type ChatStatus = 'checking' | 'online' | 'offline'
@@ -79,22 +69,19 @@ function useChatStatus(): ChatStatus {
   return status
 }
 
-/** Lets the hero fill the first screen below the banners and header, whose height varies with width and wrapping. */
-function useHeightOfChromeAbove(hero: RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    const el = hero.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => {
-      const top = el.getBoundingClientRect().top + window.scrollY
-      el.style.setProperty('--home-hero-chrome-height', `${top}px`)
-    })
-    for (const chrome of document.querySelectorAll(
-      '.govbb-official-banner, .govbb-header, .govbb-status-banner',
-    )) {
-      observer.observe(chrome)
-    }
-    return () => observer.disconnect()
-  }, [hero])
+/** The header and banners can wrap after mount, changing how much of the first screen the hero fills. */
+function observeChromeAboveHero(hero: HTMLElement | null) {
+  if (!hero || typeof ResizeObserver === 'undefined') return
+  const observer = new ResizeObserver(() => {
+    const top = hero.getBoundingClientRect().top + window.scrollY
+    hero.style.setProperty('--home-hero-chrome-height', `${top}px`)
+  })
+  for (const chrome of document.querySelectorAll(
+    '.govbb-official-banner, .govbb-header, .govbb-status-banner',
+  )) {
+    observer.observe(chrome)
+  }
+  return () => observer.disconnect()
 }
 
 function SearchIcon() {
@@ -156,7 +143,6 @@ export function HomeHero({
   loadDocuments,
   servedServices,
 }: HomeHeroProps) {
-  const heroRef = useRef<HTMLElement>(null)
   const searchRadioRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const askInputRef = useRef<HTMLInputElement>(null)
@@ -164,32 +150,17 @@ export function HomeHero({
   const searchInputId = useId()
   const askInputId = useId()
 
-  const [mode, setMode] = useState<Mode>('ask')
-  // The active input's text, for suggestions and submitting. The inputs
-  // themselves are uncontrolled, so text typed before hydration isn't wiped.
-  const [text, setText] = useState('')
-  // Only typed text gets suggestions, not text carried over from Ask.
-  const [hasTyped, setHasTyped] = useState(false)
-  const chatStatus = useChatStatus()
-  useHeightOfChromeAbove(heroRef)
-
-  // The radios and inputs are uncontrolled so a choice or text entered before
-  // hydration, or restored by the browser on Back, isn't overwritten; this
-  // picks it up.
-  useEffect(() => {
-    const searching = searchRadioRef.current?.checked === true
-    if (searching) setMode('search')
-    setText((searching ? searchInputRef : askInputRef).current?.value ?? '')
-  }, [])
-
-  const isChatOffline = chatStatus === 'offline'
+  // Null until Search is edited, including after a mode switch. Each form
+  // submits its uncontrolled input, not this query.
+  const [typedQuery, setTypedQuery] = useState<string | null>(null)
+  const isChatOffline = useChatStatus() === 'offline'
   const search = useServiceSearch({
     source: SOURCE,
     viewer,
     overlay,
-    text,
-    setText,
-    suggesting: mode === 'search' && hasTyped,
+    text: typedQuery ?? '',
+    setText: setTypedQuery,
+    suggesting: typedQuery !== null,
     emptyTo: '/services',
     loadDocuments,
   })
@@ -208,13 +179,13 @@ export function HomeHero({
     let value = from?.value ?? ''
     if (next === 'ask') value = value.slice(0, MAX_QUESTION_LENGTH)
     if (to) to.value = value
-    setMode(next)
-    setHasTyped(false)
-    setText(value)
+    setTypedQuery(null)
   }
 
   const submitQuestion = () => {
-    const question = text.trim().slice(0, MAX_QUESTION_LENGTH)
+    const question = (askInputRef.current?.value ?? '')
+      .trim()
+      .slice(0, MAX_QUESTION_LENGTH)
     if (!question) {
       askInputRef.current?.focus()
       return
@@ -227,13 +198,12 @@ export function HomeHero({
 
   const searchInstead = () => {
     if (searchRadioRef.current) searchRadioRef.current.checked = true
-    // Flushed so the search box is visible before it takes focus.
-    flushSync(() => switchMode('search'))
+    switchMode('search')
     searchInputRef.current?.focus()
   }
 
   return (
-    <section ref={heroRef} className="home-hero">
+    <section ref={observeChromeAboveHero} className="home-hero">
       <div className="home-hero__backdrop">
         <img
           className="home-hero__image"
@@ -287,7 +257,7 @@ export function HomeHero({
                 method="get"
                 onSubmit={(event) => {
                   event.preventDefault()
-                  search.submit(text)
+                  search.submit(searchInputRef.current?.value ?? '')
                 }}
               >
                 <div className="home-hero__field">
@@ -309,8 +279,7 @@ export function HomeHero({
                       value: hit.title,
                     }))}
                     onChange={(event) => {
-                      setHasTyped(true)
-                      setText(event.currentTarget.value)
+                      setTypedQuery(event.currentTarget.value)
                       search.refreshDocuments()
                     }}
                     onSuggestionSelect={search.onSuggestionSelect}
@@ -318,31 +287,14 @@ export function HomeHero({
                   <Button type="submit">Search</Button>
                 </div>
               </form>
-              {popularSearches.length > 0 ? (
-                <div className="home-hero__suggestions">
-                  <p className="home-hero__suggestions-label">
-                    Popular searches:
-                  </p>
-                  <ul className="home-hero__suggestions-list" role="list">
-                    {popularSearches.map(({ query }) => (
-                      <li key={query}>
-                        <a
-                          className="govbb-link"
-                          href={`/search-results?${new URLSearchParams({ q: query })}`}
-                          onClick={() =>
-                            trackEvent('search-submit', {
-                              query,
-                              source: SOURCE,
-                            })
-                          }
-                        >
-                          {query}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+              <HomeHeroSuggestions
+                label="Popular searches:"
+                items={popularSearches.map(({ query }) => query)}
+                hrefFor={(q) => `/search-results?${new URLSearchParams({ q })}`}
+                onFollow={(query) =>
+                  trackEvent('search-submit', { query, source: SOURCE })
+                }
+              />
             </div>
 
             <div className="home-hero__mode" data-for="ask">
@@ -369,7 +321,6 @@ export function HomeHero({
                     autoComplete="off"
                     enterKeyHint="send"
                     maxLength={MAX_QUESTION_LENGTH}
-                    onChange={(event) => setText(event.currentTarget.value)}
                   />
                   <Button type="submit" disabled={isChatOffline}>
                     Send
@@ -400,29 +351,16 @@ export function HomeHero({
                     .
                   </p>
                 </StatusBanner>
-              ) : questions.length > 0 ? (
-                <div className="home-hero__suggestions">
-                  <p className="home-hero__suggestions-label">Try asking:</p>
-                  <ul className="home-hero__suggestions-list" role="list">
-                    {questions.map((question) => (
-                      <li key={question}>
-                        <a
-                          className="govbb-link"
-                          href={chatHref(question)}
-                          onClick={() =>
-                            trackEvent('chat-suggestion', {
-                              question,
-                              source: SOURCE,
-                            })
-                          }
-                        >
-                          {question}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+              ) : (
+                <HomeHeroSuggestions
+                  label="Try asking:"
+                  items={questions}
+                  hrefFor={chatHref}
+                  onFollow={(question) =>
+                    trackEvent('chat-suggestion', { question, source: SOURCE })
+                  }
+                />
+              )}
             </div>
           </div>
         </div>
