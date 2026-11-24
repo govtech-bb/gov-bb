@@ -2,6 +2,9 @@
 
 2026-11-03 · `api` submissions · #3419, #3434
 
+> **Superseded in part (2026-11-24, #3714):** a CaMS form with no tracker
+> record now answers `sending`, not `found` + `received`. See `apps/api/SPEC.md`.
+
 ## Context
 
 The chat can show where an application has got to (govbb-chatbot#174), but

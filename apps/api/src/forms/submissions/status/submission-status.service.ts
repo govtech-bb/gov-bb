@@ -38,7 +38,8 @@ export type SubmissionStatusAnswer =
     }
   | {
       /** A CaMS application the department doesn't have yet (#3714). The
-       * fields mean what they do on untracked. */
+       * fields mean what they do on untracked: `receivedAt` is when gov.bb
+       * received it, not CaMS. */
       kind: "sending";
       reference: string;
       receivedAt: string;
@@ -103,9 +104,11 @@ export class SubmissionStatusService {
 
     if (!recipeSendsToCams) return untracked;
 
-    // CaMS creates the case and its first status event together, so no record
+    // CaMS creates the case and its first status event together, and with
+    // status publishing on (TRACKER_OUTBOX_ENABLED, on in every CaMS
+    // deployment) that event reaches the tracker within seconds. So no record
     // means the department doesn't have the application yet: gov-bb is still
-    // handing it off, or the hand-off failed and waits on an operator. Never
+    // handing it off, or the hand-off failed and operators were alerted. Never
     // "received", which it may never be (#3714). Once a retry or a redrive
     // gets through, the record exists and the answer is found.
     const tracked = await this.askTracker(reference);
