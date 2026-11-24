@@ -151,7 +151,8 @@ requires one-time infra, done outside the codebase:
 - [ ] Ensure `apps/api` has `GITHUB_ORG` + `GITHUB_TEAM_SLUG` set so it can
       authorize the forwarded GitHub tokens in prod (no shared admin token
       needed — see the `apps/api` GitHub-auth change).
-- [ ] At the start of an environment's cutover window, before the #3188 import:
-      set `EDITOR_V2_URL` to that environment's editor_v2 origin and rebuild
-      (see [What it does](#what-it-does)). Leave it unset until then.
+- [ ] After the environment's #3188 import and `check-import` pass: set
+      `EDITOR_V2_URL` to that environment's editor_v2 origin and rebuild (see
+      [What it does](#what-it-does)). Leave it unset until then: the import
+      must not run while it is set (api_v2 README).
 ```

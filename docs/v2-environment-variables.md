@@ -2,7 +2,7 @@
 
 This page lists every environment variable that v2 (api_v2, editor_v2 and landing's api_v2 reader) needs in sandbox, staging and prod, and where each value comes from. It exists so the cutover runbooks (#3311, #3227, #3228) have one place to check before a switch. It contains no secret values: secrets live in each environment's Secrets Manager and Amplify settings, which alpha-infra owns.
 
-The list was taken from `main` on 20 Nov 2026 (#3779). When you add, rename or remove a variable in `apps/api_v2/src/config.ts`, `apps/editor_v2` or `apps/landing/vite.config.ts`, update this page in the same PR.
+The list was taken from `main` on 20 Nov 2026 (#3779). When you add, rename or remove a variable in `apps/api_v2/src/config.ts`, `apps/editor_v2` or `apps/landing/vite.config.ts`, update this page in the same PR. Both files carry a comment pointing here.
 
 ## Hosts
 
@@ -63,27 +63,31 @@ These belong to other apps but change at a v2 cutover.
 
 | Where | Variable | Value / notes |
 |---|---|---|
-| feature_flagging (Amplify) | `EDITOR_V2_URL` | The editor_v2 origin. Set it **at the start of the environment's cutover window, before the import**. While it is set, page rows are frozen (#3226, #3465) and `import-estate` must not run in that environment (api_v2 README) |
+| feature_flagging (Amplify) | `EDITOR_V2_URL` | The editor_v2 origin. Set it **after** the environment's import and `check-import` pass, then rebuild the feature_flagging branch: it is baked in at build time, so page rows stay editable until that build finishes. Once built, page rows are frozen (#3226, #3465). While it is set, `import-estate` must not run in that environment (api_v2 README, import step) |
 | api v1 (ECS) | `API_V2_URL` | The api_v2 base URL with `/v2`. `GET /services` then reads api_v2's `/catalog` (#3249). Unsetting it is the rollback |
 | chat ingest | `API_V2_URL` | The api_v2 base URL with `/v2`. The ingest then reads api_v2 instead of the markdown (#3252) |
 | GitHub repository variable | `CONTENT_FREEZE` | `true` at step 0 of the prod import. CI then refuses landing markdown edits (`content-freeze.yml`) |
 
 ## Values that must match
 
-Two sets of values must be equal within each environment. Nothing checks either set yet (#3781), so a mismatch shows up only as failing previews or a rate-limited landing.
+Two sets of values must be equal within each environment. Nothing checks them yet (#3781), so a mismatch shows up only as failing previews or a rate-limited landing.
 
 - **Preview token:** api v1's `RECIPE_PREVIEW_TOKEN`, api_v2's `PREVIEW_SECRET` and landing's `PREVIEW_SECRET`.
-- **Landing token:** api_v2's `LANDING_SECRET` and landing's `LANDING_SECRET`. alpha-infra generates one value per environment and feeds it to both sides, so they cannot drift (alpha-infra#840).
+- **Landing token:** api_v2's `LANDING_SECRET` and landing's `LANDING_SECRET`. alpha-infra generates one value per environment and feeds it to both sides (alpha-infra#848), so the pair stays equal as long as nobody edits either side by hand.
 
 ## Where each environment stands
 
-As of 20 Nov 2026:
+As of 24 Nov 2026:
 
-- **Sandbox:** api_v2 and editor_v2 are live on the #3745 hosts. `LANDING_SECRET`, editor_v2's `VITE_LANDING_ORIGIN` and landing's `VITE_API_V2_URL` (#3311) are set by alpha-infra#840.
+- **Sandbox:**
+  - api_v2 and editor_v2 are live on the #3745 hosts, and landing reads its pages from api_v2 (#3311).
+  - `LANDING_SECRET`, editor_v2's `VITE_LANDING_ORIGIN` and landing's `VITE_API_V2_URL` are set by alpha-infra#848.
+  - feature_flagging's `EDITOR_V2_URL` is not set yet. api v1's and chat's `API_V2_URL` are not set yet (alpha-infra#801, #802).
 - **Staging:**
   - api_v2 and editor_v2 are live, and Deploy Staging builds both on every promotion (#3767).
-  - The estate is imported (#3229).
+  - The estate is imported (#3229), and Google sign-in to editor_v2 works.
   - api_v2 only starts when its required variables parse, so they are all set.
-  - `LANDING_SECRET` and `VITE_LANDING_ORIGIN` come with alpha-infra#840. Whether the Google client has the `/v2` redirect URI is open in #3415.
-  - Landing, api v1, chat and feature_flagging are switched in #3227.
+  - `LANDING_SECRET` and `VITE_LANDING_ORIGIN` are set by alpha-infra#848.
+  - feature_flagging's `EDITOR_V2_URL` is set and built (alpha-infra#849).
+  - Landing, api v1 and chat are switched in #3227.
 - **Prod:** nothing exists yet. The stack, including `API_V2_ADMIN_EMAILS` and `VITE_LANDING_ORIGIN = https://alpha.gov.bb`, comes with alpha-infra#821 and #3130. `deploy-prod.yml` has no api_v2 or editor_v2 job yet (#3130). Landing is switched in #3228.

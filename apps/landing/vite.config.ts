@@ -37,6 +37,9 @@ export default defineConfig({
       // virtual module is never part of the client graph. A runtime
       // `NITRO_PREVIEW_SECRET` env var still overrides it if ever set.
       // Trade-off: rotating a secret needs a redeploy.
+      //
+      // Every variable here is listed in docs/v2-environment-variables.md;
+      // update it in the same PR.
       runtimeConfig: {
         previewSecret: process.env.PREVIEW_SECRET ?? '',
         // Parent domain the shared `preview` cookie is scoped to, so landing,
