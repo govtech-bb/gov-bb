@@ -124,6 +124,7 @@ const baseUrl = z
     const url = new URL(value);
     return { origin: url.origin, basePath: url.pathname.replace(/\/$/, "") };
   });
+// Every variable here is listed in docs/v2-environment-variables.md; update it in the same PR.
 const environment = z
   .object({
     NODE_ENV: z.string().optional(),

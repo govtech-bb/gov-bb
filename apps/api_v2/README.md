@@ -594,6 +594,8 @@ Sandbox re-imports while no editor has written there (#3234). Staging (#3229) an
 
 On sandbox, `.github/workflows/check-estate-drift.yml` runs step 5's check after each Deploy Sandbox run and nightly. Both triggers fire only for the file on `main`. Drift turns that workflow's run red, never the deploy's. #3311 deletes the workflow at sandbox's cutover, because from then on the database is the source of truth.
 
+The variables each environment needs, and where each value comes from, are listed in [docs/v2-environment-variables.md](../../docs/v2-environment-variables.md). Check them before a cutover.
+
 1. Pick the snapshot: the content you want is merged, and the api_v2 deploy of that commit has finished, so the running image carries its `estate.json`. Note the commit sha. The `source` the import reports is a sha1 of that commit's parsed `estate.json` (`ESTATE_SOURCE` in `src/seed-data/index.ts`), not of the file's bytes, so `sha1sum estate.json` will not match it.
 2. Set up the shell for the environment, then confirm the task definition does not set `SEED`. Sandbox's no longer does (since revision `api-v2-sandbox:9`, alpha-infra#748); staging's and prod's (#3130) must never set it. If it does, stop: production mode refuses to boot with it (#3052). The staging and prod cluster and service names follow sandbox's pattern; confirm them against #3130's task definitions.
 
