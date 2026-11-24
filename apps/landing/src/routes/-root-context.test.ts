@@ -141,6 +141,27 @@ describe('root beforeLoad context resolution', () => {
     expect(JSON.stringify(thrown)).toContain('/business-trade')
   })
 
+  // #3858: the redirect ends the request, and the SSR integration then clears
+  // the request's QueryClient. A query still in flight at that point is
+  // cancelled, and its unhandled CancelledError exits the server process.
+  it('leaves no query in flight when it redirects', async () => {
+    previewMocks.resolveViewLevel.mockResolvedValueOnce({
+      level: 'preview',
+      redirectTo: '/business-trade',
+    })
+    const queryClient = freshClient()
+
+    await beforeLoad({
+      context: { queryClient },
+      location: { search: { preview: 'secret' } },
+    }).catch(() => undefined)
+
+    expect(queryClient.isFetching()).toBe(0)
+    expect(
+      queryClient.getQueryCache().find({ queryKey: ['root', 'category-tree'] }),
+    ).toBeUndefined()
+  })
+
   it('refreshes expired statuses hydrated from the server before navigation', async () => {
     const serverClient = freshClient()
     serverClient.setQueryData(
