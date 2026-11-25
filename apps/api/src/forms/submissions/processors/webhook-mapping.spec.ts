@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   buildMappedCasePayload,
   readPath,
@@ -551,6 +553,25 @@ describe("webhook-mapping", () => {
           "E2E_X_BRANFORD_TAITT",
         ),
       ).toEqual([]);
+    });
+
+    it("keeps the e2e-j4-case-check recipe's webhook under a smoke submission (#3861)", () => {
+      // J4's whole point is that a smoke submission still webhooks to CaMS. The
+      // journey can't run until case-management#812 is provisioned, so this is the
+      // only guard that an edit lowering the recipe's E2E_ programme code (or
+      // dropping the mapping) would make the smoke filter silently drop it.
+      const recipe = JSON.parse(
+        fs.readFileSync(
+          path.resolve(
+            __dirname,
+            "../../form-definitions/recipes/e2e-j4-case-check.json",
+          ),
+          "utf8",
+        ),
+      ) as { processors: { type: string; config?: unknown }[] };
+      const webhooks = recipe.processors.filter((p) => p.type === "webhook");
+      expect(webhooks).toHaveLength(1);
+      expect(smokeAllowedProcessors(recipe.processors)).toEqual(webhooks);
     });
   });
 
