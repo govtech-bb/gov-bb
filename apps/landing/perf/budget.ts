@@ -1,6 +1,7 @@
 /**
  * Time-to-first-byte budgets for landing served from api_v2 (#3147, #3149),
- * compared with static landing on staging. Pure, so it runs in both k6
+ * compared with static landing on staging while staging is static (until
+ * #3227). Pure, so it runs in both k6
  * (`ttfb.mjs` imports it) and vitest.
  */
 
@@ -44,22 +45,54 @@ export interface Expected {
   notFound: number
 }
 
+/** Without `staging`, the "vs staging" budgets are left out. */
 export function evaluate(
   preview: HostResult,
-  staging: HostResult,
+  staging: HostResult | undefined,
   expected: Expected,
 ): BudgetRow[] {
   const b = BUDGETS
-  const p95Limit = staging.content.p95 * b.contentP95VsStaging
-  const p50Limit = staging.content.p50 + b.contentP50OverStagingMs
-  const nfLimit = staging.notFound.p95 + b.notFoundP95OverStagingMs
-  return [
+  const hosts = staging ? [preview, staging] : [preview]
+  const fixed: BudgetRow[] = [
     {
       budget: 'Content p95 (#3147)',
       actual: ms(preview.content.p95),
       limit: `< ${ms(b.contentP95Ms)}`,
       pass: preview.content.p95 < b.contentP95Ms,
     },
+    {
+      budget: '404 p95 (#3149)',
+      actual: ms(preview.notFound.p95),
+      limit: `< ${ms(b.notFoundP95Ms)}`,
+      pass: preview.notFound.p95 < b.notFoundP95Ms,
+    },
+    {
+      // A fast 5xx would pass every latency budget, so a wrong status on
+      // any host voids the run.
+      budget: 'Unexpected statuses (every host)',
+      actual: String(hosts.reduce((n, h) => n + h.unexpected, 0)),
+      limit: '0',
+      pass: hosts.every((h) => h.unexpected === 0),
+    },
+    {
+      budget: 'Full sample (every host)',
+      actual: hosts
+        .map((h) => `${h.content.count} + ${h.notFound.count}`)
+        .join(', '),
+      limit: `>= ${expected.content} + ${expected.notFound} each`,
+      pass: hosts.every(
+        (h) =>
+          h.content.count >= expected.content &&
+          h.notFound.count >= expected.notFound,
+      ),
+    },
+  ]
+  if (!staging) return fixed
+  const p95Limit = staging.content.p95 * b.contentP95VsStaging
+  const p50Limit = staging.content.p50 + b.contentP50OverStagingMs
+  const nfLimit = staging.notFound.p95 + b.notFoundP95OverStagingMs
+  return [
+    ...fixed,
     {
       budget: 'Content p95 vs staging (#3147)',
       actual: ms(preview.content.p95),
@@ -73,36 +106,10 @@ export function evaluate(
       pass: preview.content.p50 <= p50Limit,
     },
     {
-      budget: '404 p95 (#3149)',
-      actual: ms(preview.notFound.p95),
-      limit: `< ${ms(b.notFoundP95Ms)}`,
-      pass: preview.notFound.p95 < b.notFoundP95Ms,
-    },
-    {
       budget: '404 p95 vs staging (#3149)',
       actual: ms(preview.notFound.p95),
       limit: `<= ${ms(nfLimit)} (staging +150 ms)`,
       pass: preview.notFound.p95 <= nfLimit,
-    },
-    {
-      // A fast 5xx would pass every latency budget, so a wrong status on
-      // either host voids the run.
-      budget: 'Unexpected statuses (both hosts)',
-      actual: String(preview.unexpected + staging.unexpected),
-      limit: '0',
-      pass: preview.unexpected + staging.unexpected === 0,
-    },
-    {
-      budget: 'Full sample (both hosts)',
-      actual: [preview, staging]
-        .map((h) => `${h.content.count} + ${h.notFound.count}`)
-        .join(', '),
-      limit: `>= ${expected.content} + ${expected.notFound} each`,
-      pass: [preview, staging].every(
-        (h) =>
-          h.content.count >= expected.content &&
-          h.notFound.count >= expected.notFound,
-      ),
     },
   ]
 }
@@ -112,7 +119,7 @@ export function renderSummary(
   hosts: { name: string; url: string; result: HostResult }[],
 ): string {
   const lines = [
-    '### Landing time to first byte: api_v2 vs static (#3147, #3149)',
+    '### Landing time to first byte from api_v2 (#3147, #3149)',
     '',
     '| Host | Pages | Requests | p50 | p95 |',
     '| --- | --- | --- | --- | --- |',
