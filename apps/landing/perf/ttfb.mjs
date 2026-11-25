@@ -1,7 +1,9 @@
 // k6 run: landing time to first byte with api_v2 (#3147) and for unknown
-// URLs (#3149), against static landing on staging as the baseline.
+// URLs (#3149), on sandbox landing (PREVIEW_URL). With STAGING_URL set, static
+// landing there runs too, as the baseline for the "vs staging" budgets; without
+// it, only the fixed budgets apply (from the staging switch, #3227).
 //
-//   k6 run apps/landing/perf/ttfb.mjs
+//   STAGING_URL=https://staging.alpha.gov.bb k6 run apps/landing/perf/ttfb.mjs
 //
 // Both hosts run side by side from the same machine, so they share its
 // network. Each gets a 30 s unmeasured warm-up, then 200 requests per URL at
@@ -16,9 +18,8 @@ import { Counter, Trend } from 'k6/metrics'
 import { evaluate, renderSummary } from './budget.ts'
 
 const TARGETS = {
-  preview:
-    __ENV.PREVIEW_URL || 'https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com',
-  staging: __ENV.STAGING_URL || 'https://staging.alpha.gov.bb',
+  preview: __ENV.PREVIEW_URL || 'https://sandbox.alpha.gov.bb',
+  ...(__ENV.STAGING_URL && { staging: __ENV.STAGING_URL }),
 }
 const OUT_DIR = __ENV.OUT_DIR || '.'
 
@@ -94,12 +95,12 @@ const scenario = (target, measured) => ({
 })
 
 export const options = {
-  scenarios: {
-    warmup_preview: scenario('preview', false),
-    warmup_staging: scenario('staging', false),
-    preview: scenario('preview', true),
-    staging: scenario('staging', true),
-  },
+  scenarios: Object.fromEntries(
+    Object.keys(TARGETS).flatMap((target) => [
+      [`warmup_${target}`, scenario(target, false)],
+      [target, scenario(target, true)],
+    ]),
+  ),
   summaryTrendStats: ['med', 'p(95)', 'max', 'count'],
   userAgent: 'govtech-bb-landing-perf/1.0 (k6; #3147)',
 }
@@ -141,15 +142,15 @@ function result(data, target) {
 
 export function handleSummary(data) {
   const preview = result(data, 'preview')
-  const staging = result(data, 'staging')
+  const staging = TARGETS.staging ? result(data, 'staging') : undefined
   const rows = evaluate(preview, staging, {
     content: CONTENT.length * PER_URL,
     notFound: UNKNOWN.length * PER_URL,
   })
-  const md = renderSummary(rows, [
-    { name: 'api_v2', url: TARGETS.preview, result: preview },
-    { name: 'static', url: TARGETS.staging, result: staging },
-  ])
+  const hosts = [{ name: 'api_v2', url: TARGETS.preview, result: preview }]
+  if (staging)
+    hosts.push({ name: 'static', url: TARGETS.staging, result: staging })
+  const md = renderSummary(rows, hosts)
   return {
     stdout: md,
     [`${OUT_DIR}/summary.md`]: md,

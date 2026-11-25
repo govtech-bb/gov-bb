@@ -1,66 +1,120 @@
 name: Landing v2 perf
 
 # Time to first byte of landing served from api_v2 (#3147) and of unknown
-# URLs (#3149), in one k6 run against the v2-rewrite preview, with static
-# landing on staging as the baseline. Runs after each Amplify build of
-# v2-rewrite; a failed budget fails the run, which blocks the v2-rewrite ->
-# main merge (#3131). After that merge, #3311 retargets PREVIEW_URL at
-# landing.sandbox.alpha.gov.bb. Budgets and URLs: apps/landing/perf/.
+# URLs (#3149), in one k6 run against sandbox landing, deployed from main.
+# Runs after each Deploy Sandbox run that deployed landing or api_v2, and by
+# hand. A failed budget turns this run red; it doesn't hold back a deploy.
+# Budgets and URLs: apps/landing/perf/.
+#
+# The gate job skips the run, with a notice, until sandbox landing serves
+# api_v2 pages (`x-content-source: api_v2`, #3311).
+#
+# Static baseline: staging serves static content until the staging switch
+# (#3227), so until then STAGING_URL makes each run compare sandbox with
+# staging as well as with the fixed budgets. At #3227, delete the STAGING_URL
+# line: the run then checks the fixed budgets only. No load ever goes to prod
+# (decided in #3854).
 
 on:
-  push:
-    branches: [v2-rewrite]
+  # Deploy Sandbox runs only on a push to main or by hand, and this workflow
+  # checks out main, never the triggering run's code, and reads no artifacts.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: [Deploy Sandbox]
+    types: [completed]
   workflow_dispatch:
 
-permissions:
-  id-token: write # list, read and start Amplify jobs via OIDC
-  contents: read
+permissions: {}
 
-# One run at a time, so staging never takes two loads at once. A newer push
-# supersedes the older run.
-concurrency:
-  group: landing-v2-perf
-  cancel-in-progress: true
-
-# The api_v2 sandbox role trusts gov-bb v2-rewrite and main (the repo's
-# AWS_ROLE_ARN secret doesn't trust v2-rewrite). alpha-infra grants it the
-# Amplify job access the wait step needs on landing's v2-rewrite branch.
 env:
-  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
-  # The build waited on and the host measured must be the same one.
-  PREVIEW_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
+  PREVIEW_URL: https://sandbox.alpha.gov.bb
+  API_V2_URL: https://api.sandbox.alpha.gov.bb/v2
 
 jobs:
-  ttfb:
-    name: Landing TTFB (api_v2 vs static)
-    # A dispatch from another branch would make the wait step start a
-    # v2-rewrite build of that branch's commit.
-    if: github.ref == 'refs/heads/v2-rewrite'
+  gate:
+    name: Check sandbox landing serves api_v2
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 5
+    permissions:
+      actions: read # read the triggering Deploy Sandbox run's jobs
+      contents: read
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          DEPLOY_RUN_ID: ${{ github.event.workflow_run.id }}
+          DEPLOY_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          skip() {
+            echo "::notice::Skipped: $1"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          if [ "$EVENT" = workflow_run ]; then
+            if [ "$DEPLOY_CONCLUSION" != success ]; then
+              skip "Deploy Sandbox concluded '$DEPLOY_CONCLUSION', not success"
+            fi
+            # A reusable workflow's job is named "<caller> / <callee>", so a
+            # deploy that ran is "Deploy api_v2 / ..." and a skipped one is
+            # "Deploy api_v2".
+            deployed=$(gh api "repos/$REPO/actions/runs/$DEPLOY_RUN_ID/jobs?per_page=100" --jq '
+              [.jobs[]
+                | select(.conclusion == "success")
+                | select(.name == "Amplify build (landing)"
+                    or .name == "Deploy api_v2"
+                    or (.name | startswith("Deploy api_v2 / ")))]
+              | length')
+            if [ "$deployed" = 0 ]; then
+              skip "this Deploy Sandbox run deployed neither landing nor api_v2"
+            fi
+          fi
+
+          # Ask landing for up to 5 public catalog pages, unredirected and
+          # past any cache: one api_v2 answer is enough.
+          pages=$(curl -fsS --max-time 20 "$API_V2_URL/catalog" \
+            | jq -r '[.pages[] | select(.visibility == "public") | .url][:5][]')
+          if [ -z "$pages" ]; then
+            echo "::error::$API_V2_URL/catalog lists no public pages"
+            exit 1
+          fi
+          for page in $pages; do
+            source=$(curl -sS --max-time 20 -o /dev/null -D - \
+              "$PREVIEW_URL$page?perf-gate=$GITHUB_RUN_ID-$RANDOM" \
+              | tr -d '\r' \
+              | awk 'tolower($1) == "x-content-source:" { print $2 }')
+            echo "$page: x-content-source ${source:-(none)}"
+            if [ "$source" = api_v2 ]; then
+              echo "run=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          skip "sandbox landing serves static content, not api_v2 yet (#3311)"
+
+  ttfb:
+    name: Landing TTFB (api_v2)
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    # One run at a time, so staging never takes two loads at once. A newer
+    # run supersedes the older one. Job-level, so a run the gate skips never
+    # cancels one that is measuring.
+    concurrency:
+      group: landing-v2-perf
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ca-central-1
-
-      - name: Wait for the Amplify build
-        id: wait
-        uses: ./.github/actions/wait-for-amplify-build
-        with:
-          app-id: d3kbl8o0ovutw4
-          branch: v2-rewrite
-          sha: ${{ github.sha }}
-          url: ${{ env.PREVIEW_URL }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Set up k6
-        if: steps.wait.outputs.superseded != 'true'
         uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1 # v1.2.2
         with:
           k6-version: 2.3.0
@@ -68,14 +122,13 @@ jobs:
       # ~10 minutes: 30 s warm-up, then 200 requests per URL at 10 a second
       # per host.
       - name: Run k6
-        if: steps.wait.outputs.superseded != 'true'
         env:
+          # Static baseline until #3227. Delete this line at #3227.
           STAGING_URL: https://staging.alpha.gov.bb
           OUT_DIR: ${{ runner.temp }}
         run: k6 run --quiet apps/landing/perf/ttfb.mjs
 
       - name: Check budgets
-        if: steps.wait.outputs.superseded != 'true'
         env:
           OUT_DIR: ${{ runner.temp }}
         run: |
