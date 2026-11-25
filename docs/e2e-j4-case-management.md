@@ -39,10 +39,12 @@ in prod an `E2E_` submission would post to the prod CaMS destination (ADR 0087).
 
 **The CaMS E2E API key (`E2E_CAMS_API_KEY`) is staging-only — never issue or set
 it on production.** It is the credential for the read / `removeTestCase`
-endpoints (case-management#812), and CaMS makes "the E2E key is never issued on
-prod" a hard condition of shipping them with only the `isTest` fence (not a
-scoped key) as the guard. On prod the key is simply absent, so the gate
-soft-skips.
+endpoints (case-management#812), which ship with only the `isTest` fence (not a
+scoped key) as the guard — so the shape agreed on #812 makes "the E2E key is
+never issued on prod" a condition of that being safe. Nothing on prod reads it:
+J4 runs only in `deploy-staging.yml`'s `journey-case-management` job, which takes
+the key from the `staging-e2e` environment, so there is never a reason to create
+one for prod.
 
 ## Provisioning (what arms the gate)
 
