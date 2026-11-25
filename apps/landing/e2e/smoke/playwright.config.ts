@@ -2,8 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 /**
  * Post-deploy smoke of landing served from api_v2 (#3140, #3143, #3144). Run by
- * .github/workflows/landing-v2-smoke.yml after each Amplify build of
- * `v2-rewrite`. Two projects:
+ * .github/workflows/landing-v2-smoke.yml after each Deploy Sandbox run that
+ * deployed landing or api_v2. Two projects:
  *
  * - `selftest`: the Start-link walk and the visibility-gating checks against
  *   pages served by a local server, proving a broken page fails them. Needs
@@ -11,7 +11,7 @@ import { defineConfig, devices } from '@playwright/test'
  * - `live`: the deployed landing. Needs SMOKE_LANDING_URL, SMOKE_API_V2_URL,
  *   SMOKE_FORMS_URL and SMOKE_FORMS_API_URL (no defaults), e.g.
  *
- *   SMOKE_LANDING_URL=https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com \
+ *   SMOKE_LANDING_URL=https://sandbox.alpha.gov.bb \
  *   SMOKE_API_V2_URL=https://api.sandbox.alpha.gov.bb/v2 \
  *   SMOKE_FORMS_URL=https://forms.sandbox.alpha.gov.bb \
  *   SMOKE_FORMS_API_URL=https://forms.api.sandbox.alpha.gov.bb \
