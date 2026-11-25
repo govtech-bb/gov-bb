@@ -23,6 +23,20 @@ export default defineConfig({
   timeout: 300_000,
   reporter: [["line"]],
   use: {
+    // When SMOKE_SUBMISSION_TOKEN is set, mark every request as a smoke
+    // submission so the API drops all processors except a mapped webhook to a
+    // reserved E2E_ test programme (ADR 0087) — Journey 4 needs that one webhook
+    // to follow a submission into CaMS. Attached ONLY when the token is present
+    // (an empty token is fail-closed and a custom header forces a CORS
+    // preflight), exactly like playwright.smoke.config.ts. Inert for Journey 3,
+    // which never submits a form.
+    ...(process.env.SMOKE_SUBMISSION_TOKEN
+      ? {
+          extraHTTPHeaders: {
+            "X-Smoke-Submission": process.env.SMOKE_SUBMISSION_TOKEN,
+          },
+        }
+      : {}),
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     actionTimeout: 15_000,
