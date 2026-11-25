@@ -802,8 +802,12 @@ jobs:
             echo "::error::E2E_SERVICE_STATUS_TOKEN is not set in the sandbox-e2e environment — renew the govtech-bb-e2e fine-grained token per docs/e2e-service-status-token.md before this gate can pass."
             exit 1
           fi
+          # Scope to this spec: e2e/journeys also holds journey-4 (staging-only),
+          # whose required env isn't set on sandbox — an unscoped run would sweep
+          # it in and fail this gate.
           pnpm --filter @govtech-bb/forms exec playwright test \
-            --config playwright.journey.config.ts
+            --config playwright.journey.config.ts \
+            journey-3-feature-flag.spec.ts
       - name: Upload Playwright trace on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

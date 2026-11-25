@@ -37,7 +37,11 @@ export function TextLink({
         children: external ? (
           <>
             {children}
-            <ArrowUpRight aria-hidden="true" className="ms-0.5 inline align-[-0.125em]" />
+            <ArrowUpRight
+              aria-hidden="true"
+              size="1em"
+              className="ms-0.5 inline align-[-0.125em]"
+            />
             <span className="sr-only"> (opens in a new tab)</span>
           </>
         ) : (
