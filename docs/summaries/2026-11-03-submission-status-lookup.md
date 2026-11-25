@@ -2,8 +2,9 @@
 
 2026-11-03 · `api` submissions · #3419, #3434
 
-> **Superseded in part (2026-11-24, #3714):** a CaMS form with no tracker
-> record now answers `sending`, not `found` + `received`. See `apps/api/SPEC.md`.
+> **Superseded in part (#3714):** a CaMS form with no tracker record answers
+> `found` + `received` only once CaMS has accepted the hand-off
+> (`cams_delivered_at`), and `sending` until then. See `apps/api/SPEC.md`.
 
 ## Context
 

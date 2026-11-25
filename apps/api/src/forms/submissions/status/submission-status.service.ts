@@ -104,16 +104,23 @@ export class SubmissionStatusService {
 
     if (!recipeSendsToCams) return untracked;
 
-    // CaMS creates the case and its first status event together, and with
-    // status publishing on (TRACKER_OUTBOX_ENABLED, on in every CaMS
-    // deployment) that event reaches the tracker within seconds. So no record
-    // means the department doesn't have the application yet: gov-bb is still
-    // handing it off, or the hand-off failed and operators were alerted. Never
-    // "received", which it may never be (#3714). Once a retry or a redrive
-    // gets through, the record exists and the answer is found.
     const tracked = await this.askTracker(reference);
-    return tracked.found
-      ? found(reference, submission.formId, tracked)
+    if (tracked.found) return found(reference, submission.formId, tracked);
+
+    // No tracker record says nothing on its own: a ministry's cases from
+    // before it published statuses were never backfilled, and the outbox takes
+    // a moment. Whether CaMS accepted the hand-off is what decides (#3714).
+    // Accepted: the department has it. Not yet: still being handed off, or the
+    // hand-off failed or was refused, so never "received", which it may never
+    // be.
+    return submission.camsDeliveredAt
+      ? {
+          kind: "found",
+          reference,
+          status: "received",
+          updatedAt: submission.camsDeliveredAt.toISOString(),
+          formId: submission.formId,
+        }
       : {
           kind: "sending",
           reference,
