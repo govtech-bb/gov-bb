@@ -1,5 +1,8 @@
+import { readdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
 import {
+  featureRouteUrls,
   gatedForms,
   gatedPages,
   previewPageUrls,
@@ -12,10 +15,13 @@ import {
   checkPreviewHidden,
 } from './visibility'
 
+const routesDir = fileURLToPath(new URL('../../src/routes', import.meta.url))
+
 // #3143: api_v2 pages landing must keep from the public. Preview pages 404;
 // a page whose own form is under maintenance, switched off by its service
 // status, or closed shows the notice and no Start link, and its `/start`
-// step 404s.
+// step 404s. Feature routes are rendered by landing itself, so they stay live
+// when set to Preview and the preview check skips them (#3856).
 
 const message = (error: unknown) => (error as Error).message.split('\n')[0]
 
@@ -32,7 +38,10 @@ test('preview pages are hidden from the public', async ({ request }) => {
   if (!token && process.env.CI)
     throw new Error('SMOKE_API_V2_PREVIEW_TOKEN is unset in CI')
   if (!token) return skip('preview: SMOKE_API_V2_PREVIEW_TOKEN is unset')
-  const urls = await previewPageUrls(env.apiV2, token)
+  const featureRoutes = featureRouteUrls(
+    readdirSync(routesDir, { recursive: true, encoding: 'utf8' }),
+  )
+  const urls = await previewPageUrls(env.apiV2, token, fetch, featureRoutes)
   if (urls.length === 0) return skip('preview: no live example on sandbox')
   const problems: string[] = []
   for (const url of urls) {

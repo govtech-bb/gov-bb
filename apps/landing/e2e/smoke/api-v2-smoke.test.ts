@@ -283,13 +283,13 @@ describe('previewPageUrls', () => {
   const TOKEN = 'secret'
   const catalog = (urls: string[]) => ({ pages: urls.map((url) => ({ url })) })
   const api =
-    (tokenStatus = 200, anonymousStatus = 200) =>
+    (tokenStatus = 200, anonymousStatus = 200, previewOnly = ['/hidden']) =>
     async (_url: string, init?: RequestInit): Promise<Response> => {
       const token = new Headers(init?.headers).get('x-preview-token')
       if (token && token !== TOKEN)
         return Response.json({ error: 'unauthorized' }, { status: 401 })
       return token
-        ? Response.json(catalog(['/a', '/hidden', '/b']), {
+        ? Response.json(catalog(['/a', ...previewOnly, '/b']), {
             status: tokenStatus,
           })
         : Response.json(catalog(['/a', '/b']), { status: anonymousStatus })
@@ -297,6 +297,14 @@ describe('previewPageUrls', () => {
 
   it('is the token catalog minus the public one', async () => {
     expect(await previewPageUrls(API, TOKEN, api())).toEqual(['/hidden'])
+  })
+
+  // #3856: landing renders feature routes itself, so they stay live in Preview.
+  it('leaves out the URLs to skip', async () => {
+    const preview = api(200, 200, ['/hidden', '/bank-holiday-calendar'])
+    expect(
+      await previewPageUrls(API, TOKEN, preview, ['/bank-holiday-calendar']),
+    ).toEqual(['/hidden'])
   })
 
   it('fails a wrong token rather than finding nothing', async () => {
