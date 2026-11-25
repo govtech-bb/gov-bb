@@ -6,11 +6,10 @@
 
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { FastifyInstance, InjectOptions } from "fastify";
+import type { FastifyInstance } from "fastify";
 import pino from "pino";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import type { Database } from "./db";
-import type { Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PageDocument, withDefaults, type PageId } from "./modules/page";
 import { Redacted } from "./modules/redacted";
@@ -22,7 +21,9 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  requestAs,
   SELF_APPROVAL,
+  sessionsFor,
   expectOk,
   TEST_EDITOR,
   TEST_EMPLOYEE,
@@ -42,16 +43,7 @@ beforeEach(async () => {
   // holds an approver to the self-approval rule.
   services = createTestServices(db, SELF_APPROVAL);
   // The cookie names the fixture; its roles come from the database.
-  app = await createTestApp(db, {
-    sessions: {
-      findSession: async (cookie) =>
-        ok(
-          FIXTURES.find((employee) =>
-            cookie.reveal().endsWith(`=${employee.id}`),
-          ) ?? null,
-        ),
-    },
-  });
+  app = await createTestApp(db, { sessions: sessionsFor(FIXTURES) });
   await app.ready();
 });
 
@@ -59,17 +51,6 @@ afterEach(async () => {
   await app.close();
   await close();
 });
-
-/** A browser request from the editor, signed in as `employee`. */
-const as = (employee: Employee, options: InjectOptions) =>
-  app.inject({
-    ...options,
-    headers: {
-      cookie: `test-session=${employee.id}`,
-      origin: TEST_HTTP_CONFIG.editorOrigin,
-      ...options.headers,
-    },
-  });
 
 const seedPage = async (overrides: Record<string, unknown> = {}) => {
   const page = expectOk(
@@ -97,7 +78,7 @@ describe("a page's visibility", () => {
   it("is not changed by a non-approver's save, which leaves the page as it was", async () => {
     const page = await seedPage({ visibility: "preview" });
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
       payload: {
@@ -114,7 +95,7 @@ describe("a page's visibility", () => {
   it("still lets a non-approver edit a page's content", async () => {
     const page = await seedPage();
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
       payload: {
@@ -139,7 +120,7 @@ describe("a page's visibility", () => {
       ),
     );
 
-    const response = await as(TEST_EMPLOYEE, {
+    const response = await requestAs(app, TEST_EMPLOYEE, {
       method: "PUT",
       url: `/pages/${page.id}`,
       payload: {
@@ -163,7 +144,7 @@ describe("a page's visibility", () => {
 
 describe("creating a page", () => {
   it("as public needs an approver, and creates nothing otherwise", async () => {
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "POST",
       url: "/pages",
       payload: aPage({ visibility: "public" }),
@@ -177,7 +158,7 @@ describe("creating a page", () => {
   it.each(["preview", "draft", undefined])(
     "as %s is open to a non-approver",
     async (visibility) => {
-      const response = await as(TEST_EDITOR, {
+      const response = await requestAs(app, TEST_EDITOR, {
         method: "POST",
         url: "/pages",
         payload: aPage({ visibility }),
@@ -192,7 +173,7 @@ describe("deleting a page", () => {
   it("that is public needs an approver, and keeps the page otherwise", async () => {
     const page = await seedPage();
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "DELETE",
       url: `/pages/${page.id}?expected_version=${page.version}`,
     });
@@ -208,7 +189,7 @@ describe("deleting a page", () => {
     async (visibility) => {
       const page = await seedPage({ visibility });
 
-      const response = await as(TEST_EDITOR, {
+      const response = await requestAs(app, TEST_EDITOR, {
         method: "DELETE",
         url: `/pages/${page.id}?expected_version=${page.version}`,
       });
@@ -231,7 +212,7 @@ describe("a public page's Start link", () => {
   it("is not hidden by a non-approver's new start sub-page", async () => {
     const parent = await seedPage();
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "POST",
       url: "/pages",
       payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
@@ -250,7 +231,7 @@ describe("a public page's Start link", () => {
       visibility: "draft",
     });
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "DELETE",
       url: `/pages/${start.id}?expected_version=${start.version}`,
     });
@@ -272,7 +253,7 @@ describe("a public page's Start link", () => {
       visibility: "draft",
     });
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
       payload: {
@@ -301,7 +282,7 @@ describe("a public page's Start link", () => {
       (await app.inject({ method: "GET", url: `/pages?url=${url}` })).json()
         .hide_start_links;
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${start.id}`,
       payload: {
@@ -330,7 +311,7 @@ describe("a public page's Start link", () => {
       visibility: "draft",
     });
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${start.id}`,
       payload: {
@@ -353,7 +334,7 @@ describe("a public page's Start link", () => {
   it("still lets a non-approver add a start sub-page beneath a page that isn't public", async () => {
     const parent = await seedPage({ visibility: "draft" });
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "POST",
       url: "/pages",
       payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
@@ -365,7 +346,7 @@ describe("a public page's Start link", () => {
   it("is hidden by an approver's new start sub-page", async () => {
     const parent = await seedPage();
 
-    const response = await as(TEST_EMPLOYEE, {
+    const response = await requestAs(app, TEST_EMPLOYEE, {
       method: "POST",
       url: "/pages",
       payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
@@ -379,14 +360,16 @@ describe("a public page's Start link", () => {
 describe("an employee whose editor role is revoked", () => {
   it("can still read, but every write is refused, from the next request", async () => {
     const page = await seedPage({ visibility: "draft" });
-    await as(TEST_EMPLOYEE, {
+    await requestAs(app, TEST_EMPLOYEE, {
       method: "DELETE",
       url: `/editor/employees/${TEST_EDITOR.id}/roles/editor`,
     });
 
     for (const url of ["/services", `/pages/${page.id}`, "/editor/me"])
-      expect((await as(TEST_EDITOR, { url })).statusCode, url).toBe(200);
-    const response = await as(TEST_EDITOR, {
+      expect((await requestAs(app, TEST_EDITOR, { url })).statusCode, url).toBe(
+        200,
+      );
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
       payload: {
@@ -406,7 +389,7 @@ describe("an employee whose editor role is revoked", () => {
 
 describe("GET /editor/me", () => {
   it("is the signed-in employee and their roles", async () => {
-    const response = await as(TEST_EDITOR, { url: "/editor/me" });
+    const response = await requestAs(app, TEST_EDITOR, { url: "/editor/me" });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
@@ -420,13 +403,15 @@ describe("GET /editor/me", () => {
 
 describe("role management", () => {
   const grant = (role: string, id: string = TEST_EDITOR.id) =>
-    as(TEST_EMPLOYEE, {
+    requestAs(app, TEST_EMPLOYEE, {
       method: "PUT",
       url: `/editor/employees/${id}/roles/${role}`,
     });
 
   it("lists everyone who has signed in, with their roles", async () => {
-    const response = await as(TEST_EMPLOYEE, { url: "/editor/employees" });
+    const response = await requestAs(app, TEST_EMPLOYEE, {
+      url: "/editor/employees",
+    });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
@@ -458,7 +443,7 @@ describe("role management", () => {
     );
     expect(rows).toEqual([{ granted_by: TEST_EMPLOYEE.id }]);
     expect(
-      (await as(TEST_EDITOR, { url: "/editor/me" })).json().roles,
+      (await requestAs(app, TEST_EDITOR, { url: "/editor/me" })).json().roles,
     ).toContain("approver");
   });
 
@@ -466,13 +451,13 @@ describe("role management", () => {
     await grant("approver");
     const page = await seedPage({ visibility: "draft" });
 
-    const revoked = await as(TEST_EMPLOYEE, {
+    const revoked = await requestAs(app, TEST_EMPLOYEE, {
       method: "DELETE",
       url: `/editor/employees/${TEST_EDITOR.id}/roles/approver`,
     });
 
     expect(revoked.statusCode).toBe(204);
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
       payload: {
@@ -506,15 +491,15 @@ describe("role management", () => {
         url: `/editor/employees/${TEST_EMPLOYEE.id}/roles/admin`,
       },
     ]) {
-      const response = await as(TEST_EDITOR, request);
+      const response = await requestAs(app, TEST_EDITOR, request);
       expect(response.statusCode, request.url).toBe(403);
       expect(response.json().error).toBe("forbidden");
     }
-    expect((await as(TEST_EDITOR, { url: "/editor/me" })).json().roles).toEqual(
-      ["editor"],
-    );
     expect(
-      (await as(TEST_EMPLOYEE, { url: "/editor/me" })).json().roles,
+      (await requestAs(app, TEST_EDITOR, { url: "/editor/me" })).json().roles,
+    ).toEqual(["editor"]);
+    expect(
+      (await requestAs(app, TEST_EMPLOYEE, { url: "/editor/me" })).json().roles,
     ).toContain("admin");
   });
 });

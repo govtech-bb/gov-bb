@@ -14,6 +14,11 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import type {
+  FastifyInstance,
+  InjectOptions,
+  LightMyRequestResponse,
+} from "fastify";
 import { Client, Pool } from "pg";
 import { inject } from "vitest";
 import { PostgresCollections } from "./adapters/postgres-collections";
@@ -159,9 +164,12 @@ export const TEST_EDITOR: Employee = {
   roles: ["editor"],
 };
 
-/** Make the fixtures users holding their roles, as a real sign-in and grants would. */
-async function registerTestEmployees(db: Database) {
-  for (const employee of [TEST_EMPLOYEE, TEST_EDITOR]) {
+/** Make `employees` users holding their roles, as a real sign-in and grants would. */
+export async function registerEmployees(
+  db: Database,
+  employees: readonly Employee[],
+): Promise<void> {
+  for (const employee of employees) {
     await db.execute(
       sql`insert into auth_user (id, name, email, "emailVerified")
           values (${employee.id}, ${employee.name}, ${employee.email}, true)
@@ -185,6 +193,18 @@ export const TEST_HEADERS = {
   origin: TEST_HTTP_CONFIG.editorOrigin,
 };
 
+/** A session reader that finds the employee a request's cookie names among `employees`; any other cookie has no session. */
+export function sessionsFor(employees: readonly Employee[]): SessionReader {
+  return {
+    findSession: async (cookie) =>
+      ok(
+        employees.find((employee) =>
+          cookie.reveal().endsWith(`=${employee.id}`),
+        ) ?? null,
+      ),
+  };
+}
+
 /**
  * Compose the production HTTP adapter with an explicit session test double.
  * Roles are read from the database, where the fixtures hold theirs.
@@ -204,7 +224,7 @@ export async function createTestApp(
     notifier?: ReviewNotifier;
   } = {},
 ) {
-  await registerTestEmployees(db);
+  await registerEmployees(db, [TEST_EMPLOYEE, TEST_EDITOR]);
   const roles = new PostgresRoles(db);
   return buildApp({
     ...createTestServices(
@@ -226,6 +246,22 @@ export async function createTestApp(
     ...(options.previewSecret ? { previewSecret: options.previewSecret } : {}),
     ...(options.landingSecret ? { landingSecret: options.landingSecret } : {}),
     ready: options.ready ?? (() => ping(db)),
+  });
+}
+
+/** A browser request from the editor to `app`, signed in as `employee`; headers in `options` override the defaults. */
+export function requestAs(
+  app: FastifyInstance,
+  employee: Employee,
+  options: InjectOptions,
+): Promise<LightMyRequestResponse> {
+  return app.inject({
+    ...options,
+    headers: {
+      cookie: `test-session=${employee.id}`,
+      origin: TEST_HTTP_CONFIG.editorOrigin,
+      ...options.headers,
+    },
   });
 }
 
