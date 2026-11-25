@@ -254,6 +254,77 @@ it("keeps DB settings, credentials and opaque metadata while normalizing the rev
   ).toThrow();
 });
 
+describe("a proposal that leaves out existing steps (#3876)", () => {
+  const draft = {
+    formId: "fixed",
+    title: "Form",
+    steps: ["one", "two", "three"].map((stepId) => ({
+      stepId,
+      title: stepId,
+      fields: [],
+      behaviours: [],
+    })),
+  } as unknown as RecipeDraft;
+  const step = (stepId: string, title = stepId) => ({
+    stepId,
+    title,
+    elements: [],
+  });
+  // The reducer appends the required tail steps; compare the author's steps.
+  const required = [
+    "check-your-answers",
+    "declaration",
+    "submission-confirmation",
+  ];
+  const stepIds = (result: RecipeDraft) =>
+    result.steps
+      .map((item) => item.stepId)
+      .filter((id) => !required.includes(id));
+
+  it("is refused, naming the missing steps, and leaves the draft alone", () => {
+    const before = JSON.stringify(draft);
+    expect(() =>
+      prepareFormDraft(
+        draft,
+        { formId: "fixed", title: "Form", steps: [step("two", "Changed")] },
+        getCatalog(),
+        true,
+      ),
+    ).toThrow(
+      "Resend the full recipe, including unchanged steps: one, three. To delete a step, list it in removeStepIds.",
+    );
+    expect(JSON.stringify(draft)).toBe(before);
+  });
+
+  it("removes only the steps listed in removeStepIds", () => {
+    const result = prepareFormDraft(
+      draft,
+      { formId: "fixed", title: "Form", steps: [step("one"), step("three")] },
+      getCatalog(),
+      true,
+      ["two"],
+    );
+    expect(stepIds(result)).toEqual(["one", "three"]);
+  });
+
+  it("still applies a full proposal that changes one step", () => {
+    const result = prepareFormDraft(
+      draft,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("two", "Changed"), step("three")],
+      },
+      getCatalog(),
+      true,
+    );
+    expect(stepIds(result)).toEqual(["one", "two", "three"]);
+    expect(result.steps.find((item) => item.stepId === "two")?.title).toBe(
+      "Changed",
+    );
+  });
+});
+
 it("restores only inert transcript data and separates users and documents", () => {
   const result = restoreTranscript([
     {

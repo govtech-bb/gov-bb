@@ -185,7 +185,13 @@ export async function prepareServiceEdit(
       },
       catalog,
     );
-    const next = prepareFormDraft(current, parsed.recipe, catalog, true);
+    const next = prepareFormDraft(
+      current,
+      parsed.recipe,
+      catalog,
+      true,
+      parsed.removeStepIds,
+    );
     const recipe = serializeRecipeDraft(next);
     const validation = await validateRecipe({ data: { recipe } });
     return {
