@@ -6,8 +6,12 @@ name: Landing v2 perf
 # and by hand. A failed budget turns this run red; it doesn't hold back a deploy.
 # Budgets and URLs: apps/landing/perf/.
 #
-# The gate job skips the run, with a notice, until sandbox landing serves
-# api_v2 pages (`x-content-source: api_v2`, #3311).
+# The gate job skips the run, with a notice, and stays green, when the Deploy
+# Sandbox run failed or deployed neither landing nor api_v2, or when sandbox
+# landing does not read api_v2 at all (only `static` or no x-content-source,
+# as before #3311). A manual run skips only for the last reason. `api_v2-stale`
+# and `static-fallback` mean landing reads api_v2 but api_v2 failed, so the
+# run goes ahead and measures it.
 #
 # Static baseline: staging serves static content until the staging switch
 # (#3227), so until then STAGING_URL makes each run compare sandbox with
@@ -74,9 +78,13 @@ jobs:
           fi
 
           # Ask landing for up to 5 public catalog pages, unredirected and
-          # past any cache: one api_v2 answer is enough.
+          # past any cache: one that landing reads from api_v2 is enough,
+          # even if api_v2 failed for it.
           pages=$(curl -fsS --max-time 20 "$API_V2_URL/catalog" \
-            | jq -r '[.pages[] | select(.visibility == "public") | .url][:5][]')
+            | jq -r '[.pages[] | select(.visibility == "public") | .url][:5][]') || {
+            echo "::error::Could not list public pages from $API_V2_URL/catalog"
+            exit 1
+          }
           if [ -z "$pages" ]; then
             echo "::error::$API_V2_URL/catalog lists no public pages"
             exit 1
@@ -90,7 +98,7 @@ jobs:
             source=$(printf '%s' "$headers" | tr -d '\r' \
               | awk 'tolower($1) == "x-content-source:" { print $2 }')
             echo "$page: x-content-source ${source:-(none)}"
-            if [ "$source" = api_v2 ]; then
+            if [[ "$source" =~ ^(api_v2|api_v2-stale|static-fallback)$ ]]; then
               echo "run=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
@@ -109,12 +117,12 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-    # One run at a time, so no host takes two loads at once. A newer
-    # run supersedes the older one. Job-level, so a run the gate skips never
-    # cancels one that is measuring.
+    # One perf job at a time on any ref, so no host takes two loads at once.
+    # A later run queues (the newest queued one wins) and never stops one
+    # that is measuring. Job-level, so a run the gate skips never waits.
     concurrency:
       group: landing-v2-perf
-      cancel-in-progress: true
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
