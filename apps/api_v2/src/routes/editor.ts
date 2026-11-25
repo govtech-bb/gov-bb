@@ -2,7 +2,12 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
 import type { CollectionEditing } from "../services/collection-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import type { Employee, Role, SelfApproval } from "../modules/auth";
+import type {
+  Employee,
+  NotApprover,
+  Role,
+  SelfApproval,
+} from "../modules/auth";
 import type {
   ContentStoreUnavailable,
   PageConflict,
@@ -49,6 +54,7 @@ function pageRefused(
     | RevisionNotFound
     | PageConflict
     | RevisionStateConflict
+    | NotApprover
     | SelfApproval
     | PageRejected
     | ContentStoreUnavailable,
@@ -69,6 +75,7 @@ function pageRefused(
       return reply
         .status(409)
         .send({ error: error.reason, message: error.message });
+    case "NotApprover":
     case "SelfApproval":
       return reply
         .status(403)
@@ -309,23 +316,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const created = await editing.create(request.body, actor(request));
       if (created.ok) return reply.status(201).send(created.value);
-      switch (created.error._tag) {
-        case "PageRejected":
-          return reply.status(422).send(rejected(created.error));
-        case "NotApprover":
-        case "SelfApproval":
-          return reply
-            .status(403)
-            .send({ error: "forbidden", message: created.error.message });
-        case "ContentStoreUnavailable":
-          return reply
-            .status(500)
-            .send(storageFailed(request.log, created.error));
-        default: {
-          const unexpected: never = created.error;
-          throw unexpected;
-        }
-      }
+      return pageRefused(request, reply, created.error);
     },
   });
   editor.route({
@@ -342,10 +333,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         actor(request),
       );
       if (saved.ok) return saved.value;
-      if (saved.error._tag === "NotApprover")
-        return reply
-          .status(403)
-          .send({ error: "forbidden", message: saved.error.message });
       return pageRefused(request, reply, saved.error);
     },
   });
@@ -372,10 +359,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
             error: "not_restorable",
             message: restored.error.message,
           });
-        case "NotApprover":
-          return reply
-            .status(403)
-            .send({ error: "forbidden", message: restored.error.message });
         default:
           return pageRefused(request, reply, restored.error);
       }
@@ -446,10 +429,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         actor(request),
       );
       if (deleted.ok) return reply.status(204).send();
-      if (deleted.error._tag === "NotApprover")
-        return reply
-          .status(403)
-          .send({ error: "forbidden", message: deleted.error.message });
       return pageRefused(request, reply, deleted.error);
     },
   });
