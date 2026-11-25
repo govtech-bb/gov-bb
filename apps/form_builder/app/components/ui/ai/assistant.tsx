@@ -474,17 +474,17 @@ type CurrentEditor = React.RefObject<{
   open: boolean;
 }>;
 
-// The open form, named by its service or, when no service draft holds it, by
-// its form id — the only id the model has for it then (#3875). A listed
-// service with that id is a different service, so it keeps its own draft.
+// The open form, named by its service or by its form id — the id the model
+// sees for it, and its only id when no service draft holds it (#3875). A
+// listed service with that id is a different service, so it keeps its own
+// draft.
 function isOpenForm(editor: CurrentEditor["current"], serviceId: string) {
   const { kind, documentId, services } = editor.context;
   return (
     kind === "form" &&
-    (editor.target
-      ? serviceId === editor.target.serviceId
-      : serviceId === documentId &&
-        !services.some((service) => service.serviceId === serviceId))
+    (serviceId === editor.target?.serviceId ||
+      (serviceId === documentId &&
+        !services.some((service) => service.serviceId === serviceId)))
   );
 }
 

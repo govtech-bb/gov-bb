@@ -824,6 +824,9 @@ it("reads the open form from the editor instead of the stored service drafts (#3
   expect(
     await readFormTool().execute({ serviceId: "service-one" }),
   ).toMatchObject({ serviceId: "service-one", recipe: props.document });
+  expect(
+    await readFormTool().execute({ serviceId: props.documentId }),
+  ).toMatchObject({ recipe: props.document });
   view.rerender(<Assistant {...props} prepare={vi.fn()} />);
   expect(
     await readFormTool().execute({ serviceId: props.documentId }),
