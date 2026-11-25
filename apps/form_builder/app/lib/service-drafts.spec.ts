@@ -87,7 +87,7 @@ it("saves a separate guidance page, retains the main page, and rejects a stale t
   ]);
   await expect(
     saveServiceDraft({ data: { snapshot, expectedRevision: draft.revision } }),
-  ).rejects.toThrow("Another tab");
+  ).rejects.toThrow("changed after you opened it");
   expect(saveServiceRecipe).not.toHaveBeenCalled();
 });
 it("connects one existing form, keeps repeated loads stable, and saves edits through the existing form adapter", async () => {
@@ -118,6 +118,13 @@ it("connects one existing form, keeps repeated loads stable, and saves edits thr
     (await getServiceDraft({ data: { serviceId: "test-service" } })).revision,
   ).toBe(first.revision);
   const edited = { ...recipe, title: "Updated application" };
+  vi.mocked(saveServiceRecipe).mockImplementation((async ({
+    data,
+  }: {
+    data: { recipe: typeof recipe };
+  }) => {
+    vi.mocked(getRecipe).mockResolvedValue(data.recipe as never);
+  }) as never);
   const saved = await saveServiceForm({
     data: {
       serviceId: "test-service",
@@ -500,4 +507,60 @@ it("retains newer page edits when an older recipe refresh finishes", async () =>
   const refreshed = await loading;
   expect(refreshed.revision).toBe(edited.revision);
   expect(refreshed.pages.every((p) => p.body === "New content")).toBe(true);
+});
+it("saves a service form again after a refresh when the Forms API keeps a field the editor does not send (#3864)", async () => {
+  // A row the builder wrote before #1196 still holds `version`. The editor no
+  // longer sends it, and saveServiceRecipe carries it back
+  // (carryUnauthoredFields), so after each save the API copy differs from the
+  // recipe the editor sent.
+  const recipe = draftRecipeSchema.parse({
+    formId: "test-form",
+    title: "Application",
+    steps: [],
+  });
+  let row: Record<string, unknown> = { ...recipe, version: "1.0.0" };
+  vi.mocked(getRecipe).mockImplementation(
+    async () => structuredClone(row) as never,
+  );
+  vi.mocked(saveServiceRecipe).mockImplementation((async ({
+    data,
+  }: {
+    data: { recipe: Record<string, unknown> };
+  }) => {
+    row = { ...data.recipe, version: row.version };
+  }) as never);
+  const initial = await saveServiceDraft({
+    data: { snapshot, expectedRevision: 0 },
+  });
+  await attachServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: initial.revision,
+      formId: "test-form",
+    },
+  });
+  // Open the form, save, refresh the service (any screen that loads it), save.
+  const opened = await getServiceDraft({ data: { serviceId: "test-service" } });
+  const first = await saveServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: opened.revision,
+      recipe: { ...recipe, title: "First edit" },
+      pendingConfig: snapshot.pendingConfig,
+    },
+  });
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(first.revision);
+  const second = await saveServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: first.revision,
+      recipe: { ...recipe, title: "Second edit" },
+      pendingConfig: snapshot.pendingConfig,
+    },
+  });
+  expect(second.recipe?.title).toBe("Second edit");
+  expect(row.title).toBe("Second edit");
 });

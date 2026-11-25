@@ -186,7 +186,7 @@ async function save(
     const current = read(key);
     if ((current?.revision ?? 0) !== expectedRevision)
       throw new Error(
-        "Another tab saved this service draft. Reload and compare before saving again.",
+        "This service changed after you opened it, so these changes are not saved. Copy anything you need, reload the page, then make your changes again.",
       );
     if (
       current?.manifest.formId &&
@@ -236,6 +236,23 @@ async function save(
           pendingConfig: snapshot.pendingConfig,
         },
       });
+      // The API can keep fields the editor does not send (a pre-#1196
+      // `version`, carried back by carryUnauthoredFields), so its copy differs
+      // from this one. Store what a refresh will read, or the next refresh
+      // bumps the revision under the open editor and its next save fails
+      // (#3864). The write has succeeded, so if this read fails keep the sent
+      // copy; the next refresh retries.
+      const { formId } = snapshot.recipe;
+      const stored = await Promise.all([
+        getRecipe({ data: { formId } }),
+        getFormConfig({ data: { formId } }),
+      ])
+        .then(([recipe, pendingConfig]) => ({
+          recipe: draftRecipeSchema.parse(recipe),
+          pendingConfig: servicePendingConfigSchema.parse(pendingConfig),
+        }))
+        .catch(() => null);
+      if (stored) Object.assign(snapshot, stored);
     }
     const draft = {
       ...snapshot,
