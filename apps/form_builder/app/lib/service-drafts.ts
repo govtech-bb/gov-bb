@@ -165,6 +165,10 @@ export async function adoptService({
   return draft;
 }
 
+// The stored draft moved past the revision the caller loaded. The form
+// editor catches it to offer saving its version over the newer one (#3864).
+export class ServiceDraftConflictError extends Error {}
+
 async function save(
   snapshotInput: ServiceSnapshot,
   expectedRevision: number,
@@ -185,8 +189,8 @@ async function save(
   const write = async () => {
     const current = read(key);
     if ((current?.revision ?? 0) !== expectedRevision)
-      throw new Error(
-        "Another tab saved this service draft. Reload and compare before saving again.",
+      throw new ServiceDraftConflictError(
+        "This service changed after you opened it, so these changes are not saved. Copy anything you need, reload the page, then make your changes again.",
       );
     if (
       current?.manifest.formId &&
@@ -236,6 +240,35 @@ async function save(
           pendingConfig: snapshot.pendingConfig,
         },
       });
+      // The API can keep fields the editor does not send (a pre-#1196
+      // `version`, carried back by carryUnauthoredFields), so its copy differs
+      // from this one. Store what a refresh will read, or the next refresh
+      // bumps the revision under the open editor and its next save fails
+      // (#3864). The write has succeeded, so if this read fails keep the sent
+      // copy rather than report a failed save; the open editor's next save
+      // may then be refused once.
+      const { formId } = snapshot.recipe;
+      const stored = await Promise.all([
+        getRecipe({ data: { formId } }),
+        getFormConfig({ data: { formId } }),
+      ])
+        .then(([recipe, pendingConfig]) => ({
+          recipe: draftRecipeSchema.parse(recipe),
+          pendingConfig: servicePendingConfigSchema.parse(pendingConfig),
+        }))
+        .catch((error) => {
+          console.warn(`[services] read-back after saving ${formId}:`, error);
+          return null;
+        });
+      if (stored) {
+        Object.assign(snapshot, stored);
+        if (snapshot.baseManifestSha === null)
+          snapshot.manifest = seedServiceManifest(
+            snapshot.manifest,
+            snapshot.recipe,
+            snapshot.pendingConfig,
+          );
+      }
     }
     const draft = {
       ...snapshot,

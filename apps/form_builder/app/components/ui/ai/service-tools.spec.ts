@@ -134,7 +134,7 @@ it("rejects a concurrent write after preparing a proposal", async () => {
       page: { ...snapshot.pages[0], body: "Another editor" },
     },
   });
-  await expect(change.apply()).rejects.toThrow("Another tab saved");
+  await expect(change.apply()).rejects.toThrow("changed after you opened it");
   const saved = await getServiceDraft({ data: { serviceId } });
   expect(saved.pages.map((page) => page.body)).toEqual([
     "Another editor",
@@ -335,7 +335,7 @@ it("refreshes the service workspace and rejects a stale setup snapshot after an 
   await act(async () => {
     expect(await result.current.save(setupSnapshot)).toBeNull();
   });
-  expect(result.current.error).toContain("Another tab saved");
+  expect(result.current.error).toContain("changed after you opened it");
   expect((await getServiceDraft({ data: { serviceId } })).manifest.title).toBe(
     "Assistant title",
   );
