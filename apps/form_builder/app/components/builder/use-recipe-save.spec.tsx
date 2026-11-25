@@ -5,6 +5,8 @@ import { act, renderHook } from "@testing-library/react";
 import { useRecipeSave } from "./use-recipe-save";
 import { EMPTY_DRAFT } from "./recipe-reducer";
 import type { RecipeDraft } from "@govtech-bb/form-builder";
+import type { ServiceDraft } from "@govtech-bb/form-types";
+import { ServiceDraftConflictError } from "../../lib/service-drafts";
 
 // Bare vi.fn's (rather than vi.mocked on the real createServerFn fetchers) so
 // mockResolvedValue isn't fighting the fetcher's return type — same pattern as
@@ -21,6 +23,14 @@ vi.mock("../../server/forms", () => ({
 const publishRecipe = vi.fn();
 vi.mock("../../server/publish", () => ({
   publishRecipe: (...args: unknown[]) => publishRecipe(...args),
+}));
+
+const saveServiceForm = vi.fn();
+const getServiceDraft = vi.fn();
+vi.mock("../../lib/service-drafts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/service-drafts")>()),
+  saveServiceForm: (...args: unknown[]) => saveServiceForm(...args),
+  getServiceDraft: (...args: unknown[]) => getServiceDraft(...args),
 }));
 
 type Params = Parameters<typeof useRecipeSave>[0];
@@ -139,6 +149,95 @@ describe("useRecipeSave", () => {
       expect(submitRecipe).not.toHaveBeenCalled();
       expect(updateRecipe).not.toHaveBeenCalled();
       expect(refetchForms).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // #3864: a service form save that conflicts with a newer version.
+  describe("handleSubmit for a service form", () => {
+    const serviceDraft = {
+      manifest: { serviceId: "test-service" },
+      pendingConfig: { mdaContactId: null, processors: null },
+      revision: 3,
+    } as unknown as ServiceDraft;
+    const draft: RecipeDraft = {
+      ...EMPTY_DRAFT,
+      formId: "passport",
+      title: "Passport",
+    };
+    const conflict = () =>
+      new ServiceDraftConflictError("This service changed after you opened it");
+    beforeEach(() => {
+      saveServiceForm.mockReset();
+      getServiceDraft.mockReset();
+    });
+
+    it("saves over the newer version at its revision when the author confirms", async () => {
+      const saved = { ...serviceDraft, revision: 6 };
+      saveServiceForm
+        .mockRejectedValueOnce(conflict())
+        .mockResolvedValueOnce(saved);
+      getServiceDraft.mockResolvedValue({ ...serviceDraft, revision: 5 });
+      const onServiceSaved = vi.fn();
+      const confirmOverwrite = vi.fn().mockResolvedValue(true);
+      const { result, setSavedDraft } = render({
+        draft,
+        loadedFromId: "passport",
+        serviceDraft,
+        onServiceSaved,
+        confirmOverwrite,
+      });
+
+      await act(async () => {
+        await result.current.handleSubmit();
+      });
+
+      expect(confirmOverwrite).toHaveBeenCalledOnce();
+      expect(
+        saveServiceForm.mock.calls.map(([arg]) => arg.data.expectedRevision),
+      ).toEqual([3, 5]);
+      expect(onServiceSaved).toHaveBeenCalledWith(saved);
+      expect(setSavedDraft).toHaveBeenCalledWith(draft);
+      expect(result.current.submitError).toBeNull();
+    });
+
+    it("keeps the editor's changes unsaved and shows the conflict when the author cancels", async () => {
+      saveServiceForm.mockRejectedValue(conflict());
+      const confirmOverwrite = vi.fn().mockResolvedValue(false);
+      const { result, setSavedDraft } = render({
+        draft,
+        loadedFromId: "passport",
+        serviceDraft,
+        confirmOverwrite,
+      });
+
+      await act(async () => {
+        await result.current.handleSubmit();
+      });
+
+      expect(saveServiceForm).toHaveBeenCalledOnce();
+      expect(getServiceDraft).not.toHaveBeenCalled();
+      expect(setSavedDraft).not.toHaveBeenCalled();
+      expect(result.current.submitError).toContain(
+        "changed after you opened it",
+      );
+    });
+
+    it("does not offer to overwrite on other save errors", async () => {
+      saveServiceForm.mockRejectedValue(new Error("Forms API unavailable"));
+      const confirmOverwrite = vi.fn();
+      const { result } = render({
+        draft,
+        loadedFromId: "passport",
+        serviceDraft,
+        confirmOverwrite,
+      });
+
+      await act(async () => {
+        await result.current.handleSubmit();
+      });
+
+      expect(confirmOverwrite).not.toHaveBeenCalled();
+      expect(result.current.submitError).toBe("Forms API unavailable");
     });
   });
 

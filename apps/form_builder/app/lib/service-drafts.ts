@@ -165,6 +165,10 @@ export async function adoptService({
   return draft;
 }
 
+// The stored draft moved past the revision the caller loaded. The form
+// editor catches it to offer saving its version over the newer one (#3864).
+export class ServiceDraftConflictError extends Error {}
+
 async function save(
   snapshotInput: ServiceSnapshot,
   expectedRevision: number,
@@ -185,7 +189,7 @@ async function save(
   const write = async () => {
     const current = read(key);
     if ((current?.revision ?? 0) !== expectedRevision)
-      throw new Error(
+      throw new ServiceDraftConflictError(
         "This service changed after you opened it, so these changes are not saved. Copy anything you need, reload the page, then make your changes again.",
       );
     if (
@@ -256,7 +260,15 @@ async function save(
           console.warn(`[services] read-back after saving ${formId}:`, error);
           return null;
         });
-      if (stored) Object.assign(snapshot, stored);
+      if (stored) {
+        Object.assign(snapshot, stored);
+        if (snapshot.baseManifestSha === null)
+          snapshot.manifest = seedServiceManifest(
+            snapshot.manifest,
+            snapshot.recipe,
+            snapshot.pendingConfig,
+          );
+      }
     }
     const draft = {
       ...snapshot,

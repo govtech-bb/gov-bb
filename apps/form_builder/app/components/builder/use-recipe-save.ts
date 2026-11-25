@@ -6,13 +6,20 @@ import {
 import type { RecipeDraft } from "@govtech-bb/form-builder";
 import { submitRecipe, updateRecipe, rekeyRecipe } from "../../server/forms";
 import type { ServiceDraft } from "@govtech-bb/form-types";
-import { saveServiceForm } from "../../lib/service-drafts";
+import {
+  getServiceDraft,
+  saveServiceForm,
+  ServiceDraftConflictError,
+} from "../../lib/service-drafts";
 import { publishRecipe } from "../../server/publish";
 import type { BuilderFormSummary } from "../../types/index";
 
 interface UseRecipeSaveParams {
   serviceDraft?: ServiceDraft | null;
   onServiceSaved?: (draft: ServiceDraft) => void;
+  /** Asked when a service save conflicts with a newer version; true saves
+   * the editor's form over it (#3864). */
+  confirmOverwrite?: () => Promise<boolean>;
   onServicePublish?: () => void;
   draft: RecipeDraft;
   loadedFromId: string | null;
@@ -43,6 +50,7 @@ interface UseRecipeSaveParams {
 export function useRecipeSave({
   serviceDraft,
   onServiceSaved,
+  confirmOverwrite,
   onServicePublish,
   draft,
   loadedFromId,
@@ -106,18 +114,36 @@ export function useRecipeSave({
       if (serviceDraft) {
         if (isRekey)
           throw new Error("The connected form identity cannot be changed");
-        const saved = await saveServiceForm({
-          data: {
-            serviceId: serviceDraft.manifest.serviceId,
-            expectedRevision: serviceDraft.revision,
-            recipe,
-            pendingConfig: {
-              mdaContactId:
-                mdaContactId ?? serviceDraft.pendingConfig.mdaContactId,
-              processors,
+        const serviceId = serviceDraft.manifest.serviceId;
+        const saveService = (expectedRevision: number) =>
+          saveServiceForm({
+            data: {
+              serviceId,
+              expectedRevision,
+              recipe,
+              pendingConfig: {
+                mdaContactId:
+                  mdaContactId ?? serviceDraft.pendingConfig.mdaContactId,
+                processors,
+              },
             },
-          },
-        });
+          });
+        let saved: ServiceDraft;
+        try {
+          saved = await saveService(serviceDraft.revision);
+        } catch (error) {
+          // #3864: the service changed after this form opened. The editor
+          // keeps the author's changes; they can save them over the newer
+          // version, or cancel and see how to recover.
+          if (
+            !(error instanceof ServiceDraftConflictError) ||
+            !(await confirmOverwrite?.())
+          )
+            throw error;
+          saved = await saveService(
+            (await getServiceDraft({ data: { serviceId } })).revision,
+          );
+        }
         onServiceSaved?.(saved);
       } else if (isRekey) {
         await rekeyRecipe({ data: { oldFormId, recipe } });

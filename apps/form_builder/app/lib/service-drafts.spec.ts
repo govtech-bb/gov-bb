@@ -564,3 +564,41 @@ it("saves a service form again after a refresh when the Forms API keeps a field 
   expect(second.recipe?.title).toBe("Second edit");
   expect(row.title).toBe("Second edit");
 });
+it("keeps the sent recipe when the read-back after a form save fails (#3864)", async () => {
+  const recipe = draftRecipeSchema.parse({
+    formId: "test-form",
+    title: "Application",
+    steps: [],
+  });
+  vi.mocked(getRecipe).mockResolvedValue(recipe as never);
+  const initial = await saveServiceDraft({
+    data: { snapshot, expectedRevision: 0 },
+  });
+  const connected = await attachServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: initial.revision,
+      formId: "test-form",
+    },
+  });
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.mocked(saveServiceRecipe).mockResolvedValue(undefined as never);
+  // The leading refresh reads the form; the read-back after the write fails.
+  vi.mocked(getRecipe)
+    .mockResolvedValueOnce(recipe as never)
+    .mockRejectedValueOnce(new Error("Forms API unavailable"));
+  const edited = { ...recipe, title: "Edited" };
+  const saved = await saveServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: connected.revision,
+      recipe: edited,
+      pendingConfig: snapshot.pendingConfig,
+    },
+  });
+  expect(saveServiceRecipe).toHaveBeenCalledOnce();
+  expect(saved.revision).toBe(connected.revision + 1);
+  expect(saved.recipe).toEqual(edited);
+  expect(warn).toHaveBeenCalled();
+  warn.mockRestore();
+});
