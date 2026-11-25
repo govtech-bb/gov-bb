@@ -39,8 +39,13 @@ in prod an `E2E_` submission would post to the prod CaMS destination (ADR 0087).
 
 ## Provisioning (what arms the gate)
 
-All four steps are per-environment and **staging-scoped** — none ship to prod.
+All these steps are per-environment and **staging-scoped** — none ship to prod.
 
+0. **Create the `staging-e2e` environment first.** The CI job names it; if it
+   doesn't exist, GitHub creates it on first run **without** protection rules.
+   Create it up front with a **`main`-only deployment branch policy** (and no
+   required reviewers), matching `sandbox-e2e`, before putting any secret in it —
+   otherwise the "deployable from `main` only" guarantee below is not yet true.
 1. **CaMS machine contract + key (case-management#812).** CaMS exposes the read
    (`GET /api/cases/{code}`) and `removeTestCase` (`DELETE /api/cases/{code}`)
    endpoints over `x-api-key`, fenced to `isTest` programmes, and issues a
@@ -88,6 +93,17 @@ Once provisioning is complete and a real run is green, in `deploy-staging.yml`:
 2. Add `journey-case-management` to the `summary` job's `needs` so a red run
    fails the staging deploy, and wire the prod gate (Deploy Production requires a
    green staging J4).
+
+## Open acceptance criteria (tracked until re-arm)
+
+This feature delivers the J4 code but leaves the gate dormant, so two of #3011's
+acceptance criteria are not yet satisfied and live on #3861 until re-arm:
+
+- **Tracker status (#3011 AC): not checked** — no non-prod tracker exists yet;
+  recorded as a gap here per #3011's "or the gap is recorded" escape hatch.
+- **First real run** (case created + reference match + files copied) and the
+  [re-arming](#re-arming-the-gate) steps (fail-closed guard, `summary.needs`, the
+  prod gate) — all pending case-management#812 + the provisioning above.
 
 ## Related
 

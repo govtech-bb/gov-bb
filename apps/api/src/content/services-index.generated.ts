@@ -325,6 +325,13 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "e2e-j4-case-check",
+    title: "E2E case-management check (test service)",
+    category: "business-trade",
+    formId: "e2e-j4-case-check",
+    visibility: "preview",
+  },
+  {
     slug: "e2e-maintenance-check",
     title: "E2E maintenance check (test service)",
     category: "business-trade",
