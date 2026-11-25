@@ -16,6 +16,7 @@ import {
   WorkspaceAssistant,
 } from "../../global-assistant";
 import { prepareFormDraft } from "../../builder/form-assistant";
+import { recipeReducer } from "../../builder/recipe-reducer";
 import { restoreTranscript, historyKey } from "./history";
 import type { PreparedChange } from "./review";
 import { readConversations, writeConversations } from "./history";
@@ -305,6 +306,49 @@ describe("a proposal that leaves out existing steps (#3876)", () => {
       ["two"],
     );
     expect(stepIds(result)).toEqual(["one", "three"]);
+  });
+
+  it("accepts a proposal that leaves out check-your-answers from a normalised draft", () => {
+    const loaded = recipeReducer(draft, { type: "LOAD_DRAFT", draft });
+    expect(loaded.steps.map((item) => item.stepId)).toContain(
+      "check-your-answers",
+    );
+    const result = prepareFormDraft(
+      loaded,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [
+          step("one"),
+          step("two"),
+          step("three"),
+          step("declaration"),
+          step("submission-confirmation"),
+        ],
+      },
+      getCatalog(),
+      true,
+    );
+    expect(result.steps.map((item) => item.stepId)).toContain(
+      "check-your-answers",
+    );
+  });
+
+  it("keeps a step that is resent even when it is also in removeStepIds", () => {
+    const result = prepareFormDraft(
+      draft,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("two", "Changed"), step("three")],
+      },
+      getCatalog(),
+      true,
+      ["two"],
+    );
+    expect(result.steps.find((item) => item.stepId === "two")?.title).toBe(
+      "Changed",
+    );
   });
 
   it("still applies a full proposal that changes one step", () => {

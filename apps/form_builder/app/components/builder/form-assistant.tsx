@@ -8,7 +8,7 @@ import {
 } from "@govtech-bb/form-builder";
 import type { ServiceContractRecipe } from "@govtech-bb/form-types";
 import { validateRecipe } from "../../server/registry";
-import { recipeReducer } from "./recipe-reducer";
+import { isRequiredStep, recipeReducer } from "./recipe-reducer";
 import { WorkspaceAssistant as Assistant } from "../global-assistant";
 import type { AssistantProps } from "../ui/ai/assistant";
 
@@ -31,11 +31,14 @@ export function prepareFormDraft(
   const parsed = aiRecipeSchema.parse(recipe);
   const incoming = deserializeRecipe(parsed as ServiceContractRecipe, catalog);
   // The assistant resends the whole recipe, so a step it leaves out would be
-  // deleted. Only delete steps it names in removeStepIds (#3876).
+  // deleted. Only let it leave out steps it names in removeStepIds (#3876).
+  // Required steps are exempt: the reducer adds them back, and the prompt
+  // forbids authoring check-your-answers.
   const dropped = draft.steps
     .map((step) => step.stepId)
     .filter(
       (stepId) =>
+        !isRequiredStep(stepId) &&
         !removeStepIds.includes(stepId) &&
         !incoming.steps.some((step) => step.stepId === stepId),
     );
@@ -43,21 +46,19 @@ export function prepareFormDraft(
     throw new Error(
       `Resend the full recipe, including unchanged steps: ${dropped.join(", ")}. To delete a step, list it in removeStepIds.`,
     );
-  const steps = incoming.steps
-    .filter((step) => !removeStepIds.includes(step.stepId))
-    .map((step) => {
-      const existing = draft.steps.find((item) => item.stepId === step.stepId);
-      // Keep the author's confirmation copy the assistant didn't re-author:
-      // fall back to the existing step's markdownContent (which the loader has
-      // already folded any legacy `nextSteps` into, #2442) so an AI prepare never
-      // silently drops it.
-      const markdownContent = step.markdownContent ?? existing?.markdownContent;
-      return {
-        ...step,
-        ...(markdownContent !== undefined ? { markdownContent } : {}),
-        conditionalMarkdown: existing?.conditionalMarkdown,
-      };
-    });
+  const steps = incoming.steps.map((step) => {
+    const existing = draft.steps.find((item) => item.stepId === step.stepId);
+    // Keep the author's confirmation copy the assistant didn't re-author:
+    // fall back to the existing step's markdownContent (which the loader has
+    // already folded any legacy `nextSteps` into, #2442) so an AI prepare never
+    // silently drops it.
+    const markdownContent = step.markdownContent ?? existing?.markdownContent;
+    return {
+      ...step,
+      ...(markdownContent !== undefined ? { markdownContent } : {}),
+      conditionalMarkdown: existing?.conditionalMarkdown,
+    };
+  });
   const counts = new Map<string, number>();
   const processors = incoming.processors
     ?.filter((processor) => processor.type !== "payment")
