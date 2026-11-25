@@ -29,8 +29,9 @@ vi.mock("./service-tools", () => ({
   readPage: vi.fn(),
   readForm: vi.fn(),
 }));
+const serviceIndex = vi.hoisted(() => ({ entries: [] as any[] }));
 vi.mock("../../services/service-state", () => ({
-  useServiceIndex: () => ({ entries: [] }),
+  useServiceIndex: () => serviceIndex,
 }));
 
 const harness = vi.hoisted(() => ({
@@ -69,6 +70,7 @@ beforeEach(() => {
   harness.options = null;
   harness.stop.mockClear();
   vi.mocked(prepareServiceEdit).mockReset();
+  serviceIndex.entries = [];
   localStorage.clear();
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
@@ -772,6 +774,41 @@ it("routes a target naming the open form's id to its editor when the form has no
   expect(prepareServiceEdit).not.toHaveBeenCalled();
 });
 
+it("keeps another service's target external when the open form has no service (#3875)", async () => {
+  vi.mocked(prepareServiceEdit).mockResolvedValue({
+    before: {},
+    after: {},
+    warnings: [],
+    external: true,
+    apply: vi.fn(),
+  });
+  // A listed service whose id happens to equal the open form's id is a
+  // different service, so its own draft is used.
+  serviceIndex.entries = [
+    {
+      manifest: {
+        serviceId: props.documentId,
+        title: "Other",
+        category: "education",
+        formId: null,
+        pages: [],
+      },
+      revision: 1,
+    },
+  ];
+  const prepare = vi.fn();
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  await propose();
+  harness.interrupts[0].originalArgs = {
+    ...proposal,
+    target: { serviceId: props.documentId },
+  };
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(prepareServiceEdit).toHaveBeenCalled());
+  expect(prepare).not.toHaveBeenCalled();
+});
+
 it("reads the open form from the editor instead of the stored service drafts (#3875)", async () => {
   vi.mocked(readForm).mockClear();
   const readFormTool = () =>
@@ -794,6 +831,10 @@ it("reads the open form from the editor instead of the stored service drafts (#3
   expect(readForm).not.toHaveBeenCalled();
   await readFormTool().execute({ serviceId: "service-two" });
   expect(readForm).toHaveBeenCalledWith({ serviceId: "service-two" });
+  vi.mocked(readForm).mockClear();
+  view.rerender(<Assistant {...props} kind="content" prepare={vi.fn()} />);
+  await readFormTool().execute({ serviceId: props.documentId });
+  expect(readForm).toHaveBeenCalledWith({ serviceId: props.documentId });
 });
 
 it("uses the service revision for external edits while retaining a live run binding", async () => {

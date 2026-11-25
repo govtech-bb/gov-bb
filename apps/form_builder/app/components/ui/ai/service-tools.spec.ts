@@ -254,7 +254,9 @@ it("refuses unknown services and pages without adopting them, redacts reads, and
       target: { serviceId: "unknown" },
       patch: { title: "New" },
     }),
-  ).rejects.toThrow("To edit the form open in the editor, leave out target");
+  ).rejects.toThrow(
+    "To edit the document open in the editor, leave out target",
+  );
   await expect(
     readPage({ serviceId, pagePath: "apps/landing/src/content/other.md" }),
   ).rejects.toThrow("does not belong");

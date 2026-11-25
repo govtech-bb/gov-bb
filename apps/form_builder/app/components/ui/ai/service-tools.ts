@@ -39,7 +39,7 @@ async function loadDraft(serviceId: string) {
     )
   )
     throw new Error(
-      "This service has no draft in this browser's service workspace, so the assistant cannot read or edit it. To edit the form open in the editor, leave out target. To work on another service, open it from Services first.",
+      "This service has no draft in this browser's service workspace, so the assistant cannot read or edit it. To edit the document open in the editor, leave out target. To work on another service, open it from Services first.",
     );
   return getServiceDraft({ data: { serviceId } });
 }

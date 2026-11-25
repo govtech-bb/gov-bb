@@ -475,11 +475,16 @@ type CurrentEditor = React.RefObject<{
 }>;
 
 // The open form, named by its service or, when no service draft holds it, by
-// its form id — the only id the model has for it then (#3875).
+// its form id — the only id the model has for it then (#3875). A listed
+// service with that id is a different service, so it keeps its own draft.
 function isOpenForm(editor: CurrentEditor["current"], serviceId: string) {
+  const { kind, documentId, services } = editor.context;
   return (
-    editor.context.kind === "form" &&
-    serviceId === (editor.target?.serviceId ?? editor.context.documentId)
+    kind === "form" &&
+    (editor.target
+      ? serviceId === editor.target.serviceId
+      : serviceId === documentId &&
+        !services.some((service) => service.serviceId === serviceId))
   );
 }
 
@@ -792,10 +797,11 @@ function ChatSession({
         toolDefinition(readServiceTool).client(readService),
         toolDefinition(readPageTool).client(readPage),
         toolDefinition(readFormTool).client(async (input) => {
+          const { serviceId } = readFormTool.inputSchema.parse(input);
           const editor = current.current;
-          if (!isOpenForm(editor, input.serviceId)) return readForm(input);
+          if (!isOpenForm(editor, serviceId)) return readForm({ serviceId });
           return {
-            serviceId: input.serviceId,
+            serviceId,
             recipe: editor.context.document,
             note: "This is the form open in the editor. Leave out target to edit it.",
           };
