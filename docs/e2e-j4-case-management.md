@@ -37,6 +37,13 @@ set**. J4 runs on staging, whose `E2E` destination must point at a **non-prod
 CaMS**. Do **not** enable the smoke token in prod expecting zero CaMS traffic —
 in prod an `E2E_` submission would post to the prod CaMS destination (ADR 0087).
 
+**The CaMS E2E API key (`E2E_CAMS_API_KEY`) is staging-only — never issue or set
+it on production.** It is the credential for the read / `removeTestCase`
+endpoints (case-management#812), and CaMS makes "the E2E key is never issued on
+prod" a hard condition of shipping them with only the `isTest` fence (not a
+scoped key) as the guard. On prod the key is simply absent, so the gate
+soft-skips.
+
 ## Provisioning (what arms the gate)
 
 All these steps are per-environment and **staging-scoped** — none ship to prod.
@@ -51,7 +58,8 @@ All these steps are per-environment and **staging-scoped** — none ship to prod
 1. **CaMS machine contract + key (case-management#812).** CaMS exposes the read
    (`GET /api/cases/{code}`) and `removeTestCase` (`DELETE /api/cases/{code}`)
    endpoints over `x-api-key`, fenced to `isTest` programmes, and issues a
-   non-prod E2E key. Register `E2E_J4_CASE_CHECK` as an `isTest` programme.
+   non-prod E2E key (**never a prod one**). Register `E2E_J4_CASE_CHECK` as an
+   `isTest` programme.
 2. **`staging-e2e` secrets.** Set `E2E_CAMS_API_KEY` (the key from step 1) on the
    `staging-e2e` GitHub Environment. The job already reads
    `SMOKE_SUBMISSION_TOKEN_STAGING` (the existing staging smoke token, shared with
