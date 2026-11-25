@@ -20,7 +20,7 @@ import { restoreTranscript, historyKey } from "./history";
 import type { PreparedChange } from "./review";
 import { readConversations, writeConversations } from "./history";
 import { streamChat } from "./transport";
-import { prepareServiceEdit } from "./service-tools";
+import { prepareServiceEdit, readForm } from "./service-tools";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("./service-tools", () => ({
@@ -751,6 +751,49 @@ it("routes an explicit open-document target through its editor", async () => {
   view.rerender(<Assistant {...props} target={target} prepare={prepare} />);
   await waitFor(() => expect(prepare).toHaveBeenCalled());
   expect(prepareServiceEdit).not.toHaveBeenCalled();
+});
+
+it("routes a target naming the open form's id to its editor when the form has no service (#3875)", async () => {
+  const prepare = vi.fn(async () => ({
+    before: {},
+    after: { title: "Proposed" },
+    warnings: [],
+    apply: vi.fn(),
+  }));
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  await propose();
+  harness.interrupts[0].originalArgs = {
+    ...proposal,
+    target: { serviceId: props.documentId },
+  };
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(prepare).toHaveBeenCalled());
+  expect(prepareServiceEdit).not.toHaveBeenCalled();
+});
+
+it("reads the open form from the editor instead of the stored service drafts (#3875)", async () => {
+  vi.mocked(readForm).mockClear();
+  const readFormTool = () =>
+    harness.options.tools.find((tool: any) => tool.name === "read_form");
+  const view = render(
+    <Assistant
+      {...props}
+      target={{ serviceId: "service-one" }}
+      prepare={vi.fn()}
+    />,
+  );
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  expect(
+    await readFormTool().execute({ serviceId: "service-one" }),
+  ).toMatchObject({ serviceId: "service-one", recipe: props.document });
+  view.rerender(<Assistant {...props} prepare={vi.fn()} />);
+  expect(
+    await readFormTool().execute({ serviceId: props.documentId }),
+  ).toMatchObject({ recipe: props.document });
+  expect(readForm).not.toHaveBeenCalled();
+  await readFormTool().execute({ serviceId: "service-two" });
+  expect(readForm).toHaveBeenCalledWith({ serviceId: "service-two" });
 });
 
 it("uses the service revision for external edits while retaining a live run binding", async () => {

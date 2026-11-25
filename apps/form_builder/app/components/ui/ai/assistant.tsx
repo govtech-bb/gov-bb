@@ -474,6 +474,15 @@ type CurrentEditor = React.RefObject<{
   open: boolean;
 }>;
 
+// The open form, named by its service or, when no service draft holds it, by
+// its form id — the only id the model has for it then (#3875).
+function isOpenForm(editor: CurrentEditor["current"], serviceId: string) {
+  return (
+    editor.context.kind === "form" &&
+    serviceId === (editor.target?.serviceId ?? editor.context.documentId)
+  );
+}
+
 function ChatSession({
   conversation,
   controls,
@@ -664,12 +673,12 @@ function ChatSession({
       if (toolName === "update_service_details") return true;
       if (!proposal.target) return false;
       const editor = current.current;
+      if (toolName !== "apply_content_patch")
+        return !isOpenForm(editor, proposal.target.serviceId);
       return (
         proposal.target.serviceId !== editor.target?.serviceId ||
-        (toolName === "apply_content_patch"
-          ? editor.context.kind !== "content" ||
-            proposal.target.pagePath !== editor.target?.pagePath
-          : editor.context.kind !== "form")
+        editor.context.kind !== "content" ||
+        proposal.target.pagePath !== editor.target?.pagePath
       );
     },
     [current],
@@ -782,9 +791,17 @@ function ChatSession({
         toolDefinition(updateServiceDetailsTool).client(execute),
         toolDefinition(readServiceTool).client(readService),
         toolDefinition(readPageTool).client(readPage),
-        toolDefinition(readFormTool).client(readForm),
+        toolDefinition(readFormTool).client(async (input) => {
+          const editor = current.current;
+          if (!isOpenForm(editor, input.serviceId)) return readForm(input);
+          return {
+            serviceId: input.serviceId,
+            recipe: editor.context.document,
+            note: "This is the form open in the editor. Leave out target to edit it.",
+          };
+        }),
       ] as const,
-    [execute],
+    [current, execute],
   );
   const chat = useChat<typeof tools>({
     threadId: thread,
