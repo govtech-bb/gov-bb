@@ -44,6 +44,7 @@ import {
   NewCollection,
   RecordBody,
   RecordKey,
+  RecordPage,
 } from "../modules/collection";
 import { PageHistoryEntry } from "../modules/page-history";
 import { PublicPage } from "../modules/page-visibility";
@@ -781,6 +782,25 @@ export const SCHEMAS = {
         message: z.string(),
       }),
       422: validationFailed.extend({ message: z.string() }),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  recordPages: {
+    summary: "The pages that show a record",
+    description:
+      "Lists pages by title if their live body, draft or submitted revision names " +
+      "the record in a fact or contact block. References found only in rejected " +
+      "or discarded revisions do not count. `service_id` is the categorised root " +
+      "of the service, or null if there is no service. Open those pages by their " +
+      "own id under Site pages. The record itself need not exist.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    response: {
+      200: z.object({ pages: z.array(RecordPage) }),
+      400: error,
       500: error,
       ...authErrors,
     },

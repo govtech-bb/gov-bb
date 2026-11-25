@@ -46,6 +46,68 @@ describe("compileContentMarkdown", () => {
       children: [],
     });
   });
+  it("compiles a fact to the value its host reads, keeping its fallback, and as plain text in a link", () => {
+    const result = compileContentMarkdown(
+      'Call :fact[the office]{collection="offices" record="bridgetown" field="phone"} or [ring :fact{collection="offices" record="bridgetown" field="phone"}](/contact).',
+    );
+    if (!result.ok) throw new Error("Expected valid Markdown");
+    expect(result.value.hast.children[0]).toMatchObject({
+      type: "element",
+      tagName: "p",
+      children: [
+        { type: "text", value: "Call " },
+        {
+          type: "element",
+          tagName: "collection-fact",
+          properties: {
+            collection: "offices",
+            record: "bridgetown",
+            field: "phone",
+          },
+          children: [{ type: "text", value: "the office" }],
+        },
+        { type: "text", value: " or " },
+        {
+          type: "element",
+          tagName: "a",
+          children: [
+            { type: "text", value: "ring " },
+            {
+              type: "element",
+              tagName: "collection-fact",
+              properties: { plain: "true" },
+              children: [],
+            },
+          ],
+        },
+        { type: "text", value: "." },
+      ],
+    });
+  });
+  it.each([
+    ["full", "[c]", "c"],
+    ["collapsed", "[]", ""],
+    ["shortcut", "", ""],
+  ])("keeps a fact plain in a %s reference link", (_, suffix, id) => {
+    const label =
+      'Ring :fact{collection="offices" record="bridgetown" field="phone"}';
+    const result = compileContentMarkdown(
+      `[${label}]${suffix}\n\n[${id || label}]: /contact`,
+    );
+    if (!result.ok) throw result.errors[0];
+    expect(result.value.hast.children[0]).toMatchObject({
+      children: [
+        {
+          tagName: "a",
+          properties: { href: "/contact" },
+          children: [
+            { value: "Ring " },
+            { tagName: "collection-fact", properties: { plain: "true" } },
+          ],
+        },
+      ],
+    });
+  });
   it("escapes raw HTML by default and requires an explicit legacy opt-in", () => {
     const source = "<script>alert(1)</script>\n\n<notice>Keep this</notice>";
     const escaped = compileContentMarkdown(source);

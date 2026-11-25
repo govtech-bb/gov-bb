@@ -6,13 +6,19 @@
 
 import type { FastifyInstance, InjectOptions } from "fastify";
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PostgresCollections } from "./adapters/postgres-collections";
+import type { RecordPage } from "./modules/collection";
+import { PageId, type SitePageSummary } from "./modules/page";
+import { ok } from "./modules/result";
+import { CollectionEditing } from "./services/collection-editing";
 import { PUBLIC_READ } from "./routes/responses";
 import { seed } from "./seed";
 import { CONTACTS } from "./seed-data/collections";
 import {
   createTestApp,
   createTestDb,
+  expectOk,
   TEST_EMPLOYEE,
   TEST_HEADERS,
   type TestDb,
@@ -396,4 +402,153 @@ describe("the seeded contacts", () => {
       "police-emergency",
     ]);
   }, 60_000);
+});
+
+describe("the pages that show a record", () => {
+  const SERVICE = "11111111-1111-4111-8111-111111111111";
+  const FACT = "22222222-2222-4222-8222-222222222222";
+  const CONTACT = "33333333-3333-4333-8333-333333333333";
+  const DRAFTED = "44444444-4444-4444-8444-444444444444";
+  const DISCARDED = "55555555-5555-4555-8555-555555555555";
+  const ELSEWHERE = "66666666-6666-4666-8666-666666666666";
+  const CATEGORY = "77777777-7777-4777-8777-777777777777";
+
+  const page = (
+    id: string,
+    slug: string,
+    title: string,
+    body: string,
+    parent: string | null = SERVICE,
+  ) =>
+    test.db.execute(
+      sql`insert into content_pages (id, url, slug, category_id, parent_id, title, body_markdown)
+          values (${id}, ${`/drug-licence${parent ? `/${slug}` : ""}`}, ${slug},
+                  ${CATEGORY}, ${parent}, ${title}, ${body})`,
+    );
+  const revision = (id: string, status: string, body: string) =>
+    test.db.execute(
+      sql`insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+          values (${id}, ${status}, ${JSON.stringify({ body_markdown: body })}::jsonb,
+                  now(), ${TEST_EMPLOYEE.id}, array[${TEST_EMPLOYEE.id}])`,
+    );
+  const fact = (record: string, collection = "contacts") =>
+    `Call :fact{collection="${collection}" record="${record}" field="phone"}.`;
+
+  it.each(["draft", "submitted"])(
+    "lists live references and those in a %s revision under their service",
+    async (status) => {
+      await test.db.execute(
+        sql`insert into categories (id, slug, title) values (${CATEGORY}, 'health', 'Health')`,
+      );
+      await page(SERVICE, "drug-licence", "Get a drug licence", "Apply.", null);
+      await page(DRAFTED, "fees", "Fees", "No contact yet.");
+      await revision(DRAFTED, status, `Fees. ${fact("drug-service")}`);
+      await page(
+        CONTACT,
+        "contact",
+        "Contact the service",
+        '::contact{collection="contacts" record="drug-service" fields="phone"}',
+      );
+      await page(FACT, "call-us", "Call us", fact("drug-service"));
+      await page(DISCARDED, "forms", "Forms", "No contact.");
+      await revision(DISCARDED, "discarded", fact("drug-service"));
+      // Mentions, but not of this record: another record, and another collection's
+      await page(
+        ELSEWHERE,
+        "elsewhere",
+        "Elsewhere",
+        `${fact("drug-services")} ${fact("drug-service", "offices")}`,
+      );
+      await revision(ELSEWHERE, "rejected", fact("drug-service"));
+
+      const response = await editor({
+        url: "/collections/contacts/records/drug-service/pages",
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json()).toEqual({
+        pages: [
+          {
+            id: FACT,
+            title: "Call us",
+            url: "/drug-licence/call-us",
+            visibility: "draft",
+            service_id: SERVICE,
+          },
+          {
+            id: CONTACT,
+            title: "Contact the service",
+            url: "/drug-licence/contact",
+            visibility: "draft",
+            service_id: SERVICE,
+          },
+          {
+            id: DRAFTED,
+            title: "Fees",
+            url: "/drug-licence/fees",
+            visibility: "draft",
+            service_id: SERVICE,
+          },
+        ],
+      });
+    },
+  );
+
+  it("distinguishes a seeded service from a site page that opens by its own id", async () => {
+    await test.db.execute(sql`delete from data_collections`);
+    await seed(test.db);
+    const sites = await editor({ url: "/editor/site-pages" });
+    const terms = sites
+      .json<{ pages: SitePageSummary[] }>()
+      .pages.find((page) => page.url === "/terms-conditions");
+    if (!terms) throw new Error("Missing Terms and conditions site page");
+    await revision(terms.id, "draft", fact("dem-emergency-line"));
+
+    const response = await editor({
+      url: `${recordUrl("dem-emergency-line")}/pages`,
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    const { pages } = response.json<{ pages: RecordPage[] }>();
+    expect(pages).toContainEqual({ ...terms, service_id: null });
+    const stormReady = pages.find(
+      (page) => page.url === "/health-and-emergency-services/stormready",
+    );
+    if (!stormReady) throw new Error("Missing StormReady contact block");
+    expect(stormReady.service_id).toBe(stormReady.id);
+    expect(
+      (await editor({ url: `/services/${stormReady.service_id}` })).statusCode,
+    ).toBe(200);
+  });
+
+  it("rejects an invalid record key", async () => {
+    expect(
+      (await editor({ url: `${recordUrl("Not-a-slug")}/pages` })).statusCode,
+    ).toBe(400);
+  });
+
+  it("sorts Used on by title even when storage returns the last title first", async () => {
+    const store = new PostgresCollections(test.db);
+    const candidate = (id: string, title: string) => ({
+      id: PageId.parse(id),
+      service_id: PageId.parse(SERVICE),
+      title,
+      url: `/${title.toLowerCase()}`,
+      visibility: "public" as const,
+      bodies: [fact("drug-service")],
+    });
+    vi.spyOn(store, "pagesMentioning").mockResolvedValue(
+      ok([candidate(FACT, "Zeta"), candidate(CONTACT, "Alpha")]),
+    );
+
+    const pages = expectOk(
+      await new CollectionEditing(store).pages("contacts", "drug-service"),
+    );
+    expect(pages.map((page) => page.title)).toEqual(["Alpha", "Zeta"]);
+  });
+
+  it("is for signed-in editors only", async () => {
+    const response = await app.inject({
+      url: "/collections/contacts/records/drug-service/pages",
+    });
+    expect(response.statusCode).toBe(401);
+  });
 });

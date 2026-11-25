@@ -76,6 +76,11 @@ export type RecordDetail = Json<
   paths["/collections/{key}/records/{recordKey}"]["get"]["responses"][200]
 >;
 
+/** A page that shows a record, in a fact or a contact block, live or in an open revision (#3590). */
+export type RecordPage = Json<
+  paths["/collections/{key}/records/{recordKey}/pages"]["get"]["responses"][200]
+>["pages"][number];
+
 /** What saving a record sends: every value to keep, by field key. */
 export type RecordInput = Json<
   paths["/collections/{key}/records/{recordKey}"]["put"]["requestBody"]
@@ -665,6 +670,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     /** A private editing snapshot: the record's version and the definition its form uses. */
     record: async (key: string, recordKey: string) =>
       checkedReply(await send("GET", recordPath(key, recordKey)), isRecordDetail),
+    /** The pages that show a record, by title; a page without a service opens under Site pages. */
+    recordPages: async (key: string, recordKey: string) =>
+      (await read<{ pages: RecordPage[] }>(`${recordPath(key, recordKey)}/pages`)).pages,
     /** Adds a record. */
     createRecord: async (key: string, recordKey: string, data: RecordInput["data"]) =>
       checkedReply(await send("POST", recordPath(key, recordKey), { data }), isEditorRecord),

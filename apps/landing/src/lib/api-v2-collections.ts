@@ -5,15 +5,15 @@ import { apiV2Base, landingToken } from './api-v2-page'
 import { readPublic } from './api-v2-reader'
 
 /**
- * Contact details read from api_v2's data collections (#3185). A page names a
- * record with `::contact{collection record fields}`; the details are read at
+ * Records read from api_v2's data collections: those a page's contact blocks
+ * (`::contact`, #3185) and facts (`:fact`, #3590) name. They're read at
  * request time, the way api_v2 pages are, so a changed phone number shows on
  * every page with no page edit and no deploy. A missing record, or a failed
- * read, shows nothing rather than an error.
+ * read, leaves out the contact tiles and shows the fact's fallback, if any.
  */
 
-/** A record a page's contact block names. */
-export interface ContactRef {
+/** A record a page's contact block or fact names. */
+export interface RecordRef {
   collection: string
   record: string
 }
@@ -55,8 +55,8 @@ const CollectionRecords = z.object({
 
 type CollectionRecords = z.infer<typeof CollectionRecords>
 
-/** The records a page's contact blocks read, by collection, then record key. */
-export type ContactRecords = Record<
+/** The records a page's contact blocks and facts read, by collection, then record key. */
+export type PageRecords = Record<
   string,
   {
     collection: CollectionRecords['collection']
@@ -64,13 +64,16 @@ export type ContactRecords = Record<
   }
 >
 
-/** Every record the page's `::contact` blocks name, once each. */
-export function contactRefs(tree: Root): ContactRef[] {
-  const found = new Map<string, ContactRef>()
+/** Every record the page's contact blocks and facts name, once each. */
+export function recordRefs(tree: Root): RecordRef[] {
+  const found = new Map<string, RecordRef>()
   const visit = (nodes: RootContent[]) => {
     for (const node of nodes) {
       if (node.type !== 'element') continue
-      if (node.tagName === 'contact-record') {
+      if (
+        node.tagName === 'contact-record' ||
+        node.tagName === 'collection-fact'
+      ) {
         const collection = String(node.properties.collection ?? '')
         const record = String(node.properties.record ?? '')
         if (collection && record)
@@ -114,12 +117,12 @@ const MAX_COLLECTIONS = 5
  * page shows. A record or collection that can't be read, or one past the
  * first MAX_COLLECTIONS, is left out.
  */
-export async function resolveContactRecords(
+export async function resolvePageRecords(
   base: string | null,
-  refs: ContactRef[],
+  refs: RecordRef[],
   fetchImpl: typeof fetch = fetch,
   landingToken?: string,
-): Promise<ContactRecords> {
+): Promise<PageRecords> {
   if (!base || refs.length === 0) return {}
   const keys = [...new Set(refs.map((ref) => ref.collection))].slice(
     0,
@@ -130,7 +133,7 @@ export async function resolveContactRecords(
       fetchCollectionRecords(base, key, fetchImpl, landingToken),
     ),
   )
-  const result: ContactRecords = {}
+  const result: PageRecords = {}
   keys.forEach((key, index) => {
     const body = read[index]
     if (!body) return
@@ -145,13 +148,13 @@ export async function resolveContactRecords(
   return result
 }
 
-const ContactRefs = z
+const RecordRefs = z
   .array(z.object({ collection: z.string().min(1), record: z.string().min(1) }))
   .max(50)
 
-/** Server function: `resolveContactRecords` against the configured api_v2. */
-export const getContactRecords = createServerFn()
-  .validator((refs: ContactRef[]) => ContactRefs.parse(refs))
+/** Server function: `resolvePageRecords` against the configured api_v2. */
+export const getPageRecords = createServerFn()
+  .validator((refs: RecordRef[]) => RecordRefs.parse(refs))
   .handler(({ data: refs }) =>
-    resolveContactRecords(apiV2Base(), refs, fetch, landingToken()),
+    resolvePageRecords(apiV2Base(), refs, fetch, landingToken()),
   )

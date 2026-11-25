@@ -10,7 +10,7 @@
 
 import { z } from "zod";
 import { EditVersion } from "./edit-concurrency";
-import type { FieldError } from "./page";
+import { PageId, Visibility, type FieldError } from "./page";
 import { err, ok, type Result } from "./result";
 
 const key = (max: number) =>
@@ -118,6 +118,22 @@ export const RecordEnvelope = z.object({
   record: EditorCollectionRecord,
 });
 export type RecordEnvelope = z.infer<typeof RecordEnvelope>;
+
+/**
+ * A page that shows a record, in a fact or a contact block, live or in its
+ * open revision: what the record's "used on" lists (#3590).
+ */
+export const RecordPage = z.object({
+  id: PageId,
+  title: z.string(),
+  url: z.string(),
+  visibility: Visibility,
+  service_id: PageId.nullable().describe(
+    "The categorised root page, or null to open the page by its own id.",
+  ),
+});
+/** A page that shows a record (see `RecordPage`). */
+export type RecordPage = z.infer<typeof RecordPage>;
 
 /** What a record write sends; `data` is checked against the field list. */
 export const RecordBody = z.strictObject({

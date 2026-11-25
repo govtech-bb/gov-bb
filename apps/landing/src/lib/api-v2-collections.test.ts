@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { processMarkdown } from '../utils/markdown/processor'
 import {
-  contactRefs,
+  recordRefs,
   fetchCollectionRecords,
-  resolveContactRecords,
+  resolvePageRecords,
 } from './api-v2-collections'
 import { apiV2Breaker } from './api-v2-reader'
 
@@ -59,7 +59,7 @@ afterEach(() => {
   apiV2Breaker.reset()
 })
 
-describe('contactRefs', () => {
+describe('recordRefs', () => {
   it('finds each record a page’s contact blocks name, once', async () => {
     const { hast } = await processMarkdown(
       [
@@ -70,8 +70,22 @@ describe('contactRefs', () => {
         ':::',
       ].join('\n\n'),
     )
-    expect(contactRefs(hast)).toEqual([
+    expect(recordRefs(hast)).toEqual([
       { collection: 'contacts', record: 'barbados-drug-service' },
+    ])
+  })
+
+  it('finds the records facts name too, leaving out one still being chosen', async () => {
+    const { hast } = await processMarkdown(
+      [
+        'Call :fact{collection="contacts" record="barbados-drug-service" field="phone"} or write to :fact{collection="offices" record="bridgetown" field="email"}.',
+        '::contact{collection="contacts" record="barbados-drug-service" fields="phone"}',
+        'Not yet :fact{collection="contacts"}.',
+      ].join('\n\n'),
+    )
+    expect(recordRefs(hast)).toEqual([
+      { collection: 'contacts', record: 'barbados-drug-service' },
+      { collection: 'offices', record: 'bridgetown' },
     ])
   })
 })
@@ -154,10 +168,10 @@ describe('fetchCollectionRecords', () => {
   )
 })
 
-describe('resolveContactRecords', () => {
+describe('resolvePageRecords', () => {
   it('passes landing’s token to each collection read', async () => {
     const fetchImpl = stubFetch(json(200, CONTACTS))
-    await resolveContactRecords(
+    await resolvePageRecords(
       BASE,
       [{ collection: 'contacts', record: 'barbados-drug-service' }],
       fetchImpl,
@@ -169,7 +183,7 @@ describe('resolveContactRecords', () => {
 
   it('reads at most five collections per call, however many are named', async () => {
     const fetchImpl = stubFetch(json(404, {}))
-    await resolveContactRecords(
+    await resolvePageRecords(
       BASE,
       Array.from({ length: 50 }, (_, i) => ({
         collection: `c${i}`,
@@ -182,7 +196,7 @@ describe('resolveContactRecords', () => {
   })
 
   it('keeps only the records the page names', async () => {
-    const records = await resolveContactRecords(
+    const records = await resolvePageRecords(
       BASE,
       [{ collection: 'contacts', record: 'barbados-drug-service' }],
       stubFetch(json(200, CONTACTS)),
@@ -196,20 +210,20 @@ describe('resolveContactRecords', () => {
   it('reads nothing when api_v2 is not configured or nothing is named', async () => {
     const fetchImpl = stubFetch(json(200, CONTACTS))
     expect(
-      await resolveContactRecords(
+      await resolvePageRecords(
         null,
         [{ collection: 'contacts', record: 'x' }],
         fetchImpl,
       ),
     ).toEqual({})
-    expect(await resolveContactRecords(BASE, [], fetchImpl)).toEqual({})
+    expect(await resolvePageRecords(BASE, [], fetchImpl)).toEqual({})
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
   it('leaves out a collection that can’t be read', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(
-      await resolveContactRecords(
+      await resolvePageRecords(
         BASE,
         [{ collection: 'contacts', record: 'barbados-drug-service' }],
         stubFetch(new Error('timeout')),
@@ -221,7 +235,7 @@ describe('resolveContactRecords', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     const rejecting = vi.fn(async () => json(400, { error: 'bad_request' }))
     expect(
-      await resolveContactRecords(
+      await resolvePageRecords(
         BASE,
         ['A', 'B', 'C', 'D', 'E'].map((collection) => ({
           collection,
@@ -243,7 +257,7 @@ describe('resolveContactRecords', () => {
       await fetchCollectionRecords(BASE, 'contacts', failing)
     const fetchImpl = stubFetch(json(200, CONTACTS))
     expect(
-      await resolveContactRecords(
+      await resolvePageRecords(
         BASE,
         [{ collection: 'contacts', record: 'barbados-drug-service' }],
         fetchImpl,

@@ -4,8 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import estate from '@api-v2-seed/estate.json'
 import { CONTACTS } from '@api-v2-seed/collections'
 import { STORMREADY_CONTACTS } from '@api-v2-seed/stormready-contacts'
-import { contactRefs, resolveContactRecords } from './api-v2-collections'
-import type { ContactRecords } from './api-v2-collections'
+import { recordRefs, resolvePageRecords } from './api-v2-collections'
+import type { PageRecords } from './api-v2-collections'
 import { MarkdownContent } from '../components/markdown'
 import { findPage } from '../content/registry'
 import type { ContentPage } from '../content/registry'
@@ -151,17 +151,14 @@ const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
 const NO_STATIC_PAGE: string[] = []
 
 /** The page's body and chrome as the catch-all route renders it. */
-function render(
-  page: ContentPage,
-  contactRecords: ContactRecords = {},
-): string {
+function render(page: ContentPage, pageRecords: PageRecords = {}): string {
   const formId = page.frontmatter.form_id
   return renderToStaticMarkup(
     <MarkdownContent
       hast={page.hast}
       frontmatter={page.frontmatter}
       availableForms={new Set(formId ? [formId] : [])}
-      contactRecords={contactRecords}
+      pageRecords={pageRecords}
     />,
   )
 }
@@ -224,8 +221,8 @@ describe('api_v2 render parity', () => {
         Object.assign(expected, { [field]: api.frontmatter[field] })
       }
       const readContacts = vi.fn(async () => Response.json(seededContacts))
-      const refs = contactRefs(api.hast)
-      const records = await resolveContactRecords(
+      const refs = recordRefs(api.hast)
+      const records = await resolvePageRecords(
         'http://api.example',
         refs,
         readContacts,
@@ -273,38 +270,46 @@ describe('api_v2 render parity', () => {
   )
 })
 
-it('shows a changed StormReady phone number without changing the page', async () => {
+it('shows a changed StormReady number in a contact block and a fact without changing the page', async () => {
   const seed = ESTATE.pages.find((page) => page.url === `/${stormReadyUrl}`)
   if (!seed) throw new Error('Missing StormReady seed page')
+  const body = served(seed)
+  const fact =
+    ':fact{collection="contacts" record="dem-emergency-line" field="phone"}'
   const result = await resolveApiV2Page(
     'http://api.example',
     seed.url,
-    async () => Response.json(served(seed)),
+    async () =>
+      Response.json({
+        ...body,
+        body_markdown: `${body.body_markdown}\n\n[Ring ${fact}][help].\n\n[help]: /help`,
+      }),
   )
   if (result.kind !== 'page') throw new Error('StormReady did not resolve')
   const page = result.page
-  const refs = contactRefs(page.hast)
-  const before = await resolveContactRecords(
+  const refs = recordRefs(page.hast)
+  const before = await resolvePageRecords(
     'http://api.example',
     refs,
     async () => Response.json(seededContacts),
   )
-  const after = await resolveContactRecords(
-    'http://api.example',
-    refs,
-    async () =>
-      Response.json({
-        ...seededContacts,
-        records: seededContacts.records.map((record) =>
-          record.record_key === 'dem-emergency-line'
-            ? { ...record, data: { ...record.data, phone: '246-438-0000' } }
-            : record,
-        ),
-      }),
+  const after = await resolvePageRecords('http://api.example', refs, async () =>
+    Response.json({
+      ...seededContacts,
+      records: seededContacts.records.map((record) =>
+        record.record_key === 'dem-emergency-line'
+          ? { ...record, data: { ...record.data, phone: '246-438-0000' } }
+          : record,
+      ),
+    }),
   )
-  expect(render(page, before)).toContain('href="tel:+12464387575"')
-  expect(render(page, after)).toContain('href="tel:+12464380000"')
-  expect(render(page, after)).not.toContain('246-438-7575')
+  const oldHtml = render(page, before)
+  const newHtml = render(page, after)
+  expect(oldHtml).toContain('href="tel:+12464387575"')
+  expect(oldHtml).toContain('>Ring 246-438-7575</a>')
+  expect(newHtml).toContain('href="tel:+12464380000"')
+  expect(newHtml).toContain('>Ring 246-438-0000</a>')
+  expect(newHtml).not.toContain('246-438-7575')
 })
 
 describe('"Last updated" date (#3105)', () => {

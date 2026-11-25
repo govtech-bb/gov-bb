@@ -95,6 +95,8 @@ export function phrasing(nodes: MarkdownNode[]): PhrasingContent[] {
     "link",
     "break",
     "html",
+    // A module's own inline content, such as a fact from a collection
+    "textDirective",
   ]);
 
   if (nodes.some((node) => !inline.has(node.type))) throw new Error("Expected inline page content");

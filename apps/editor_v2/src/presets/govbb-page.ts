@@ -5,6 +5,7 @@ import { pageBlocks } from "../pages/blocks";
 import { $isHighlightPart } from "../pages/blocks/highlights";
 import { PageContactModule } from "../pages/modules/contact";
 import { PageMutedModule } from "../pages/modules/muted";
+import { PageFactModule } from "../pages/modules/fact";
 import { PageTextModule } from "../pages/modules/text";
 import { PageListsModule } from "../pages/modules/lists";
 import { PageTablesModule } from "../pages/modules/tables";
@@ -15,6 +16,7 @@ export const govbbPageEditor = definePageEditor([
   HistoryModule(),
   ...pageBlocks,
   PageContactModule(),
+  PageFactModule(),
   // Legacy: before the text module, which would take muted text for ordinary paragraphs
   PageMutedModule(),
   PageTextModule(),

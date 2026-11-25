@@ -343,6 +343,7 @@ erDiagram
 | GET      | `/collections`                         | Employee; every data collection with its field list and record count   |
 | POST     | `/collections`                         | Admin or approver; create a collection and its field list              |
 | GET      | `/collections/:key/records/:recordKey` | Employee; coherent versioned `{ collection, record }` snapshot |
+| GET      | `/collections/:key/records/:recordKey/pages` | Employee; pages using the record live or in draft/submitted revisions, by title |
 | POST     | `/collections/:key/records/:recordKey` | Editor; add a record                                         |
 | PUT      | `/collections/:key/records/:recordKey` | Editor; replace data with record and collection versions              |
 | DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record with query `expected_version`                      |

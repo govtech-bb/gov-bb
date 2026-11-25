@@ -110,6 +110,14 @@ Landing reads the public collection at request time. A missing record or failed 
 
 The editor and landing share `@govtech-bb/govbbmarkd/contact-record`. This replaces #3185's original `block-kit` reuse decision; that package was retired in #3589.
 
+## Facts from a data collection
+
+```md
+Call :fact[the Barbados Drug Service]{collection="contacts" record="barbados-drug-service" field="phone"} for advice.
+```
+
+A fact is one value from a record in a data collection, such as a department's phone number, in a line of text. Change the record and every page that shows it changes, with no page edit. Use a fact in inline Markdown, except in an action's label. The text in its brackets is optional: it shows in place of the value if the record or field has gone, and without it nothing shows. Phone numbers, email addresses and websites are links, except inside link text. If a collection, record or field has surrounding spaces, edit that fact in Markdown source so the spaces are preserved.
+
 ## Validation and editing
 
 Unknown components, unsupported attributes, unsafe action URLs, invalid nesting and unclosed fences produce diagnostics with a code, line and column. Attributes are not arbitrary React props: authors cannot set classes, styles or event handlers through these directives.

@@ -22,6 +22,25 @@ const FIELDS = [
   { key: "phone", label: "Telephone", type: "text" },
 ] as const;
 
+const SERVICE_ID = "11111111-1111-4111-8111-111111111111";
+
+const PAGES = [
+  {
+    id: "22222222-2222-4222-8222-222222222222",
+    title: "Call us",
+    url: "/drug-licence/call-us",
+    visibility: "public",
+    service_id: SERVICE_ID,
+  },
+  {
+    id: "33333333-3333-4333-8333-333333333333",
+    title: "Terms and conditions",
+    url: "/terms-conditions",
+    visibility: "public",
+    service_id: null,
+  },
+];
+
 const COLLECTION = {
   key: "contacts",
   title: "Ministries and departments",
@@ -90,6 +109,12 @@ function contentApi() {
       return json({
         collection: COLLECTION,
         records: records.map(({ version: _version, ...record }) => record),
+      });
+
+    // Both pages show the Drug Service, none show the other records
+    if (path.endsWith("/pages"))
+      return json({
+        pages: path === "/collections/contacts/records/barbados-drug-service/pages" ? PAGES : [],
       });
 
     const recordKey = path.replace("/collections/contacts/records/", "");
@@ -442,6 +467,7 @@ test("Add record saves a new record to api_v2, leaving blank fields out", async 
   await press("Add record");
 
   expect(dialog()?.textContent).toContain("Add a record");
+  expect(dialog()?.textContent).not.toContain("Used on");
   await enter("Key", "barbados-revenue-authority");
   await enter("Name (optional)", "  Barbados Revenue Authority ");
   await submit();
@@ -960,4 +986,30 @@ test("a save whose answer is lost is confirmed automatically, without another pr
   expect(alerts.join(" ")).not.toContain("The record changed since you opened it.");
   expect(server.writes).toHaveLength(1);
   expect(document.body.textContent).toContain("Record saved");
+});
+
+test("a record's dialog lists the pages that show it, each opening in the editor", async () => {
+  const { ready } = renderCollection({ record: "barbados-drug-service" });
+
+  await ready;
+  await until(() => expect(dialog()?.querySelector("section a")?.textContent).toBe("Call us"));
+
+  expect(dialog()?.querySelector("section h3")?.textContent).toBe("Used on");
+  expect(
+    Array.from(dialog()!.querySelectorAll("section a"), (link) => [
+      link.textContent,
+      link.getAttribute("href"),
+    ]),
+  ).toEqual([
+    ["Call us", `/services/${SERVICE_ID}/${PAGES[0]!.id}`],
+    ["Terms and conditions", `/site-pages/${PAGES[1]!.id}`],
+  ]);
+  expect(dialog()?.textContent).toContain("/drug-licence/call-us");
+});
+
+test("a record no page shows says so", async () => {
+  const { ready } = renderCollection({ record: "nis" });
+
+  await ready;
+  await until(() => expect(dialog()?.textContent).toContain("No page shows this record yet."));
 });

@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
+import { recordReferences } from "@govtech-bb/govbbmarkd";
 import type { Employee, UserId } from "../modules/auth";
 import type { EditVersion } from "../modules/edit-concurrency";
 import {
@@ -18,10 +19,14 @@ import {
   type CollectionRejected,
   type NewCollection,
   type RecordData,
+  type RecordPage,
   type RecordRejected,
 } from "../modules/collection";
 import type { ContentStoreUnavailable } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
+
+/** A page whose body mentions some text, live or in its open revision, with those bodies. */
+export type PageMentioning = RecordPage & { bodies: readonly string[] };
 
 /** Collection storage. */
 export interface CollectionStore {
@@ -35,6 +40,13 @@ export interface CollectionStore {
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** Every collection, by key, with its record count. */
   collections(): Promise<Result<CollectionSummary[], ContentStoreUnavailable>>;
+  /**
+   * The pages whose body, live or in an open revision, mentions `text`:
+   * candidates for naming a record, which the caller confirms.
+   */
+  pagesMentioning(
+    text: string,
+  ): Promise<Result<PageMentioning[], ContentStoreUnavailable>>;
   /** One collection's definition, or null. */
   collection(
     key: string,
@@ -103,6 +115,35 @@ export class CollectionEditing {
   /** Every collection, with how many records each holds. */
   list(): Promise<Result<CollectionSummary[], ContentStoreUnavailable>> {
     return this.store.collections();
+  }
+
+  /**
+   * The pages that show a record in a fact or a contact block, live or in an
+   * open revision, by title: its "used on", whether or not the record exists.
+   */
+  async pages(
+    key: string,
+    recordKey: string,
+  ): Promise<Result<RecordPage[], ContentStoreUnavailable>> {
+    const found = await this.store.pagesMentioning(recordKey);
+    if (!found.ok) return found;
+    const names = (body: string) =>
+      recordReferences(body).some(
+        (reference) =>
+          reference.collection === key && reference.record === recordKey,
+      );
+    return ok(
+      found.value
+        .filter((page) => page.bodies.some(names))
+        .map(({ id, title, url, visibility, service_id }) => ({
+          id,
+          title,
+          url,
+          visibility,
+          service_id,
+        }))
+        .sort((a, b) => a.title.localeCompare(b.title)),
+    );
   }
 
   /** A collection and its records, or null when there is no such collection. */

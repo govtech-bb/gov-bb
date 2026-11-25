@@ -83,6 +83,15 @@ export type PageMarkdownComponent =
       /** Empty while the block's record is still to be chosen. */
       readonly record: string;
       readonly fields: readonly string[];
+    }
+  | {
+      readonly kind: "fact";
+      readonly collection: string;
+      /** Empty, as the field is, while the fact is still to be chosen. */
+      readonly record: string;
+      readonly field: string;
+      /** Shown in place of the value when the record or field has gone; empty shows nothing. */
+      readonly fallback: string;
     };
 
 /** Stable diagnostic categories for source editors and publishing adapters. */
@@ -200,7 +209,9 @@ export function parsePageComponent(node: Directives): PageComponentResult {
           ? ["row-headers", "numeric-columns"]
           : node.name === "contact"
             ? ["collection", "record", "fields"]
-            : [];
+            : node.name === "fact"
+              ? ["collection", "record", "field"]
+              : [];
   if (Object.keys(attributes).some((key) => !allowed.includes(key)))
     return failure(
       node,
@@ -304,6 +315,32 @@ export function parsePageComponent(node: Directives): PageComponentResult {
         collection,
         record: attributes.record?.trim() ?? "",
         fields,
+      },
+    };
+  }
+
+  // One fact from a collection's record, in a line of text: the host reads its value when it renders
+  if (node.name === "fact" && node.type === "textDirective") {
+    const fallback = node.children.map((child) =>
+      child.type === "text" ? child.value : null,
+    );
+    if (fallback.includes(null))
+      return failure(
+        node,
+        "invalid-content",
+        "A fact's fallback, in its brackets, is plain text.",
+      );
+    const collection = attributes.collection?.trim();
+    if (!collection)
+      return failure(node, "invalid-attributes", "A fact needs a collection.");
+    return {
+      ok: true,
+      value: {
+        kind: "fact",
+        collection,
+        record: attributes.record?.trim() ?? "",
+        field: attributes.field?.trim() ?? "",
+        fallback: fallback.join(""),
       },
     };
   }
