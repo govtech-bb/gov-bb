@@ -27,6 +27,7 @@ No event goes to only one of them. What differs is the shape each one stores:
 | Page       | The path, never the query string                                             | The path, never the query string                                                         |
 | Journey ID | Never sent                                                                   | `journey_id`, one per browser tab, joined across landing, forms and the EzPay round trip |
 | Page view  | A Umami page view                                                            | An event named `pageview`                                                                |
+| Referrer   | The entry page keeps Umami's own; later pages send the previous path         | `referrer` on a tab's first page view: host name only, our own sites left out            |
 
 **Packed names in Umami.** When the event data has a `form`, Umami stores the
 name as `<form>:<event>`, for example

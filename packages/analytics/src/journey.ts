@@ -24,6 +24,7 @@ interface QueuedEvent {
   event: string;
   props?: JourneyProps;
   path: string;
+  referrer?: string;
   page_load_id: string;
   journey_id: string;
   client_ts: string;
@@ -47,8 +48,16 @@ const JOURNEY_ID_PARAM = "jid";
 // let a hand-edited ?jid= through, and the API would drop every event carrying it.
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// The API's referrer check: a lower-case host name with at least one dot.
+const HOSTNAME = /^(?=.{1,253}$)[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 
-let config: { url: string; app: JourneyApp; pageLoadId: string } | null = null;
+let config: {
+  url: string;
+  app: JourneyApp;
+  pageLoadId: string;
+  // Sent once, on this page load's first page view, then cleared.
+  referrer?: string;
+} | null = null;
 let queue: QueuedEvent[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -61,7 +70,17 @@ export function configureJourney(options: {
   const url = options.url?.trim();
   if (!url || typeof crypto?.randomUUID !== "function") return;
   if (config) return;
-  config = { url, app: options.app, pageLoadId: crypto.randomUUID() };
+  config = {
+    url,
+    app: options.app,
+    pageLoadId: crypto.randomUUID(),
+    // Only where this tab's journey starts: later page loads in the tab (forms
+    // after landing's Start link, the EzPay return, a reload) would report our
+    // own sites or EzPay.
+    referrer: startsJourney()
+      ? referrerHost(document.referrer, window.location.hostname)
+      : undefined,
+  };
   // pagehide covers closing the tab; visibilitychange covers switching away on
   // mobile, where pagehide may never fire.
   window.addEventListener("pagehide", flushJourney);
@@ -81,6 +100,8 @@ export function sendJourney(
 ): void {
   if (!config) return;
   if (!EVENT_NAME.test(event)) return;
+  const referrer = event === "pageview" ? config.referrer : undefined;
+  if (referrer) config.referrer = undefined;
   queue.push({
     id: crypto.randomUUID(),
     app: config.app,
@@ -88,6 +109,7 @@ export function sendJourney(
     props: cleanProps(props),
     // A pathname only: the query string and fragment can carry tokens.
     path: window.location.pathname.slice(0, MAX_PATH),
+    ...(referrer && { referrer }),
     page_load_id: config.pageLoadId,
     journey_id: tabJourneyId(config.pageLoadId),
     client_ts: new Date().toISOString(),
@@ -118,6 +140,46 @@ function tabJourneyId(pageLoadId: string): string {
   } catch {
     return pageLoadId;
   }
+}
+
+// True when this tab has no journey ID yet, so this page load starts the
+// journey. With storage blocked there is no way to tell, so assume it does.
+function startsJourney(): boolean {
+  // Forms is configured before adoptJourneyId() reads landing's ?jid=, on an
+  // origin whose sessionStorage is still empty: a valid jid says the journey
+  // began on landing.
+  const jid = new URLSearchParams(window.location.search).get(JOURNEY_ID_PARAM);
+  if (jid && UUID.test(jid)) return false;
+  try {
+    const stored = sessionStorage.getItem(JOURNEY_ID_KEY);
+    return !(stored && UUID.test(stored));
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The site a visitor came from, as a host name only (`google.com`): never the
+ * path or query, which can carry tokens, tracking ids or search terms.
+ * Undefined for no referrer, a non-web referrer, or our own sites, where the
+ * last three labels match (`alpha.gov.bb` covers landing, forms and their
+ * sandbox and staging hosts). `www.` is dropped so both forms count as one.
+ */
+export function referrerHost(
+  referrer: string,
+  ownHost: string,
+): string | undefined {
+  let host: string;
+  try {
+    const url = new URL(referrer);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return undefined;
+    host = url.hostname.replace(/^www\./, "");
+  } catch {
+    return undefined;
+  }
+  const site = (h: string) => h.split(".").slice(-3).join(".");
+  if (site(host) === site(ownHost.toLowerCase())) return undefined;
+  return HOSTNAME.test(host) ? host : undefined;
 }
 
 /**

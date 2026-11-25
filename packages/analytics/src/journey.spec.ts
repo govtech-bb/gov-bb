@@ -4,6 +4,7 @@ import {
   flushJourney,
   getJourneyId,
   journeyEnabled,
+  referrerHost,
   resetJourneyForTests,
   sendJourney,
   withJourneyId,
@@ -395,5 +396,144 @@ describe("journey events", () => {
         expect(() => adoptJourneyId()).not.toThrow();
       });
     });
+  });
+});
+
+describe("referrerHost", () => {
+  it.each([
+    ["https://www.google.com/search?q=birth+certificate", "google.com"],
+    [
+      "https://l.facebook.com/l.php?u=https%3A%2F%2Falpha.gov.bb&h=AT0x",
+      "l.facebook.com",
+    ],
+    ["https://www.facebook.com/", "facebook.com"],
+    ["https://WWW.Barbados.GOV.bb/ministries", "barbados.gov.bb"],
+    ["http://example.org/page", "example.org"],
+  ])("keeps only the host name of %s", (referrer, host) => {
+    expect(referrerHost(referrer, "alpha.gov.bb")).toBe(host);
+  });
+
+  it.each([
+    ["no referrer", "", "alpha.gov.bb"],
+    [
+      "landing into forms",
+      "https://alpha.gov.bb/services/x",
+      "forms.alpha.gov.bb",
+    ],
+    [
+      "forms back to landing",
+      "https://forms.alpha.gov.bb/forms/x",
+      "alpha.gov.bb",
+    ],
+    [
+      "sandbox landing into sandbox forms",
+      "https://landing.sandbox.alpha.gov.bb/",
+      "forms.sandbox.alpha.gov.bb",
+    ],
+    [
+      "a non-web referrer",
+      "android-app://com.google.android.gm/",
+      "alpha.gov.bb",
+    ],
+    ["a host with no dot", "http://intranet/", "alpha.gov.bb"],
+    ["not a URL", "not a url", "alpha.gov.bb"],
+  ])("is undefined for %s", (_label, referrer, own) => {
+    expect(referrerHost(referrer, own)).toBeUndefined();
+  });
+});
+
+describe("referrer on journey events", () => {
+  let beacon: ReturnType<typeof vi.fn>;
+  const setReferrer = (value: string) =>
+    Object.defineProperty(document, "referrer", { value, configurable: true });
+  const sent = (): Record<string, unknown>[] => {
+    flushJourney();
+    return sentBodies(beacon).flat() as Record<string, unknown>[];
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    beacon = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, "sendBeacon", {
+      value: beacon,
+      configurable: true,
+      writable: true,
+    });
+    setReferrer("https://www.google.com/search?q=passport");
+  });
+
+  afterEach(() => {
+    resetJourneyForTests();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+    setReferrer("");
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("goes on the first page view only, as a host name", () => {
+    configureJourney({ url: URL_, app: "landing" });
+    sendJourney("start-click");
+    sendJourney("pageview");
+    sendJourney("pageview");
+    const [click, first, second] = sent();
+    expect(click).not.toHaveProperty("referrer");
+    expect(first).toMatchObject({ event: "pageview", referrer: "google.com" });
+    expect(second).not.toHaveProperty("referrer");
+    expect(JSON.stringify(beacon.mock.calls)).not.toContain("passport");
+  });
+
+  it("is left out when the tab's journey started earlier (a reload, the EzPay return)", () => {
+    sessionStorage.setItem(
+      "govbb_journey_id",
+      "6f1c2a4e-8b3d-4c5e-9f60-1a2b3c4d5e6f",
+    );
+    setReferrer("https://ezpay.example/checkout");
+    configureJourney({ url: URL_, app: "forms" });
+    sendJourney("pageview");
+    expect(sent()[0]).not.toHaveProperty("referrer");
+  });
+
+  it("is left out on forms after landing's Start link, whatever the hosts", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/forms/x?jid=6f1c2a4e-8b3d-4c5e-9f60-1a2b3c4d5e6f",
+    );
+    setReferrer("https://my-branch.d3kbl8o0ovutw4.amplifyapp.com/services/x");
+    configureJourney({ url: URL_, app: "forms" });
+    adoptJourneyId();
+    sendJourney("pageview");
+    expect(sent()[0]).not.toHaveProperty("referrer");
+  });
+
+  it("is still sent when the address carries a jid that isn't a journey ID", () => {
+    window.history.replaceState(null, "", "/forms/x?jid=nope");
+    setReferrer("https://www.google.com/search?q=passport");
+    configureJourney({ url: URL_, app: "forms" });
+    adoptJourneyId();
+    sendJourney("pageview");
+    expect(sent()[0]).toMatchObject({ referrer: "google.com" });
+  });
+
+  it("is still sent when storage is blocked", () => {
+    const blocked = () => {
+      throw new DOMException("blocked", "SecurityError");
+    };
+    vi.stubGlobal("sessionStorage", {
+      getItem: blocked,
+      setItem: blocked,
+      clear: () => undefined,
+    });
+    configureJourney({ url: URL_, app: "landing" });
+    sendJourney("pageview");
+    expect(sent()[0]).toMatchObject({ referrer: "google.com" });
+  });
+
+  it("is left out when there is no referrer", () => {
+    setReferrer("");
+    configureJourney({ url: URL_, app: "landing" });
+    sendJourney("pageview");
+    expect(sent()[0]).not.toHaveProperty("referrer");
   });
 });
