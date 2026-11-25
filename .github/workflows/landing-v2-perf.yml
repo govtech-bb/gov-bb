@@ -6,12 +6,20 @@ name: Landing v2 perf
 # and by hand. A failed budget turns this run red; it doesn't hold back a deploy.
 # Budgets and URLs: apps/landing/perf/.
 #
-# The gate job skips the run, with a notice, and stays green, when the Deploy
-# Sandbox run failed or deployed neither landing nor api_v2, or when sandbox
-# landing does not read api_v2 at all (only `static` or no x-content-source,
-# as before #3311). A manual run skips only for the last reason. `api_v2-stale`
-# and `static-fallback` mean landing reads api_v2 but api_v2 failed, so the
-# run goes ahead and measures it.
+# The gate job skips the run, with a notice, and stays green, when:
+#  - the Deploy Sandbox run failed or deployed neither landing nor api_v2;
+#  - a newer Deploy Sandbox run on main is queued or in progress (its
+#    completion re-runs this check; if that run deploys neither landing nor
+#    api_v2, the check waits for the next one that does);
+#  - a sampled page answers `x-content-source: static` and none reads api_v2
+#    (as before #3311).
+# A manual run skips only for the last reason. Every other answer runs the
+# check: `api_v2`, `api_v2-stale` and `static-fallback` mean landing reads
+# api_v2 (the last two: api_v2 failed). No header, a 5xx, a timeout, an
+# unreachable landing, or a catalog with no public pages also run it, with a
+# warning, so an outage goes red. Only a failed catalog fetch fails the gate.
+# The sample leaves out landing's feature routes (`src/routes/**/-meta.ts`),
+# which never send x-content-source.
 #
 # Static baseline: staging serves static content until the staging switch
 # (#3227), so until then STAGING_URL makes each run compare sandbox with
@@ -45,6 +53,11 @@ jobs:
     outputs:
       run: ${{ steps.gate.outputs.run }}
     steps:
+      # Only the feature-route list (`-meta.ts` files) is read; nothing runs.
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: apps/landing/src/routes
       - id: gate
         env:
           GH_TOKEN: ${{ github.token }}
@@ -57,6 +70,11 @@ jobs:
           skip() {
             echo "::notice::Skipped: $1"
             echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          run_with_warning() {
+            echo "::warning::Running anyway: $1"
+            echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           }
 
@@ -75,39 +93,66 @@ jobs:
             if [ "$deployed" = 0 ]; then
               skip "this Deploy Sandbox run deployed neither landing nor api_v2"
             fi
+            newer=$(gh api "repos/$REPO/actions/workflows/deploy-sandbox.yml/runs?branch=main&per_page=20" \
+              --jq "[.workflow_runs[] | select(.id > $DEPLOY_RUN_ID and .status != \"completed\")] | length")
+            if [ "$newer" != 0 ]; then
+              skip "a newer Deploy Sandbox run is queued or in progress; its completion re-runs this check"
+            fi
           fi
 
-          # Ask landing for up to 5 public catalog pages, unredirected and
-          # past any cache: one that landing reads from api_v2 is enough,
-          # even if api_v2 failed for it.
-          pages=$(curl -fsS --max-time 20 "$API_V2_URL/catalog" \
-            | jq -r '[.pages[] | select(.visibility == "public") | .url][:5][]') || {
-            echo "::error::Could not list public pages from $API_V2_URL/catalog"
+          # Up to 5 public catalog pages that aren't feature routes, asked for
+          # unredirected and past any cache.
+          features=$(cd apps/landing/src/routes && find . -name -meta.ts \
+            | sed 's#^\.##; s#/-meta\.ts$##' | jq -R . | jq -sc .)
+          catalog=$(curl -fsS --max-time 20 "$API_V2_URL/catalog") || {
+            echo "::error::Could not fetch $API_V2_URL/catalog"
+            exit 1
+          }
+          pages=$(jq -r --argjson features "$features" '[.pages[]?
+            | select(.visibility == "public" and (.url | IN($features[]) | not))
+            | .url][:5][]' <<< "$catalog") || {
+            echo "::error::Could not read public pages from $API_V2_URL/catalog"
             exit 1
           }
           if [ -z "$pages" ]; then
-            echo "::error::$API_V2_URL/catalog lists no public pages"
-            exit 1
+            run_with_warning "$API_V2_URL/catalog lists no public pages to sample"
           fi
-          answered=false
+
+          static=false
+          problems=()
           for page in $pages; do
-            # A timeout on one page moves on to the next.
+            rc=0
             headers=$(curl -sS --max-time 20 -o /dev/null -D - \
-              "$PREVIEW_URL$page?perf-gate=$GITHUB_RUN_ID-$RANDOM") || continue
-            answered=true
-            source=$(printf '%s' "$headers" | tr -d '\r' \
-              | awk 'tolower($1) == "x-content-source:" { print $2 }')
-            echo "$page: x-content-source ${source:-(none)}"
-            if [[ "$source" =~ ^(api_v2|api_v2-stale|static-fallback)$ ]]; then
-              echo "run=true" >> "$GITHUB_OUTPUT"
-              exit 0
+              "$PREVIEW_URL$page?perf-gate=$GITHUB_RUN_ID-$RANDOM") || rc=$?
+            if [ "$rc" = 28 ]; then
+              problems+=("$page timed out")
+              continue
+            elif [ "$rc" != 0 ]; then
+              problems+=("$page unreachable (curl exit $rc)")
+              continue
+            fi
+            headers=$(printf '%s' "$headers" | tr -d '\r')
+            status=$(head -n1 <<< "$headers" | awk '{ print $2 }')
+            source=$(awk 'tolower($1) == "x-content-source:" { print $2 }' <<< "$headers")
+            echo "$page: HTTP $status, x-content-source ${source:-(none)}"
+            case "$source" in
+              api_v2 | api_v2-stale | static-fallback)
+                echo "run=true" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+            esac
+            if [[ "$status" == 5* ]]; then
+              problems+=("$page answered HTTP $status")
+            elif [ "$source" = static ]; then
+              static=true
+            else
+              problems+=("$page answered HTTP $status with no x-content-source")
             fi
           done
-          if [ "$answered" = false ]; then
-            echo "::error::$PREVIEW_URL answered none of the catalog pages"
-            exit 1
+          if [ "$static" = true ]; then
+            skip "sandbox landing serves static content, not api_v2 yet (#3311)"
           fi
-          skip "sandbox landing serves static content, not api_v2 yet (#3311)"
+          run_with_warning "no sampled page answered static or api_v2: $(IFS=';'; echo "${problems[*]}")"
 
   ttfb:
     name: Landing TTFB (api_v2)
