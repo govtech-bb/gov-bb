@@ -17,14 +17,14 @@ promotion (the #3536 lesson from Journey 3).
 ## Required environment
 
 The run step sets these; the two tokens and the CaMS key come from the
-`staging-e2e` GitHub Environment (deployable from `main` only).
+`staging-e2e` GitHub Environment (deployable from `staging` and `main` only).
 
 | Var | Value / source | Notes |
 | --- | --- | --- |
 | `SMOKE_BASE_URL` | `https://forms.staging.alpha.gov.bb` | Fixed staging forms host |
 | `SMOKE_LANDING_URL` | `https://staging.alpha.gov.bb` | Fixed staging landing host |
 | `PREVIEW_TOKEN` | `secrets.RECIPE_PREVIEW_TOKEN` | Opens the non-public test form (`?preview=`); must match **staging's** recipe-preview token |
-| `SMOKE_SUBMISSION_TOKEN` | `secrets.SMOKE_SUBMISSION_TOKEN` | Marks the submit as a smoke submission (ADR 0087); must match staging's API token |
+| `SMOKE_SUBMISSION_TOKEN` | `secrets.SMOKE_SUBMISSION_TOKEN_STAGING` | Marks the submit as a smoke submission (ADR 0087); the staging token (#3324) — must match staging's API `SMOKE_SUBMISSION_TOKEN`, or the API ignores the header and the run submits for real (not a smoke test) |
 | `E2E_CAMS_BASE_URL` | `https://cases.staging.alpha.gov.bb` | Non-prod CaMS base (confirm the real host when provisioning) |
 | `E2E_CAMS_API_KEY` | `secrets.E2E_CAMS_API_KEY` | CaMS `x-api-key` for the `E2E_` test programme; empty ⇒ the job soft-skips |
 
@@ -43,16 +43,20 @@ All these steps are per-environment and **staging-scoped** — none ship to prod
 
 0. **Create the `staging-e2e` environment first.** The CI job names it; if it
    doesn't exist, GitHub creates it on first run **without** protection rules.
-   Create it up front with a **`main`-only deployment branch policy** (and no
-   required reviewers), matching `sandbox-e2e`, before putting any secret in it —
-   otherwise the "deployable from `main` only" guarantee below is not yet true.
+   Create it up front, before putting any secret in it, with a deployment branch
+   policy allowing **`staging`** (promoted runs — Deploy Staging runs on
+   `staging`) and **`main`** (manual runs from the Actions tab), and no required
+   reviewers. A `main`-only policy like `sandbox-e2e`'s would make GitHub refuse
+   every promoted run and turn the staging deploy red once the job can start.
 1. **CaMS machine contract + key (case-management#812).** CaMS exposes the read
    (`GET /api/cases/{code}`) and `removeTestCase` (`DELETE /api/cases/{code}`)
    endpoints over `x-api-key`, fenced to `isTest` programmes, and issues a
    non-prod E2E key. Register `E2E_J4_CASE_CHECK` as an `isTest` programme.
-2. **`staging-e2e` secrets.** Set `E2E_CAMS_API_KEY` (the key from step 1), and
-   ensure `RECIPE_PREVIEW_TOKEN` and `SMOKE_SUBMISSION_TOKEN` resolve to
-   staging's values, on the `staging-e2e` GitHub Environment.
+2. **`staging-e2e` secrets.** Set `E2E_CAMS_API_KEY` (the key from step 1) on the
+   `staging-e2e` GitHub Environment. The job already reads
+   `SMOKE_SUBMISSION_TOKEN_STAGING` (the existing staging smoke token, shared with
+   `smoke-test-forms`) and `RECIPE_PREVIEW_TOKEN`, so no env-level override is
+   needed — just confirm both resolve to staging's values.
 3. **`MDA_WEBHOOK_DESTINATIONS` entry.** Add an `E2E` key to staging's
    `MDA_WEBHOOK_DESTINATIONS` secret, pointing `url` at the non-prod CaMS
    `POST /api/cases` and `secret` at the forms intake key (see

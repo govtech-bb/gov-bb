@@ -893,8 +893,16 @@ jobs:
   # matching Journey 5's pattern. Full pointer: docs/e2e-j4-case-management.md.
   journey-case-management:
     name: Journey 4 (submission → case management)
-    needs: [deploy-api, amplify-forms, amplify-landing]
-    if: ${{ github.event_name == 'push' && always() && !failure() && !cancelled() }}
+    # Deploy Staging runs only on workflow_dispatch (promoted from sandbox on
+    # `staging`, or manual from the Actions tab) — never `push` — so gate on the
+    # deploy's success, exactly like smoke-test-forms / journey-5-payments. A
+    # `github.event_name == 'push'` guard would make this never run.
+    needs: [setup, deploy-api, amplify-forms]
+    if: |
+      always() &&
+      needs.setup.result == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     # E2E_CAMS_API_KEY lives in this GitHub Environment, visible only to a job
     # that declares it. This job assumes no AWS role, so the environment adds no
@@ -937,7 +945,10 @@ jobs:
           SMOKE_BASE_URL: https://forms.staging.alpha.gov.bb
           SMOKE_LANDING_URL: https://staging.alpha.gov.bb
           PREVIEW_TOKEN: ${{ secrets.RECIPE_PREVIEW_TOKEN }}
-          SMOKE_SUBMISSION_TOKEN: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
+          # The staging smoke token (shared with smoke-test-forms) — it must match
+          # staging's API SMOKE_SUBMISSION_TOKEN, else the API ignores the header
+          # and the run submits for real instead of as a smoke test (#3324).
+          SMOKE_SUBMISSION_TOKEN: ${{ secrets.SMOKE_SUBMISSION_TOKEN_STAGING }}
           E2E_CAMS_BASE_URL: https://cases.staging.alpha.gov.bb
           E2E_CAMS_API_KEY: ${{ secrets.E2E_CAMS_API_KEY }}
         run: |

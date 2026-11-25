@@ -119,28 +119,49 @@ test.describe("Journey 4 — a submission reaches case management and back", () 
       .check();
 
     // ─── Submit + capture the reference code ──────────────────────────────────
-    const response = await submitAndConfirm(page, { heading: /submitted/i });
-    const body = await response.json();
-    const referenceCode: string | undefined =
-      body?.data?.referenceCode ?? body?.referenceCode;
-    expect(
-      referenceCode,
-      "submission response should include a referenceCode",
-    ).toBeTruthy();
-    const code = referenceCode as string;
+    // Capture the reference from the POST /submissions response the moment it
+    // returns — BEFORE submitAndConfirm's confirmation-page check. The webhook is
+    // queued the instant that POST succeeds, so if the page check then fails CaMS
+    // already has a case; holding the code here lets the cleanup below remove it,
+    // meeting the #3861 AC "removeTestCase cleans up every run".
+    let codeFromPost: Promise<string | undefined> | undefined;
+    page.on("response", (res) => {
+      if (
+        res.request().method() === "POST" &&
+        res.url().includes("/submissions") &&
+        res.ok()
+      ) {
+        codeFromPost = res
+          .json()
+          .then((b) => b?.data?.referenceCode ?? b?.referenceCode)
+          .catch(() => undefined);
+      }
+    });
 
     let bodyError: unknown;
     try {
+      // referenceLabel asserts the code shown on the confirmation page is the one
+      // the API returned (and CaMS receives) — the #3861 "reference match" AC.
+      await submitAndConfirm(page, {
+        heading: /submitted/i,
+        referenceLabel: "Submission ID",
+      });
+      const code = await codeFromPost;
+      expect(
+        code,
+        "submission response should include a referenceCode",
+      ).toBeTruthy();
+
       // ─── Follow the submission into CaMS (async over SQS) ───────────────────
       // Poll until the case code shows up (null while the webhook is in flight).
       await expect
         .poll(
-          async () => (await getCaseByCode(camsBase, camsApiKey, code))?.code,
+          async () => (await getCaseByCode(camsBase, camsApiKey, code!))?.code,
           { timeout: CASE_TIMEOUT, intervals: [POLL_INTERVAL] },
         )
         .toBe(code);
 
-      const found = await getCaseByCode(camsBase, camsApiKey, code);
+      const found = await getCaseByCode(camsBase, camsApiKey, code!);
       expect(
         found,
         "case should exist in CaMS after the webhook",
@@ -156,12 +177,17 @@ test.describe("Journey 4 — a submission reaches case management and back", () 
       bodyError = err;
     }
 
-    // Always attempt to remove the test case so CaMS is left with no residue.
+    // Remove the case the webhook created — even if the body above threw AFTER the
+    // POST succeeded. A null code means nothing was ever submitted (the submit
+    // itself failed), so there is no case to remove.
+    const code = await codeFromPost;
     let cleanupError: unknown;
-    try {
-      await removeTestCase(camsBase, camsApiKey, code);
-    } catch (err) {
-      cleanupError = err;
+    if (code) {
+      try {
+        await removeTestCase(camsBase, camsApiKey, code);
+      } catch (err) {
+        cleanupError = err;
+      }
     }
 
     // Surface the original failure first — it's the most informative. But a
