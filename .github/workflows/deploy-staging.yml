@@ -768,6 +768,44 @@ jobs:
     secrets:
       smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN_STAGING }}
 
+  # Preview token (#3781): the same check as deploy-sandbox.yml's
+  # preview-token job, against staging. RECIPE_PREVIEW_TOKEN_STAGING must equal
+  # staging's api v1 RECIPE_PREVIEW_TOKEN, api_v2 PREVIEW_SECRET and landing
+  # PREVIEW_SECRET. Unset, the check fails closed. Landing is checked only once
+  # it reads api_v2 (#3227). ssr-smoke is listed for the same reason as in
+  # smoke-test-forms: when it fails, amplify-landing is skipped, not failed.
+  # Steps and checks: scripts/check-preview-token.ts.
+  preview-token:
+    name: Preview token matches (api v1, api_v2, landing)
+    needs: [setup, deploy-api, ssr-smoke, amplify-landing, deploy-api-v2]
+    if: |
+      always() &&
+      needs.setup.result == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Check the preview token
+        env:
+          PREVIEW_TOKEN: ${{ secrets.RECIPE_PREVIEW_TOKEN_STAGING }}
+          API_V1_URL: https://api.staging.alpha.gov.bb
+          API_V2_URL: ${{ env.API_V2_URL }}
+          LANDING_URL: ${{ env.AMPLIFY_LANDING_URL }}
+        run: |
+          echo "::add-mask::$PREVIEW_TOKEN"
+          pnpm tsx scripts/check-preview-token.ts
+
   # Journey 5 (#3012): pay for a certificate through the EZ Pay test host on
   # staging and check the confirmation (and, once the test inbox exists, the
   # confirmation email). Runs after the API + forms deploys — and on every run,
@@ -880,6 +918,7 @@ jobs:
         amplify-editor-v2,
         smoke-test-forms,
         journey-5-payments,
+        preview-token,
       ]
     if: always()
     runs-on: ubuntu-latest
@@ -888,6 +927,7 @@ jobs:
         env:
           # Via env, not inline ${{ }} in the script (zizmor template-injection).
           SMOKE_RESULT: ${{ needs.smoke-test-forms.result }}
+          PREVIEW_TOKEN_RESULT: ${{ needs.preview-token.result }}
         run: |
           row() {
             local label="$1" result="$2"
@@ -916,6 +956,7 @@ jobs:
             row "Amplify editor_v2"    "${{ needs.amplify-editor-v2.result }}"
             row "Forms smoke (J1)"     "$SMOKE_RESULT"
             row "Journey 5 (EZ Pay)"   "${{ needs.journey-5-payments.result }}"
+            row "Preview token check"  "$PREVIEW_TOKEN_RESULT"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"
