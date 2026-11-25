@@ -12,12 +12,17 @@ name: Landing v2 Smoke
 #   is under maintenance, form_disabled or closed shows its notice, no Start
 #   link, and a 404 `/start` step.
 #
-# The gate job skips the smoke with a notice, and stays green, when the
-# Deploy Sandbox run failed or deployed neither landing nor api_v2, or when
-# sandbox landing does not read api_v2 at all (only `static` or no
-# x-content-source, as before #3311). A manual run skips only for the last
-# reason. `api_v2-stale` and `static-fallback` mean landing reads api_v2 but
-# api_v2 failed, so the smoke runs and reports it.
+# The gate job skips the smoke with a notice, and stays green, when:
+# - the Deploy Sandbox run failed or deployed neither landing nor api_v2;
+# - a newer Deploy Sandbox run on main is queued or in progress. Its
+#   completion runs the check again. Caveat: if that newer run deploys
+#   neither landing nor api_v2, the check waits for the next one that does;
+# - a sampled page answers `x-content-source: static` and none answers
+#   from api_v2, so landing doesn't read api_v2 yet (as before #3311).
+# A manual run skips only for the last reason. Every other answer runs the
+# smoke: `api_v2-stale` and `static-fallback` mean api_v2 failed, and no
+# header, a 5xx, a timeout or an empty catalog mean landing or api_v2 is
+# broken (with a warning), so the smoke goes red on a real outage.
 # Scripts: apps/landing/e2e/smoke.
 
 on:
@@ -74,6 +79,11 @@ jobs:
             if [ "$CONCLUSION" != "success" ]; then
               skip "Deploy Sandbox run $RUN_ID concluded $CONCLUSION"
             fi
+            NEWER=$(gh api "repos/$REPO/actions/workflows/deploy-sandbox.yml/runs?branch=main&per_page=20" \
+              --jq "[.workflow_runs[] | select(.id > $RUN_ID and .status != \"completed\")] | length")
+            if [ "$NEWER" != "0" ]; then
+              skip "a newer Deploy Sandbox run on main is queued or in progress; its completion runs this check"
+            fi
             # A reusable-workflow job is named "Deploy api_v2 / <its job>".
             DEPLOYED=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" \
               --jq '.jobs[] | select(.conclusion == "success")
@@ -85,23 +95,48 @@ jobs:
             echo "$DEPLOYED"
           fi
 
-          # Up to 5 public api_v2 pages; one that landing reads from api_v2
-          # is enough, even if api_v2 failed for it (the smoke reports that).
+          # Up to 10 public api_v2 pages, so the few feature routes in the
+          # catalog (no x-content-source, #3759) can't fill the sample.
           PAGES=$(curl -fsS --max-time 30 "$SMOKE_API_V2_URL/catalog" \
-            | jq -r '[.pages[] | select(.visibility == "public") | .url][:5][]') || {
+            | jq -r '[.pages[] | select(.visibility == "public") | .url][:10][]') || {
             echo "::error::Could not list public pages from $SMOKE_API_V2_URL/catalog."
             exit 1
           }
+          run_smoke() {
+            echo "::warning::Running the smoke: $1"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ -z "$PAGES" ]; then
+            run_smoke "the catalog lists no public pages"
+          fi
+          STATIC=false
+          OTHER=()
+          HEADERS=$(mktemp)
           for path in $PAGES; do
-            SOURCE=$(curl -sS -o /dev/null -D - --max-time 15 "$SMOKE_LANDING_URL$path?smoke-gate=$GITHUB_RUN_ID-$RANDOM" \
-              | tr -d '\r' | awk -F': *' 'tolower($1) == "x-content-source" { print $2 }' || true)
-            echo "$path answers x-content-source: ${SOURCE:-<none>}"
-            if [[ "$SOURCE" =~ ^(api_v2|api_v2-stale|static-fallback)$ ]]; then
-              echo "run=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
+            CODE=$(curl -sS -o /dev/null -D "$HEADERS" -w '%{http_code}' --max-time 15 \
+              "$SMOKE_LANDING_URL$path?smoke-gate=$GITHUB_RUN_ID-$RANDOM") || {
+              case $? in
+                28) CODE="timeout" ;;
+                6 | 7) CODE="unreachable" ;;
+                *) CODE="curl failed" ;;
+              esac
+            }
+            SOURCE=$(tr -d '\r' < "$HEADERS" | awk -F': *' 'tolower($1) == "x-content-source" { print $2 }')
+            echo "$path: $CODE, x-content-source: ${SOURCE:-<none>}"
+            case "$SOURCE" in
+              api_v2 | api_v2-stale | static-fallback)
+                echo "run=true" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+              static) STATIC=true ;;
+              *) OTHER+=("$path ($CODE, x-content-source: ${SOURCE:-none})") ;;
+            esac
           done
-          skip "sandbox landing serves static content, not api_v2 yet (#3311)"
+          if [ "$STATIC" = "true" ]; then
+            skip "sandbox landing serves static content, not api_v2 yet (#3311)"
+          fi
+          run_smoke "no sampled page answered static or api_v2: ${OTHER[*]}"
 
   smoke:
     name: Smoke (api_v2 source, Start links, visibility gating)
