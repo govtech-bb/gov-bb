@@ -11,12 +11,24 @@ name: Landing v2 Parity
 # Deploy Sandbox already waits for the sandbox Amplify build, so this
 # workflow does not.
 #
-# The gate job skips both checks with a notice, and stays green, when the
-# Deploy Sandbox run failed or deployed neither landing nor api_v2, or when
-# sandbox landing does not read api_v2 at all (only `static` or no
-# x-content-source, as before #3311). A manual run skips only for the last
-# reason. `api_v2-stale` and `static-fallback` mean landing reads api_v2 but
-# api_v2 failed, so the checks run and report it.
+# The gate job decides whether the checks run. On a Deploy Sandbox
+# completion it skips green, with a notice, when that run did not succeed,
+# when it deployed neither landing nor api_v2, or when a newer Deploy Sandbox
+# run on main is queued or in progress: the checks would crawl a sandbox that
+# is mid-deploy, and the newer run's completion re-runs them. Caveat: if that
+# newer run deploys neither landing nor api_v2, its gate skips too, so the
+# check waits for the next landing or api_v2 deploy.
+#
+# On any trigger, the gate then asks sandbox landing for up to 5 public
+# catalog pages (landing's feature routes, src/routes/**/-meta.ts, are left
+# out: landing renders them itself with no x-content-source). It skips green
+# only when a page answers `x-content-source: static` and none answers from
+# api_v2 (before #3311). An api_v2 answer runs the checks; so do
+# `api_v2-stale` and `static-fallback` (landing reads api_v2 but api_v2
+# failed). Every other case (no header, 5xx, timeout, landing unreachable, no
+# public pages) also runs them, with a warning naming the case, so a broken
+# landing goes red instead of skipping. A catalog that can't be read fails
+# the gate.
 #
 # Static baseline (decided on #3853): staging.alpha.gov.bb, static until the
 # staging switch (#3227). At #3227, STATIC_BASE_URL moves to prod
@@ -45,11 +57,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      actions: read # read the triggering Deploy Sandbox run's jobs
+      actions: read # read Deploy Sandbox runs and their jobs
       contents: read
     outputs:
       run: ${{ steps.gate.outputs.run }}
     steps:
+      - name: Checkout landing routes
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: apps/landing/src/routes
       - name: Decide whether to run
         id: gate
         env:
@@ -65,6 +82,11 @@ jobs:
             echo "run=false" >> "$GITHUB_OUTPUT"
             exit 0
           }
+          run_checks() {
+            [ -z "${1:-}" ] || echo "::warning::$1"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
           if [ "$EVENT" = workflow_run ]; then
             [ "$CONCLUSION" = success ] ||
               skip "Skipped: Deploy Sandbox run $RUN_ID concluded '$CONCLUSION', not success."
@@ -73,25 +95,51 @@ jobs:
               --jq '.jobs[] | select(.conclusion == "success") | select(.name == "Amplify build (landing)" or (.name | startswith("Deploy api_v2"))) | .name')"
             [ -n "$deployed" ] ||
               skip "Skipped: Deploy Sandbox run $RUN_ID deployed neither landing nor api_v2."
+            newer="$(gh api "repos/$REPO/actions/workflows/deploy-sandbox.yml/runs?branch=main&per_page=20" \
+              --jq "[.workflow_runs[] | select(.id > $RUN_ID and .status != \"completed\")] | length")"
+            [ "$newer" = 0 ] ||
+              skip "Skipped: a newer Deploy Sandbox run is deploying; its completion re-runs this check."
           fi
-          # Up to 5 public api_v2 pages; one that landing reads from api_v2
-          # is enough, even if api_v2 failed for it (the checks report that).
+          # Feature routes carry no x-content-source, so they prove nothing.
+          features="$(find apps/landing/src/routes -name '-meta.ts' |
+            sed -e 's#^apps/landing/src/routes##' -e 's#/-meta\.ts$##' | jq -R . | jq -s .)"
           paths="$(curl -fsS --max-time 30 "$CATALOG_URL" |
-            jq -r '[.pages[] | select(.visibility == "public") | .url][:5][]')" || {
+            jq -r --argjson features "$features" \
+              '[.pages[] | select(.visibility == "public") | .url | select(IN($features[]) | not)][:5][]')" || {
             echo "::error::Could not list public pages from $CATALOG_URL."
             exit 1
           }
+          [ -n "$paths" ] ||
+            run_checks "$CATALOG_URL lists no public pages besides feature routes; running the checks."
+          api_v2=false
+          static=false
           for path in $paths; do
-            source="$(curl -sS -o /dev/null -D - --max-time 30 \
-              "$V2_BASE_URL$path?parity-gate=$GITHUB_RUN_ID-$RANDOM" |
-              tr -d '\r' | awk -F': ' 'tolower($1) == "x-content-source" { print $2 }' || true)"
-            echo "$path: x-content-source ${source:-(none)}"
+            rc=0
+            status="$(curl -sS -o /dev/null -D headers.txt -w '%{http_code}' --max-time 30 \
+              "$V2_BASE_URL$path?parity-gate=$GITHUB_RUN_ID-$RANDOM")" || rc=$?
+            if [ "$rc" = 28 ]; then
+              echo "::warning::$path: sandbox landing timed out."
+              continue
+            elif [ "$rc" != 0 ]; then
+              echo "::warning::$path: sandbox landing unreachable (curl exit $rc)."
+              continue
+            fi
+            source="$(tr -d '\r' < headers.txt | awk -F': ' 'tolower($1) == "x-content-source" { print $2 }')"
+            echo "$path: HTTP $status, x-content-source ${source:-(none)}"
             if [[ "$source" =~ ^(api_v2|api_v2-stale|static-fallback)$ ]]; then
-              echo "run=true" >> "$GITHUB_OUTPUT"
-              exit 0
+              api_v2=true
+            elif [ "$source" = static ]; then
+              static=true
+            elif [ "$status" -ge 500 ]; then
+              echo "::warning::$path: sandbox landing answered HTTP $status."
+            else
+              echo "::warning::$path: sandbox landing answered HTTP $status with no x-content-source."
             fi
           done
-          skip "Skipped: sandbox landing serves static content, not api_v2 yet (#3311)."
+          [ "$api_v2" = true ] && run_checks
+          [ "$static" = true ] &&
+            skip "Skipped: sandbox landing serves static content, not api_v2 yet (#3311)."
+          run_checks "No sampled page answered static or api_v2; running the checks."
 
   crawl:
     name: Crawl and compare with static
