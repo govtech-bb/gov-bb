@@ -241,7 +241,8 @@ async function save(
       // from this one. Store what a refresh will read, or the next refresh
       // bumps the revision under the open editor and its next save fails
       // (#3864). The write has succeeded, so if this read fails keep the sent
-      // copy; the next refresh retries.
+      // copy rather than report a failed save; the open editor's next save
+      // may then be refused once.
       const { formId } = snapshot.recipe;
       const stored = await Promise.all([
         getRecipe({ data: { formId } }),
@@ -251,7 +252,10 @@ async function save(
           recipe: draftRecipeSchema.parse(recipe),
           pendingConfig: servicePendingConfigSchema.parse(pendingConfig),
         }))
-        .catch(() => null);
+        .catch((error) => {
+          console.warn(`[services] read-back after saving ${formId}:`, error);
+          return null;
+        });
       if (stored) Object.assign(snapshot, stored);
     }
     const draft = {
