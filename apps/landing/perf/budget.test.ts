@@ -58,7 +58,7 @@ describe('evaluate', () => {
   })
 
   it('fails on an unexpected status from either host', () => {
-    const bad = 'Unexpected statuses (both hosts)'
+    const bad = 'Unexpected statuses (every host)'
     expect(failed(host([200, 300], [200, 300], 1))).toEqual([bad])
     expect(
       failed(host([200, 300], [200, 300]), host([200, 300], [200, 300], 2)),
@@ -69,10 +69,27 @@ describe('evaluate', () => {
     const empty = host([NaN, NaN], [NaN, NaN])
     expect(failed(empty)).toEqual([
       'Content p95 (#3147)',
+      '404 p95 (#3149)',
       'Content p95 vs staging (#3147)',
       'Content p50 vs staging (#3147)',
-      '404 p95 (#3149)',
       '404 p95 vs staging (#3149)',
+    ])
+  })
+
+  it('checks only the fixed budgets without a staging baseline (#3227)', () => {
+    const rows = evaluate(host([250, 790], [250, 490]), undefined, expected)
+    expect(rows.map((r) => r.budget)).toEqual([
+      'Content p95 (#3147)',
+      '404 p95 (#3149)',
+      'Unexpected statuses (every host)',
+      'Full sample (every host)',
+    ])
+    expect(rows.every((r) => r.pass)).toBe(true)
+    const bad = evaluate(host([200, 800], [200, 500], 1), undefined, expected)
+    expect(bad.filter((r) => !r.pass).map((r) => r.budget)).toEqual([
+      'Content p95 (#3147)',
+      '404 p95 (#3149)',
+      'Unexpected statuses (every host)',
     ])
   })
 
@@ -82,7 +99,7 @@ describe('evaluate', () => {
       [key]: { ...h[key], count: expected[key] - 1 },
     })
     const ok = host([200, 300], [200, 300])
-    const bad = 'Full sample (both hosts)'
+    const bad = 'Full sample (every host)'
     expect(failed(short(ok, 'content'))).toEqual([bad])
     expect(failed(ok, short(staging, 'notFound'))).toEqual([bad])
   })
