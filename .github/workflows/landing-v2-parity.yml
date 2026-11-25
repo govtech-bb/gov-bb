@@ -111,11 +111,12 @@ jobs:
           }
           [ -n "$paths" ] ||
             run_checks "$CATALOG_URL lists no public pages besides feature routes; running the checks."
+          headers="$(mktemp)"
           api_v2=false
           static=false
           for path in $paths; do
             rc=0
-            status="$(curl -sS -o /dev/null -D headers.txt -w '%{http_code}' --max-time 30 \
+            status="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' --max-time 30 \
               "$V2_BASE_URL$path?parity-gate=$GITHUB_RUN_ID-$RANDOM")" || rc=$?
             if [ "$rc" = 28 ]; then
               echo "::warning::$path: sandbox landing timed out."
@@ -124,7 +125,7 @@ jobs:
               echo "::warning::$path: sandbox landing unreachable (curl exit $rc)."
               continue
             fi
-            source="$(tr -d '\r' < headers.txt | awk -F': ' 'tolower($1) == "x-content-source" { print $2 }')"
+            source="$(tr -d '\r' < "$headers" | awk -F': ' 'tolower($1) == "x-content-source" { print $2 }')"
             echo "$path: HTTP $status, x-content-source ${source:-(none)}"
             if [[ "$source" =~ ^(api_v2|api_v2-stale|static-fallback)$ ]]; then
               api_v2=true
