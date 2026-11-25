@@ -19,12 +19,14 @@ export class FormSubmissionRepository extends BaseRepository<FormSubmissionEntit
 
   /**
    * Records that CaMS accepted the case hand-off (#3714). Only the first time:
-   * a retry or redrive that reaches CaMS again keeps the original moment.
+   * a retry or redrive that reaches CaMS again keeps the original moment. The
+   * app's clock, as for submitted_at: the column has no time zone, so a
+   * database now() would read back shifted by the app's offset.
    */
   async markCamsDelivered(submissionId: string): Promise<void> {
     await this.update(
       { id: submissionId, camsDeliveredAt: IsNull() },
-      { camsDeliveredAt: () => "now()" },
+      { camsDeliveredAt: new Date() },
     );
   }
 

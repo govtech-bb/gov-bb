@@ -142,24 +142,28 @@ describe("FormSubmissionRepository", () => {
   // When CaMS accepted the hand-off (#3714). Only the first acceptance is
   // kept: a retry or redrive that reaches CaMS again does not move it.
   describe("markCamsDelivered", () => {
-    it("stamps the submission once, leaving an existing stamp alone", async () => {
+    // From the app's clock, as submitted_at is: the column has no time zone,
+    // so a database now() would be read back shifted by the app's offset.
+    it("stamps the submission once with the app's time, leaving an existing stamp alone", async () => {
       const dataSource = makeDataSource();
       const repo = new FormSubmissionRepository(dataSource);
 
       const update = vi.fn().mockResolvedValue(undefined);
       (repo as unknown as { update: Mock }).update = update;
+      const before = Date.now();
 
       await repo.markCamsDelivered("sub-1");
 
       expect(update).toHaveBeenCalledExactlyOnceWith(
         { id: "sub-1", camsDeliveredAt: IsNull() },
-        { camsDeliveredAt: expect.any(Function) },
+        { camsDeliveredAt: expect.any(Date) },
       );
       const [, set] = update.mock.calls[0] as [
         unknown,
-        { camsDeliveredAt: () => string },
+        { camsDeliveredAt: Date },
       ];
-      expect(set.camsDeliveredAt()).toBe("now()");
+      expect(set.camsDeliveredAt.getTime()).toBeGreaterThanOrEqual(before);
+      expect(set.camsDeliveredAt.getTime()).toBeLessThanOrEqual(Date.now());
     });
   });
 
