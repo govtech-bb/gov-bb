@@ -38,7 +38,7 @@ const formDefinitions = {
 } as unknown as FormDefinitionsService;
 
 // Where the processor records that CaMS accepted a hand-off (#3714).
-const markCamsDelivered = vi.fn();
+const markCamsDelivered = vi.fn().mockResolvedValue(undefined);
 const submissions = {
   markCamsDelivered,
 } as unknown as FormSubmissionRepository;
@@ -356,6 +356,22 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
 
     expect(markCamsDelivered).toHaveBeenCalledExactlyOnceWith(
       makeMappedPayload().submissionId,
+    );
+  });
+
+  // The stamp failing must fail the hand-off, so SQS retries it: swallowing the
+  // error would leave an application CaMS has answering "sending" for good.
+  it("fails the hand-off when the stamp cannot be written, so it is retried", async () => {
+    markCamsDelivered.mockRejectedValueOnce(new Error("database down"));
+    const processor = new WebhookProcessor(
+      http,
+      makeDestinations(DEST),
+      formDefinitions,
+      submissions,
+    );
+
+    await expect(processor.process(makeMappedPayload())).rejects.toThrow(
+      "database down",
     );
   });
 

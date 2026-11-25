@@ -185,7 +185,10 @@ export class WebhookProcessor implements ISubmissionProcessor {
 
     // CaMS has the case now. The status lookup reads this when the tracker has
     // no record yet (#3714). A failed write throws, so SQS retries the
-    // hand-off, which CaMS treats as the same case.
+    // hand-off, which CaMS treats as the same case. If it still fails on the
+    // last attempt, the DLQ alert reads as a failed delivery although CaMS has
+    // the case: a redrive is harmless and stamps it. (With SQS off, nothing
+    // retries, and the application answers "sending" until it is re-sent.)
     if (mapping) await this.submissions.markCamsDelivered(payload.submissionId);
 
     this.logger.log(
