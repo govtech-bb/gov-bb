@@ -88,7 +88,7 @@
     "path": "/health-and-emergency-services/stormready",
     "reason": "The import-time contact conversion (#3261, #3405) replaces the legacy grid and Emergency badge with four headings, their anchor links and Telephone field labels. Contact names, displayed numbers and telephone destinations are unchanged; static Markdown keeps the legacy grid.",
     "diffs": [
-      "main text 95.8% similar",
+      "main text 97.0% similar",
       "heading not in static: \"DEM Emergency Line\"",
       "heading not in static: \"Barbados Met Office\"",
       "heading not in static: \"Police\"",

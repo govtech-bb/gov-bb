@@ -13,8 +13,7 @@ import { appendFileSync, readFileSync } from 'node:fs'
 import { comparePages, snapshot, unallowedDiffs } from './compare.ts'
 import type { AllowEntry, PageSnapshot } from './compare.ts'
 
-const V2 =
-  process.env.V2_BASE_URL ?? 'https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com'
+const V2 = process.env.V2_BASE_URL ?? 'https://sandbox.alpha.gov.bb'
 const STATIC = process.env.STATIC_BASE_URL ?? 'https://staging.alpha.gov.bb'
 const CONCURRENCY = 6
 const ATTEMPTS = 3

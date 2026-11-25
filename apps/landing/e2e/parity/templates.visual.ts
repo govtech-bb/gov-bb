@@ -8,8 +8,7 @@ import { dirname } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-const V2 =
-  process.env.V2_BASE_URL ?? 'https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com'
+const V2 = process.env.V2_BASE_URL ?? 'https://sandbox.alpha.gov.bb'
 const STATIC = process.env.STATIC_BASE_URL ?? 'https://staging.alpha.gov.bb'
 
 /**
