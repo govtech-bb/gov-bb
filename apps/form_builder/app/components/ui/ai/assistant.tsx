@@ -761,7 +761,18 @@ function ChatSession({
       current.current.readOnly ||
       started !== generation.current
     ) {
+      // End the call instead of leaving it pending. With no approved change,
+      // execute refuses it and tells the model to request a fresh proposal.
+      // A rejection cannot carry that message: these tools have no
+      // approvalSchema. Stop, close and unmount reset the interrupts, so
+      // resolving then throws and there is nothing left to end.
+      approved.current.delete(interrupt.toolCallId);
       finishEdit(interrupt.toolCallId);
+      try {
+        interrupt.resolveInterrupt(true);
+      } catch {
+        autoHandled.current.delete(interrupt.id);
+      }
       return;
     }
     approved.current.set(interrupt.toolCallId, change);
