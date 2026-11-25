@@ -346,15 +346,32 @@ describe('HomeHero', () => {
     expect(screen.getByRole('link', { name: QUESTION })).toBeTruthy()
   })
 
-  it('tracks a popular search as a homepage search', () => {
+  it('tracks a popular search as a popular pick and a homepage search', () => {
     renderHero()
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
 
     fireEvent.click(screen.getByRole('link', { name: 'Redirect my mail' }))
 
     expect(trackEventMock.mock.calls).toEqual([
+      [
+        'search-popular-select',
+        { query: 'Redirect my mail', position: 2, source: 'home' },
+      ],
       ['search-submit', { query: 'Redirect my mail', source: 'home' }],
     ])
+  })
+
+  it('counts a popular search position among the shown links', () => {
+    renderHero([QUESTION], new Map([['get-birth-certificate', 'preview']]))
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+
+    fireEvent.click(screen.getByRole('link', { name: 'Redirect my mail' }))
+
+    expect(trackEventMock).toHaveBeenCalledWith('search-popular-select', {
+      query: 'Redirect my mail',
+      position: 1,
+      source: 'home',
+    })
   })
 
   it('hides a popular search whose service is hidden', () => {

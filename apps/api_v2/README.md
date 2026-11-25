@@ -594,6 +594,8 @@ Sandbox re-imports while no editor has written there (#3234). Staging (#3229) an
 
 On sandbox, `.github/workflows/check-estate-drift.yml` runs step 5's check after each Deploy Sandbox run and nightly. Both triggers fire only for the file on `main`. Drift turns that workflow's run red, never the deploy's. #3311 deletes the workflow at sandbox's cutover, because from then on the database is the source of truth.
 
+The variables each environment needs, and where each value comes from, are listed in [docs/v2-environment-variables.md](../../docs/v2-environment-variables.md). Check them before a cutover.
+
 1. Pick the snapshot: the content you want is merged, and the api_v2 deploy of that commit has finished, so the running image carries its `estate.json`. Note the commit sha. The `source` the import reports is a sha1 of that commit's parsed `estate.json` (`ESTATE_SOURCE` in `src/seed-data/index.ts`), not of the file's bytes, so `sha1sum estate.json` will not match it.
 2. Set up the shell for the environment, then confirm the task definition does not set `SEED`. Sandbox's no longer does (since revision `api-v2-sandbox:9`, alpha-infra#748); staging's and prod's (#3130) must never set it. If it does, stop: production mode refuses to boot with it (#3052). The staging and prod cluster and service names follow sandbox's pattern; confirm them against #3130's task definitions.
 
@@ -645,7 +647,7 @@ On sandbox, `.github/workflows/check-estate-drift.yml` runs step 5's check after
 
    The check also compares each page it can read with the token with the snapshot: `body_markdown`, `title`, `description`, `category`, `subcategory`, `form_id` and `parent`, for public and preview pages. Draft pages 404 even with the token, so only their status is checked. A snapshot page that 404s with the token is reported as `missing`, and a page that `/catalog` lists with the token but the snapshot does not have is reported as `extra`. `/catalog` doesn't list `start` steps or pages under a hidden parent, so neither is reported as `extra`. Each difference prints `DIFF <url> <field>: snapshot <excerpt> api_v2 <excerpt>`, `DIFF <url> missing` or `DIFF <url> extra`, then `<n> differences in <m> pages compared` comes before the last line. It exits 1 on any difference as well as any failure. There is no transform list, because the snapshot already carries the StormReady conversion.
 
-   For #3711's input, add `--json` and redirect stdout:
+   For `sync-estate`'s input (see "Drift before cutover" below), add `--json` and redirect stdout:
 
    ```sh
    pnpm -s --filter @govtech-bb/api-v2 check-import --json --base-url https://<api origin> --forms-api "$FORMS_API" > differences.json
@@ -653,7 +655,7 @@ On sandbox, `.github/workflows/check-estate-drift.yml` runs step 5's check after
 
    Only `{"source","differences"}` goes to stdout, and the rows go to stderr. `-s` keeps pnpm's banner out of the file. A run that stops (`preview token refused`, `rate limited`, `catalog: <status> from <origin>`, or a `service_status` error) writes nothing to stdout and exits 1, so an empty `differences.json` means the check failed. A page whose read failed (a 5xx, a network error or a 301) is a `FAIL` row and is not compared, so exit 1 with `"differences":[]` is not a clean result.
 
-6. Just before the landing switch (#3227 for staging, #3228 for prod), run step 5's command again. Use a checkout of the commit the environment's api_v2 runs now (read the running image's tag with step 3's `describe-tasks` command), not step 1's sha, so anything merged since the import shows. Resolve any difference before switching: with `sync-estate` (#3711) on a database editors have written to, or by the rules in "A database that already has content". Paste the output on the switch issue.
+6. Just before the landing switch (#3227 for staging, #3228 for prod), run step 5's command again. Use a checkout of the commit the environment's api_v2 runs now (read the running image's tag with step 3's `describe-tasks` command), not step 1's sha, so anything merged since the import shows. Resolve any difference before switching: with "Drift before cutover" below on a database editors have written to, or by the rules in "A database that already has content". Paste the output on the switch issue.
 
 ### A database that already has content
 
@@ -668,6 +670,56 @@ An editor has written if any of these holds:
 - **(c)** on sandbox only, a category was edited between #3351 (28 Oct 2026, 00:24 UTC) and sandbox's deploy of #3340 running migration `007` (merged 28 Oct 2026, 19:21 UTC), when category edits left no event. #3234 checks this with a one-off query.
 
 If any holds, stop, record it on the import issue, and fix forward.
+
+### Drift before cutover
+
+When the snapshot changes after an environment's import, the database falls behind it, and `import-estate` can't help without deleting editors' work. `sync-estate` (#3711) brings the database up to the snapshot through the editor API, so each change is recorded against you and goes through review. If no editor has written to the database (see "A database that already has content"), a forced re-import is simpler.
+
+Use it only before the environment's cutover: #3311 for sandbox, #3227 for staging. After cutover, the database is the source of truth and any difference is editors' work, so run the check only (ADR 0129).
+
+What it does:
+
+- It reads the check's `--json` output, and refuses one made from a different `estate.json`.
+- For each page with a field difference, it reads `GET /pages/:id` and then `GET /pages/:id/history`. If anyone but `system` ever changed the page, or the page has a pending revision, it reports a `conflict` and leaves the page as it is. Otherwise it saves the snapshot's fields with `PUT /pages/:id` and the page's `version`, keeping the page's visibility. A non-public page is written at once. On a public page the save is a pending revision, which the script submits; an approver other than you publishes it (ADR 0134).
+- For each snapshot page api_v2 doesn't have, drafts included, it creates the page, before any update at its snapshot visibility after the `service_status` overlay. Nobody may create a page public that they wrote, so a public one is created as `preview`, and an approver other than you makes it public.
+- A snapshot page api_v2 has but doesn't serve (`missing` in the check) is a `conflict`: its visibility, or a page above it, differs. So is a url that `GET /editor/page-paths` lists but the script can't find an id for.
+- A page api_v2 serves that the snapshot doesn't have (`extra` in the check) is reported as `removed`. It is never deleted.
+
+Its limits:
+
+- It doesn't see changes to a draft page's fields, or to any page's frontmatter (`lede`, `keywords` and the others), visibility or `published_at`, because the check doesn't compare them. An update does write the snapshot's frontmatter.
+- It can't tell a page that is new in the snapshot from one an editor deleted or moved to another url: there is no history to read for a url with no page. It creates both. Check every `create` row of the dry run with the editors before `--apply`.
+- A created page gets no `published_at` from the snapshot; it is dated when it first goes public.
+- It doesn't create categories: a page whose category api_v2 lacks is `failed`.
+- A page you synced before is a `conflict` the next time, because your earlier change is in its history.
+
+1. **Check.** On a checkout of the commit the environment's api_v2 runs now (step 6 above), write the differences:
+
+   ```sh
+   read -rs PREVIEW_SECRET; export PREVIEW_SECRET
+   FORMS_API=<origin>
+   pnpm -s --filter @govtech-bb/api-v2 check-import --json --base-url https://<api origin> --forms-api "$FORMS_API" > differences.json
+   ```
+
+   Exit 1 with `DIFF` rows is what you expect. A `FAIL` row, or an empty `differences.json`, is not: fix that first.
+
+2. **Sign in.** Sign in to editor_v2 with an account that has the editor role. In the browser's developer tools, open the cookies of the api_v2 origin and copy the session cookie (`__Secure-better-auth.session_token` on https) as `<name>=<value>`. Read it into the environment, so it stays out of shell history and the process list:
+
+   ```sh
+   read -rs EDITOR_SESSION; export EDITOR_SESSION
+   ```
+
+3. **Dry run.** It only reads. `--editor-origin` is the API's `EDITOR_ORIGIN`. pnpm runs the script in `apps/api_v2`, so give `--differences` as an absolute path:
+
+   ```sh
+   pnpm --filter @govtech-bb/api-v2 sync-estate --base-url https://<api origin> --editor-origin https://<editor origin> --forms-api "$FORMS_API" --differences "$PWD/differences.json"
+   ```
+
+   It prints one row per snapshot page, `update`, `create`, `conflict` or `unchanged`, then a `removed` row for each `extra` page, with the reason after a colon. Then the counts, the pages an approver must make public, and `Dry run: nothing was written.` A refused request is a `failed` row and exits 1; a wrong or expired session (`refused EDITOR_SESSION`), a role without `editor`, or differences from another snapshot stop the run before any write. Only writes check the Origin, so the dry run can't catch a wrong `--editor-origin`: with `--apply`, it makes every write a `failed` row with a 403. Talk to the editors of each `conflict` page: fix it with them in the editor, never with `import-estate --force`.
+
+4. **Apply.** Run step 3's command with `--apply`. The rows read `updated` and `created`, and the last line is `N revisions waiting for approval, M from this run`. If saving a public page worked but submitting it didn't, its `failed` row says so: submit that draft revision in the editor.
+5. **Approve.** An approver other than you publishes each revision in editor_v2's review queue, and makes public each page the run listed.
+6. **Check again.** Run step 1's command. What is left is the `conflict` and `removed` pages, until you and the editors resolve them; then it exits 0. Paste the outputs of steps 1, 3, 4 and 6 on the issue.
 
 ### The markdown freeze
 
