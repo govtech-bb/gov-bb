@@ -12,10 +12,12 @@ name: Landing v2 Smoke
 #   is under maintenance, form_disabled or closed shows its notice, no Start
 #   link, and a 404 `/start` step.
 #
-# The gate job skips the smoke, with a notice, while sandbox landing serves
-# only static content (`x-content-source: static`, VITE_API_V2_URL unset;
-# #3311). Any other answer, `static-fallback` included, runs the smoke, so a
-# broken api_v2 fails it rather than skipping it.
+# The gate job skips the smoke with a notice, and stays green, when the
+# Deploy Sandbox run failed or deployed neither landing nor api_v2, or when
+# sandbox landing does not read api_v2 at all (only `static` or no
+# x-content-source, as before #3311). A manual run skips only for the last
+# reason. `api_v2-stale` and `static-fallback` mean landing reads api_v2 but
+# api_v2 failed, so the smoke runs and reports it.
 # Scripts: apps/landing/e2e/smoke.
 
 on:
@@ -60,6 +62,7 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
+          set -euo pipefail
           skip() {
             echo "::notice::Skipped: $1"
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -82,30 +85,23 @@ jobs:
             echo "$DEPLOYED"
           fi
 
-          # Up to 5 public api_v2 pages. Skip only when they answer `static`
-          # and none answers api_v2, api_v2-stale or static-fallback. A page
-          # with no x-content-source (a feature route, a 404, landing down)
-          # proves nothing, so if none answers at all the smoke runs.
-          CATALOG=$(curl -fsS --max-time 30 "$SMOKE_API_V2_URL/catalog")
-          PAGES=$(echo "$CATALOG" | jq -r '[.pages[] | select(.visibility == "public") | .url] | .[:5][]')
-          STATIC=false
+          # Up to 5 public api_v2 pages; one that landing reads from api_v2
+          # is enough, even if api_v2 failed for it (the smoke reports that).
+          PAGES=$(curl -fsS --max-time 30 "$SMOKE_API_V2_URL/catalog" \
+            | jq -r '[.pages[] | select(.visibility == "public") | .url][:5][]') || {
+            echo "::error::Could not list public pages from $SMOKE_API_V2_URL/catalog."
+            exit 1
+          }
           for path in $PAGES; do
-            SOURCE=$(curl -sS -o /dev/null -D - --max-time 15 "$SMOKE_LANDING_URL$path?smoke-gate=$GITHUB_RUN_ID" \
+            SOURCE=$(curl -sS -o /dev/null -D - --max-time 15 "$SMOKE_LANDING_URL$path?smoke-gate=$GITHUB_RUN_ID-$RANDOM" \
               | tr -d '\r' | awk -F': *' 'tolower($1) == "x-content-source" { print $2 }' || true)
             echo "$path answers x-content-source: ${SOURCE:-<none>}"
-            case "$SOURCE" in
-              "") ;;
-              static) STATIC=true ;;
-              *)
-                echo "run=true" >> "$GITHUB_OUTPUT"
-                exit 0
-                ;;
-            esac
+            if [[ "$SOURCE" =~ ^(api_v2|api_v2-stale|static-fallback)$ ]]; then
+              echo "run=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           done
-          if [ "$STATIC" = "true" ]; then
-            skip "sandbox landing serves static content, not api_v2 yet (#3311)"
-          fi
-          echo "run=true" >> "$GITHUB_OUTPUT"
+          skip "sandbox landing serves static content, not api_v2 yet (#3311)"
 
   smoke:
     name: Smoke (api_v2 source, Start links, visibility gating)
