@@ -728,9 +728,16 @@ function ChatSession({
         );
       setActivity({ id, validating: true });
       try {
-        const change = external
-          ? await prepareServiceEdit(toolName, proposal)
-          : await current.current.prepare(proposal);
+        const change = await withTimeout(
+          async () =>
+            external
+              ? prepareServiceEdit(toolName, proposal)
+              : current.current.prepare(proposal),
+          EDIT_TOOL_TIMEOUT_MS,
+          () => {
+            throw new Error("Checking the change took too long. Try again.");
+          },
+        )();
         if (
           !active.current ||
           !current.current.open ||
