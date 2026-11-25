@@ -440,6 +440,14 @@ function BuilderPage() {
   } = useRecipeSave({
     serviceDraft,
     onServiceSaved: setServiceDraft,
+    confirmOverwrite: () =>
+      confirm({
+        title: "This service changed after you opened it",
+        description:
+          "A different version of this form was saved after you opened it, for example in another tab or by the assistant. Save yours to replace it, or cancel to keep your changes on this page.",
+        confirmLabel: "Replace with my version",
+        destructive: true,
+      }),
     onServicePublish: () =>
       void navigate({
         to: "/services",
