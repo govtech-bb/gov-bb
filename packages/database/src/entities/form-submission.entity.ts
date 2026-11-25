@@ -58,4 +58,10 @@ export class FormSubmissionEntity extends TimestampedEntity {
   // reconciliation/retry job should re-dispatch (#1747).
   @Column({ name: "processors_failed", type: "jsonb", nullable: true })
   processorsFailed!: number[] | null;
+
+  // When CaMS first accepted this submission's case hand-off (a 2xx from the
+  // mapped webhook). Null = not handed off yet, failed, or not a CaMS form.
+  // The status lookup reads it when the tracker has no record (#3714).
+  @Column({ name: "cams_delivered_at", type: "timestamp", nullable: true })
+  camsDeliveredAt!: Date | null;
 }
