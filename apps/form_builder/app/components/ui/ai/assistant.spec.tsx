@@ -656,6 +656,64 @@ it("cancels an Auto call when the editor becomes read-only during validation", a
   expect(apply).not.toHaveBeenCalled();
 });
 
+it("retries an Auto call that arrived while read-only once the editing claim comes back", async () => {
+  autoConversation();
+  const apply = vi.fn();
+  const prepare = vi.fn(async () => ({
+    before: {},
+    after: { title: "Proposed" },
+    warnings: [],
+    apply,
+  }));
+  const view = render(<Assistant {...props} readOnly prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  await act(async () => publishInterrupts());
+  expect(resolve).not.toHaveBeenCalled();
+  await act(async () => {
+    view.rerender(<Assistant {...props} prepare={prepare} />);
+  });
+  await waitFor(() => expect(resolve).toHaveBeenCalledExactlyOnceWith(true));
+  expect(
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
+  ).toBe(true);
+  expect(apply).toHaveBeenCalledOnce();
+});
+
+it("retries an Auto call whose read-only cancel failed once the editing claim comes back", async () => {
+  autoConversation();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const apply = vi.fn();
+  const prepare = vi.fn(async (): Promise<PreparedChange> => {
+    await gate;
+    return { before: {}, after: { title: "Proposed" }, warnings: [], apply };
+  });
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  harness.interrupts[0].cancel = vi.fn(() => {
+    throw new Error("Interrupts cannot be mutated while submitting.");
+  });
+  act(() => publishInterrupts());
+  view.rerender(<Assistant {...props} readOnly prepare={prepare} />);
+  await act(async () => release());
+  expect(harness.interrupts[0].cancel).toHaveBeenCalledOnce();
+  expect(resolve).not.toHaveBeenCalled();
+  await act(async () => {
+    view.rerender(<Assistant {...props} prepare={prepare} />);
+  });
+  await waitFor(() => expect(resolve).toHaveBeenCalledExactlyOnceWith(true));
+  expect(
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
+  ).toBe(true);
+  expect(apply).toHaveBeenCalledOnce();
+});
+
 it("ends an Auto call with a fresh-proposal message when the draft changes during validation", async () => {
   autoConversation();
   let complete!: (value: PreparedChange) => void;

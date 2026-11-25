@@ -873,6 +873,19 @@ function ChatSession({
       upload.current?.abort();
     }
   }, [open, stop]);
+  // A read-only editor skips Auto and shows the review card. When the claim
+  // comes back, retry this run's approvals so their Auto card does not wait
+  // forever. Restored approvals have no binding and stay manual.
+  useEffect(() => {
+    if (readOnly || latest.current.permission !== "auto") return;
+    for (const interrupt of chat.interrupts)
+      if (
+        interrupt.kind === "tool-approval" &&
+        bindings.current.has(interrupt.toolCallId)
+      )
+        void autoApply(interrupt);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- only a claim change retries
+  }, [readOnly]);
   useEffect(() => {
     const viewport = feed.current;
     const content = viewport?.firstElementChild;
