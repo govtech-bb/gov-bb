@@ -497,6 +497,21 @@
       }
     },
     {
+      "url": "/business-trade/e2e-j4-case-check",
+      "category": "business-trade",
+      "parent": null,
+      "title": "E2E case-management check (test service)",
+      "description": "Internal end-to-end test service for the case-management journey. Not a real government service.",
+      "visibility": "preview",
+      "form_id": "e2e-j4-case-check",
+      "content_slug": "e2e-j4-case-check",
+      "published_at": "2026-11-24T00:00:00.000Z",
+      "body_markdown": "This is an internal test service used by an automated end-to-end check\n(#3011/#3861) that confirms a submission reaches case management (CaMS) and\nback. It is **not** a real government service and is kept non-public\n(`preview`), so it never appears in any citizen-facing listing.",
+      "frontmatter": {
+        "stage": "alpha"
+      }
+    },
+    {
       "url": "/business-trade/e2e-maintenance-check",
       "category": "business-trade",
       "parent": null,

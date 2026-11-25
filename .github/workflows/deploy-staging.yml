@@ -904,6 +904,107 @@ jobs:
           path: apps/forms/test-results/
           retention-days: 7
 
+  # Journey 4 (#3011/#3861): a submission reaches case-management (CaMS) and
+  # back. Submits a dedicated non-public test form (`e2e-j4-case-check`) whose
+  # webhook maps to a reserved `E2E_` test programme, then follows it into CaMS,
+  # asserts the case (same reference code + uploaded file copied), and removes
+  # the test case.
+  #
+  # Auth / env model. The submit carries the smoke token (X-Smoke-Submission, set
+  # on the journey config): under ADR 0087's amendment that drops every processor
+  # EXCEPT a mapped webhook to a reserved `E2E_` test programme, so no real email,
+  # payment or real-programme webhook fires. The webhook resolves its destination
+  # from MDA_WEBHOOK_DESTINATIONS for the form's ministry key (`E2E`), which on
+  # STAGING points at a NON-PROD CaMS (ADR 0087 environment scope — do NOT enable
+  # the smoke token in prod expecting zero CaMS traffic). CaMS registers every
+  # `E2E_` programme as `isTest`, so the case created is removable, never real.
+  # E2E_CAMS_API_KEY is the CaMS x-api-key for that test programme.
+  #
+  # SOFT-SKIP (the #3536 lesson). The CaMS read + removeTestCase endpoints this
+  # journey needs are a PROPOSED contract (CaMS exposes only POST /api/cases
+  # today, see apps/forms/e2e/helpers/cams-client.ts) and are not provisioned
+  # yet. So the run step soft-skips (warning + `exit 0`, NOT exit 1) when
+  # E2E_CAMS_API_KEY is empty: the job goes green and never blocks the deploy
+  # while J4 is dormant. This job is deliberately NOT in the `summary` job's
+  # `needs`, and NOT in Deploy Production's gate — once provisioning lands,
+  # RE-ARM it fail-closed (error + exit 1 on an empty key) and add the prod gate,
+  # matching Journey 5's pattern. Full pointer: docs/e2e-j4-case-management.md.
+  journey-case-management:
+    name: Journey 4 (submission → case management)
+    # Deploy Staging runs only on workflow_dispatch (promoted from sandbox on
+    # `staging`, or manual from the Actions tab) — never `push` — so gate on the
+    # deploy's success, exactly like smoke-test-forms / journey-5-payments. A
+    # `github.event_name == 'push'` guard would make this never run.
+    needs: [setup, deploy-api, amplify-forms]
+    if: |
+      always() &&
+      needs.setup.result == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    # E2E_CAMS_API_KEY lives in this GitHub Environment, visible only to a job
+    # that declares it. This job assumes no AWS role, so the environment adds no
+    # OIDC behaviour.
+    environment: staging-e2e
+    # The case poll is budgeted to ~90s in the spec; this 15m is a backstop
+    # against a hang (install + browser), not a performance budget.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(pnpm --filter @govtech-bb/forms exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      - name: Run Journey 4
+        env:
+          # All via env (not inline ${{ }}) so nothing is interpolated into the
+          # shell. The tokens are secrets; the URLs are fixed staging hosts.
+          SMOKE_BASE_URL: https://forms.staging.alpha.gov.bb
+          SMOKE_LANDING_URL: https://staging.alpha.gov.bb
+          PREVIEW_TOKEN: ${{ secrets.RECIPE_PREVIEW_TOKEN }}
+          # The staging smoke token (shared with smoke-test-forms) — it must match
+          # staging's API SMOKE_SUBMISSION_TOKEN, else the API ignores the header
+          # and the run submits for real instead of as a smoke test (#3324).
+          SMOKE_SUBMISSION_TOKEN: ${{ secrets.SMOKE_SUBMISSION_TOKEN_STAGING }}
+          E2E_CAMS_BASE_URL: https://cases.staging.alpha.gov.bb
+          E2E_CAMS_API_KEY: ${{ secrets.E2E_CAMS_API_KEY }}
+        run: |
+          if [ -z "$E2E_CAMS_API_KEY" ]; then
+            echo "::warning::E2E_CAMS_API_KEY not set — J4 not yet provisioned (see docs/e2e-j4-case-management.md); skipping."
+            exit 0
+          fi
+          pnpm --filter @govtech-bb/forms exec playwright test \
+            --config playwright.journey.config.ts \
+            journey-4-case-management.spec.ts
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: journey-4-case-management-trace
+          path: apps/forms/test-results/
+          retention-days: 7
+
   summary:
     name: Deployment summary
     needs:

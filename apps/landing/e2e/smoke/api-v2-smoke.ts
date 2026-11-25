@@ -273,17 +273,19 @@ export const UNAVAILABLE_NOTICES = [
 ]
 
 /**
- * The catalog pages only a preview-token holder sees (#3143). Throws when
- * either read fails, so a wrong token (401) fails rather than finding none.
+ * The catalog pages only a preview-token holder sees (#3143), less `skip`.
+ * Throws when either read fails, so a wrong token (401) fails rather than
+ * finding none.
  */
 export async function previewPageUrls(
   apiV2: string,
   token: string,
   fetchImpl: Fetch = fetch,
+  skip: string[] = [],
 ): Promise<string[]> {
   const all = await fetchCatalogUrls(apiV2, fetchImpl, token)
   const anonymous = new Set(await fetchCatalogUrls(apiV2, fetchImpl))
-  return all.filter((url) => !anonymous.has(url))
+  return all.filter((url) => !anonymous.has(url) && !skip.includes(url))
 }
 
 /** The forms whose pages landing gates (#3143), by the notice it shows. */
