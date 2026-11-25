@@ -2,8 +2,8 @@ name: Landing v2 perf
 
 # Time to first byte of landing served from api_v2 (#3147) and of unknown
 # URLs (#3149), in one k6 run against sandbox landing, deployed from main.
-# Runs after each Deploy Sandbox run that deployed landing or api_v2, and by
-# hand. A failed budget turns this run red; it doesn't hold back a deploy.
+# Runs after each green Deploy Sandbox run that deployed landing or api_v2,
+# and by hand. A failed budget turns this run red; it doesn't hold back a deploy.
 # Budgets and URLs: apps/landing/perf/.
 #
 # The gate job skips the run, with a notice, until sandbox landing serves
@@ -13,7 +13,8 @@ name: Landing v2 perf
 # (#3227), so until then STAGING_URL makes each run compare sandbox with
 # staging as well as with the fixed budgets. At #3227, delete the STAGING_URL
 # line: the run then checks the fixed budgets only. No load ever goes to prod
-# (decided in #3854).
+# (decided in #3854). Until then the baseline can be noisy: a green Deploy
+# Sandbox run starts the staging deploy, which can overlap this run.
 
 on:
   # Deploy Sandbox runs only on a push to main or by hand, and this workflow
@@ -59,14 +60,12 @@ jobs:
             if [ "$DEPLOY_CONCLUSION" != success ]; then
               skip "Deploy Sandbox concluded '$DEPLOY_CONCLUSION', not success"
             fi
-            # A reusable workflow's job is named "<caller> / <callee>", so a
-            # deploy that ran is "Deploy api_v2 / ..." and a skipped one is
-            # "Deploy api_v2".
+            # A reusable workflow's job is named "<caller> / <callee>" when it
+            # runs ("Deploy api_v2 / ..."); only a skipped one is "Deploy api_v2".
             deployed=$(gh api "repos/$REPO/actions/runs/$DEPLOY_RUN_ID/jobs?per_page=100" --jq '
               [.jobs[]
                 | select(.conclusion == "success")
                 | select(.name == "Amplify build (landing)"
-                    or .name == "Deploy api_v2"
                     or (.name | startswith("Deploy api_v2 / ")))]
               | length')
             if [ "$deployed" = 0 ]; then
@@ -82,10 +81,13 @@ jobs:
             echo "::error::$API_V2_URL/catalog lists no public pages"
             exit 1
           fi
+          answered=false
           for page in $pages; do
-            source=$(curl -sS --max-time 20 -o /dev/null -D - \
-              "$PREVIEW_URL$page?perf-gate=$GITHUB_RUN_ID-$RANDOM" \
-              | tr -d '\r' \
+            # A timeout on one page moves on to the next.
+            headers=$(curl -sS --max-time 20 -o /dev/null -D - \
+              "$PREVIEW_URL$page?perf-gate=$GITHUB_RUN_ID-$RANDOM") || continue
+            answered=true
+            source=$(printf '%s' "$headers" | tr -d '\r' \
               | awk 'tolower($1) == "x-content-source:" { print $2 }')
             echo "$page: x-content-source ${source:-(none)}"
             if [ "$source" = api_v2 ]; then
@@ -93,6 +95,10 @@ jobs:
               exit 0
             fi
           done
+          if [ "$answered" = false ]; then
+            echo "::error::$PREVIEW_URL answered none of the catalog pages"
+            exit 1
+          fi
           skip "sandbox landing serves static content, not api_v2 yet (#3311)"
 
   ttfb:
@@ -103,7 +109,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-    # One run at a time, so staging never takes two loads at once. A newer
+    # One run at a time, so no host takes two loads at once. A newer
     # run supersedes the older one. Job-level, so a run the gate skips never
     # cancels one that is measuring.
     concurrency:

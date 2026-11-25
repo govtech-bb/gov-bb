@@ -5,7 +5,7 @@
 //
 //   STAGING_URL=https://staging.alpha.gov.bb k6 run apps/landing/perf/ttfb.mjs
 //
-// Both hosts run side by side from the same machine, so they share its
+// The hosts run side by side from the same machine, so they share its
 // network. Each gets a 30 s unmeasured warm-up, then 200 requests per URL at
 // a steady 10 a second, round-robin over the URLs. TTFB is k6's
 // `http_req_waiting`: request sent to first response byte, without DNS,
@@ -23,10 +23,10 @@ const TARGETS = {
 }
 const OUT_DIR = __ENV.OUT_DIR || '.'
 
-// At least one URL per template, all public on both hosts. Status is the one the URL
+// At least one URL per template, all public on every host. Status is the one the URL
 // must answer with; the redirect isn't followed, so its own TTFB is measured.
 // A wrong status fails the run, so if a page here is unpublished or renamed
-// on either host, swap it for another page of the same template.
+// on any host, swap it for another page of the same template.
 const CONTENT = [
   ['/', 200], // home
   ['/services', 200], // services index
