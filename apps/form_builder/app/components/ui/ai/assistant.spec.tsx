@@ -20,7 +20,12 @@ import { restoreTranscript, historyKey } from "./history";
 import type { PreparedChange } from "./review";
 import { readConversations, writeConversations } from "./history";
 import { streamChat } from "./transport";
-import { prepareServiceEdit } from "./service-tools";
+import {
+  prepareServiceEdit,
+  readForm,
+  readPage,
+  readService,
+} from "./service-tools";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("./service-tools", () => ({
@@ -61,6 +66,10 @@ vi.mock("./transport", () => ({
   uploadDocument: vi.fn(),
   readDocument: vi.fn(),
 }));
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 beforeEach(() => {
   harness.interrupts = [];
@@ -478,6 +487,91 @@ it("reports a failed shared save and does not claim the AI edit was applied", as
   expect((await result).applied).toBe(false);
 });
 
+it("ends a stalled save with a not-applied result after the time limit", async () => {
+  const apply = vi.fn(() => new Promise<void>(() => {}));
+  const prepare = async (): Promise<PreparedChange> => ({
+    before: { title: "Current" },
+    after: { title: "Proposed" },
+    warnings: [],
+    apply,
+  });
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  await propose();
+  await act(async () => {
+    view.rerender(<Assistant {...props} prepare={prepare} />);
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Apply to draft" }));
+  harness.interrupts = [];
+  harness.messages = [
+    {
+      id: "response",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-call",
+          id: "call",
+          name: "apply_form_draft",
+          state: "approval-responded",
+          input: proposal,
+        },
+      ],
+    },
+  ];
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  expect(
+    screen.getByRole("button", { name: /Checking the proposed draft/ }),
+  ).toBeInTheDocument();
+  vi.useFakeTimers();
+  let result!: Promise<{ applied: boolean; message: string }>;
+  act(() => {
+    result = harness.options.tools[0].execute(proposal, { toolCallId: "call" });
+  });
+  expect(apply).toHaveBeenCalledTimes(1);
+  let finished = false;
+  result.then(() => {
+    finished = true;
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(59_999);
+  });
+  expect(finished).toBe(false);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  expect(await result).toEqual({
+    applied: false,
+    message:
+      "The change did not finish in time. It may still be saved — check the draft before you try again.",
+  });
+  expect(
+    screen.queryByRole("button", { name: /Checking the proposed draft/ }),
+  ).not.toBeInTheDocument();
+});
+
+it.each([
+  [4, readService, { serviceId: "s" }],
+  [5, readPage, { serviceId: "s", pagePath: "p" }],
+  [6, readForm, { serviceId: "s" }],
+])(
+  "ends stalled read tool %i with an error after the time limit",
+  async (index, read, input) => {
+    vi.mocked(read).mockReturnValueOnce(new Promise(() => {}));
+    render(<Assistant {...props} prepare={vi.fn()} />);
+    await waitFor(() => expect(harness.options).toBeTruthy());
+    vi.useFakeTimers();
+    const result = harness.options.tools[index].execute(input, {
+      toolCallId: "read",
+    });
+    const outcome = expect(result).rejects.toThrow(
+      "Reading the service took too long. Try again.",
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+    await outcome;
+    expect(read).toHaveBeenCalledWith(input, { toolCallId: "read" });
+  },
+);
+
 function autoConversation() {
   const scope = historyKey(props.user, props.kind, props.documentId);
   writeConversations(scope, [
@@ -571,6 +665,79 @@ it("auto validates once, resolves once, and executes the exact candidate once wi
   view.rerender(<Assistant {...props} prepare={prepare} />);
   fireEvent.click(screen.getByRole("button", { name: /Applied to draft/ }));
   expect(screen.getByRole("button", { name: "title" })).toBeInTheDocument();
+});
+
+it("ends a stalled Auto validation as a failed edit after the time limit", async () => {
+  autoConversation();
+  const prepare = vi.fn(() => new Promise<PreparedChange>(() => {}));
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  vi.useFakeTimers();
+  await act(async () => publishInterrupts());
+  expect(prepare).toHaveBeenCalledOnce();
+  harness.interrupts = [];
+  harness.messages = [
+    {
+      id: "response",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-call",
+          id: "call",
+          name: "apply_form_draft",
+          state: "approval-requested",
+          input: proposal,
+        },
+      ],
+    },
+  ];
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  expect(
+    screen.getByRole("button", { name: /Checking the proposed draft/ }),
+  ).toBeInTheDocument();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(59_999);
+  });
+  expect(resolve).not.toHaveBeenCalled();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  expect(resolve).toHaveBeenCalledExactlyOnceWith(true);
+  let output: any;
+  await act(async () => {
+    output = await harness.options.tools[0].execute(proposal, {
+      toolCallId: "call",
+    });
+  });
+  expect(output).toEqual({
+    applied: false,
+    message: "Checking the change took too long. Try again.",
+  });
+  expect(
+    screen.queryByRole("button", { name: /Checking the proposed draft/ }),
+  ).not.toBeInTheDocument();
+});
+
+it("shows an error when a stalled review validation passes the time limit", async () => {
+  const prepare = vi.fn(() => new Promise<PreparedChange>(() => {}));
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  await propose();
+  vi.useFakeTimers();
+  await act(async () => {
+    view.rerender(<Assistant {...props} prepare={prepare} />);
+  });
+  expect(prepare).toHaveBeenCalledOnce();
+  expect(
+    screen.queryByText("Checking the change took too long. Try again."),
+  ).not.toBeInTheDocument();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(
+    screen.getByText("Checking the change took too long. Try again."),
+  ).toBeInTheDocument();
 });
 
 it("returns invalid Auto proposals to the model as failed edits", async () => {
