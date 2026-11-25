@@ -1,18 +1,28 @@
-import { X } from "@phosphor-icons/react";
+import { ClockCounterClockwise, DotsThree, Files, Plus, Trash, X } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { categoryLabel } from "../api/categories";
 import type { EditorApi, ServiceSummary } from "../api/client";
-import { categoriesQuery, servicesQuery } from "../api/queries";
+import { categoriesQuery, pageQuery, servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages/visibility";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { formatDay } from "../ui/dates";
 import { pressedByTouch } from "../ui/focus";
 import { ListScreen } from "../ui/list-screen";
+import { Menu } from "../ui/menu";
 import { Select, type SelectItem } from "../ui/select";
 import { StatusDot } from "../ui/status-dot";
-import { NameCell } from "../ui/table/cell-components";
+import { NameCell, rowTitle } from "../ui/table/cell-components";
 import { TextLink } from "../ui/text-link";
 import {
   createAppColumnHelper,
@@ -21,6 +31,7 @@ import {
   useTableContext,
 } from "../ui/table/table-hooks";
 import { listLoadView } from "./list-load-view";
+import type { PageDeleteSnapshot } from "./model";
 import {
   filteredBy,
   pagedTo,
@@ -43,18 +54,80 @@ const visibilities = ["public", "preview", "draft"] as const;
 
 const visibilityLabel = (visibility: string) => visibilityLabels.get(visibility) ?? visibility;
 
-// Status tags: the words carry the meaning, the page settings' colours back them up
-function VisibilityTag({ visibility }: { visibility: ServiceSummary["visibility"] }) {
+// Status in words beside the dot a page has in the service's navigation: the words carry the meaning, the dot backs
+// them up, in the one look the list, its filters and the page list share
+function VisibilityLabel({ visibility }: { visibility: ServiceSummary["visibility"] }) {
   return (
-    <Badge tone={visibilityTones.get(visibility) ?? "neutral"}>{visibilityLabel(visibility)}</Badge>
+    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      <StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />
+      {visibilityLabel(visibility)}
+    </span>
   );
 }
 
-function ServiceCell({ service, href }: { service: ServiceSummary; href: string | undefined }) {
+/** What a row's menu can do to its service, and why it can't delete it yet, from the workspace. */
+const RowActions = createContext<{
+  onDelete?: (entry: PageDeleteSnapshot) => void;
+  deleteBlocked?: (service: ServiceSummary) => string | undefined;
+}>({});
+
+/** Only an open menu needs an entry page read: the list has no version to confirm a delete against. */
+function ServiceDeleteItem({ api, service }: { api: EditorApi; service: ServiceSummary }) {
+  const { onDelete, deleteBlocked } = useContext(RowActions);
+  const reason = useId();
+  const blocked = deleteBlocked?.(service);
+  const entry = useQuery({ ...pageQuery(api, service.id), enabled: !!onDelete && !blocked });
+  const page = entry.data;
+
+  if (!onDelete) return null;
+
+  const why =
+    blocked ??
+    (entry.isError
+      ? "We couldn’t load the entry page. Reopen the menu to try again."
+      : !page
+        ? "Loading the entry page…"
+        : page.parent_id !== null ||
+            page.category_id === null ||
+            page.visibility !== service.visibility
+          ? "The service has changed. Refresh the list before deleting it."
+          : undefined);
+
   return (
-    <NameCell
-      name={
-        <TextLink
+    <>
+      <Menu.Separator />
+      <Menu.Item
+        icon={<Trash />}
+        variant="danger"
+        disabled={!!why}
+        aria-describedby={why ? reason : undefined}
+        onClick={() => {
+          if (page && !why)
+            onDelete({
+              kind: "page",
+              role: "entry",
+              id: page.id,
+              title: page.title,
+              version: page.version,
+            });
+        }}
+      >
+        Delete service…
+      </Menu.Item>
+      {why && <Menu.Note id={reason}>{why}</Menu.Note>}
+    </>
+  );
+}
+
+function ServiceActions({ api, service }: { api: EditorApi; service: ServiceSummary }) {
+  const label = `Actions for ${service.title}`;
+
+  return (
+    <Menu.Root>
+      <Menu.Trigger render={<Button icon={<DotsThree weight="bold" />} aria-label={label} tip />} />
+      <Menu.Content aria-label={label} align="end">
+        <Menu.Item
+          icon={<Files />}
           render={
             <Link
               to="/services/$serviceId/$documentId"
@@ -62,8 +135,37 @@ function ServiceCell({ service, href }: { service: ServiceSummary; href: string 
             />
           }
         >
+          Open
+        </Menu.Item>
+        <Menu.Item
+          icon={<ClockCounterClockwise />}
+          render={
+            <Link
+              to="/history/$pageId"
+              params={{ pageId: service.id }}
+              search={{ service: service.id }}
+            />
+          }
+        >
+          Entry page history
+        </Menu.Item>
+        <ServiceDeleteItem api={api} service={service} />
+      </Menu.Content>
+    </Menu.Root>
+  );
+}
+
+function ServiceCell({ service, href }: { service: ServiceSummary; href: string | undefined }) {
+  return (
+    <NameCell
+      name={
+        <Link
+          to="/services/$serviceId/$documentId"
+          params={{ serviceId: service.id, documentId: service.id }}
+          className={rowTitle}
+        >
           {service.title}
-        </TextLink>
+        </Link>
       }
       path={
         href ? (
@@ -76,8 +178,11 @@ function ServiceCell({ service, href }: { service: ServiceSummary; href: string 
       }
       details={
         <>
-          <VisibilityTag visibility={service.visibility} />
-          {service.category.title}
+          <VisibilityLabel visibility={service.visibility} />
+          <span>{service.category.title}</span>
+          <time dateTime={service.updated_at} className="tabular-nums">
+            {formatDay(service.updated_at)}
+          </time>
         </>
       }
     />
@@ -102,17 +207,13 @@ const serviceColumns = (api: EditorApi) =>
       sortFn: (a, b) => a.original.category.title.localeCompare(b.original.category.title),
       filterFn: "oneOf",
       enableGlobalFilter: false,
-      meta: { secondary: true, width: "w-48" },
-      cell: ({ row }) => <span className="text-14">{row.original.category.title}</span>,
-    }),
-    // Room for the longest date, such as 28 Sept 2026
-    column.accessor("updated_at", {
-      header: "Updated",
-      sortFn: "basic",
-      sortDescFirst: true,
-      enableGlobalFilter: false,
-      meta: { secondary: true, width: "w-36" },
-      cell: ({ cell }) => <cell.DateCell />,
+      // One line, as long as the longest category's name allows, with the whole name on hover when it's cut short
+      meta: { secondary: true, width: "w-64" },
+      cell: ({ row }) => (
+        <span className="block truncate" title={row.original.category.title}>
+          {row.original.category.title}
+        </span>
+      ),
     }),
     // Filter by the status stored in the URL, not its display label.
     column.accessor("visibility", {
@@ -121,7 +222,22 @@ const serviceColumns = (api: EditorApi) =>
       filterFn: "oneOf",
       enableGlobalFilter: false,
       meta: { secondary: true, width: "w-44" },
-      cell: ({ row }) => <VisibilityTag visibility={row.original.visibility} />,
+      cell: ({ row }) => <VisibilityLabel visibility={row.original.visibility} />,
+    }),
+    // Room for the longest date, such as 28 Sept 2026, lined up at its end so the days and years stack
+    column.accessor("updated_at", {
+      header: "Updated",
+      sortFn: "basic",
+      sortDescFirst: true,
+      enableGlobalFilter: false,
+      meta: { secondary: true, width: "w-36", align: "end" },
+      cell: ({ cell }) => <cell.DateCell />,
+    }),
+    column.display({
+      id: "actions",
+      header: () => <span className="sr-only">Actions</span>,
+      meta: { width: "w-16", align: "end" },
+      cell: ({ row }) => <ServiceActions api={api} service={row.original} />,
     }),
   ]);
 
@@ -216,12 +332,18 @@ export function ServicesList({
   search,
   onSearch,
   onCreate,
+  onDelete,
+  deleteBlocked,
   readOnly = false,
 }: {
   api: EditorApi;
   search: ServicesSearch;
   onSearch: (search: ServicesSearch) => void;
   onCreate: () => void;
+  /** Ask the workspace to confirm deletion of this entry page and version. */
+  onDelete?: (entry: PageDeleteSnapshot) => void;
+  /** Why a service can't be deleted yet, such as the other pages it still has. */
+  deleteBlocked?: (service: ServiceSummary) => string | undefined;
   /** Services can't be created, for someone who can't make changes; the workspace says why. */
   readOnly?: boolean;
 }) {
@@ -304,37 +426,48 @@ export function ServicesList({
       setPlace((old) => pagedTo(old, pages - 1, old.size ?? 25));
   }, [services.data, pages, state.pagination.pageIndex]);
 
+  const actions = useMemo(() => ({ onDelete, deleteBlocked }), [onDelete, deleteBlocked]);
+
   return (
     <table.AppTable>
-      <ListScreen
-        title="Services"
-        lead="Each service has an entry page, an optional start page and supporting pages."
-        action={
-          <Button variant="accent" size="md" disabled={readOnly} onClick={onCreate}>
-            Create service
-          </Button>
-        }
-        filters={<ServiceFilters categories={categories} />}
-        status={load.status}
-        notices={load.notices}
-        failure={load.failure}
-      >
-        <table.DataTable
-          caption="Services"
-          loading={services.isPending}
-          rowLink
-          empty={{
-            title: "No services yet",
-            description: "Create a service to start adding its pages.",
-            actions: (
-              <Button variant="secondary" disabled={readOnly} onClick={onCreate}>
-                Create service
-              </Button>
-            ),
-          }}
-        />
-        <table.Pagination name={["service", "services"]} loading={services.isPending} />
-      </ListScreen>
+      <RowActions value={actions}>
+        <ListScreen
+          title="Services"
+          lead="Each service has an entry page, an optional start page and supporting pages."
+          action={
+            <Button
+              variant="accent"
+              size="md"
+              icon={<Plus />}
+              disabled={readOnly}
+              onClick={onCreate}
+            >
+              Create service
+            </Button>
+          }
+          filters={<ServiceFilters categories={categories} />}
+          status={load.status}
+          notices={load.notices}
+          failure={load.failure}
+        >
+          <table.DataTable
+            caption="Services"
+            loading={services.isPending}
+            rowLink
+            compact
+            empty={{
+              title: "No services yet",
+              description: "Create a service to start adding its pages.",
+              actions: (
+                <Button variant="secondary" disabled={readOnly} onClick={onCreate}>
+                  Create service
+                </Button>
+              ),
+            }}
+          />
+          <table.Pagination name={["service", "services"]} loading={services.isPending} />
+        </ListScreen>
+      </RowActions>
     </table.AppTable>
   );
 }

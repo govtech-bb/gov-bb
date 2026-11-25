@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { screen } from "@testing-library/dom";
 import { act, type ReactNode } from "react";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
@@ -84,6 +85,27 @@ const detail: ServiceDetail = {
   })),
 };
 
+const permitPage: ApiPage = {
+  ...pages.get("service")!,
+  id: "permit",
+  slug: "permit",
+  url: "/family/permit",
+  title: "Apply for a permit",
+  category_id: "family",
+  version: 7,
+};
+
+const permit: ServiceDetail = {
+  service: {
+    ...detail.service,
+    id: permitPage.id,
+    title: permitPage.title,
+    url: permitPage.url,
+    page_count: 1,
+  },
+  pages: [{ ...permitPage, role: "entry" }],
+};
+
 const clients: QueryClient[] = [];
 
 afterEach(() => {
@@ -96,14 +118,17 @@ async function mountWorkspace(
   {
     roles = ["editor", "approver"],
     publicIds = [],
+    services = [detail],
     me,
     serverPages = new Map<string, ApiPage>([
       ...pages,
+      [permitPage.id, permitPage],
       ...sitePages.map((page) => [page.id, page] as const),
     ]),
   }: {
     roles?: readonly string[];
     publicIds?: readonly string[];
+    services?: ServiceDetail[];
     /** How /editor/me answers, when not at once with `roles`. */
     me?: () => Promise<Response>;
     /** The pages /pages/:id reads and saves, kept across mounts when passed in. */
@@ -148,12 +173,17 @@ async function mountWorkspace(
           })),
         });
 
-      if (path === "/services") return Response.json([detail.service]);
+      if (path === "/services")
+        return Response.json(
+          services.map((item) => item.service).filter((service) => serverPages.has(service.id)),
+        );
 
-      if (path === "/services/service")
+      const opened = services.find(({ service }) => path === `/services/${service.id}`);
+
+      if (opened)
         return Response.json({
-          ...detail,
-          pages: detail.pages.map((page) =>
+          ...opened,
+          pages: opened.pages.map((page) =>
             publicIds.includes(page.id) ? { ...page, visibility: "public" } : page,
           ),
         });
@@ -176,6 +206,17 @@ async function mountWorkspace(
 
       if (path === "/version") return Response.json({ count: 1, latest: stamp });
       const page = serverPages.get(path.replace("/pages/", ""));
+
+      if (page && init?.method === "DELETE") {
+        if (new URL(url).searchParams.get("expected_version") !== String(page.version))
+          return Response.json(
+            { error: "version_conflict", message: "This page changed." },
+            { status: 409 },
+          );
+        serverPages.delete(page.id);
+
+        return new Response(null, { status: 204 });
+      }
 
       if (page && init?.method === "PUT") {
         writes.push(init);
@@ -227,6 +268,41 @@ async function mountWorkspace(
 const until = (ready: () => void) =>
   act(async () => {
     await vi.waitFor(ready);
+  });
+
+/** The open page's Delete, from the More menu in its bar; the menu renders in a portal outside the root. */
+async function deleteRow() {
+  if (!document.querySelector('[role="menu"][aria-label="Page actions"]')) {
+    const more = document.querySelector<HTMLButtonElement>(
+      '[data-document-bar]:not([hidden]) [aria-label="More page actions"]',
+    );
+
+    if (!more) throw new Error("The page's bar has no More page actions yet");
+    await act(async () => more.click());
+  }
+
+  const row = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+    item.textContent?.startsWith("Delete"),
+  );
+
+  if (!row) throw new Error("The page's menu has no Delete");
+
+  return row;
+}
+
+/** Why a menu row can't be chosen: its note, by its description. */
+const reasonFor = (row: HTMLElement) => {
+  const id = row.getAttribute("aria-describedby");
+
+  return id ? (document.getElementById(id)?.textContent ?? null) : null;
+};
+
+/** Closes an open menu, as Esc does, handing the focus back to its button. */
+const closeMenu = () =>
+  act(async () => {
+    document
+      .querySelector('[role="menu"]')
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   });
 
 test.each([0, 503, 401, 403, 404])(
@@ -288,18 +364,14 @@ test.each([
   [["editor"], true],
   [["editor", "approver"], false],
 ])(
-  "Delete page on a public page, for someone with roles %j, is held back with the reason: %s",
+  "Delete on a public page, for someone with roles %j, is held back in the page's menu with the reason: %s",
   async (roles, blocked) => {
     await mountWorkspace("/services/service/fees", { roles, publicIds: ["fees"] });
 
-    const deleteButton = () =>
-      [...document.querySelectorAll("button")].find(
-        (button) => button.textContent === "Delete page",
-      )!;
-
-    await until(() => expect(deleteButton().disabled).toBe(blocked));
-    const reason = deleteButton().getAttribute("aria-describedby");
-    expect(reason && document.getElementById(reason)?.textContent).toBe(
+    await until(async () =>
+      expect((await deleteRow()).getAttribute("aria-disabled") === "true").toBe(blocked),
+    );
+    expect(reasonFor(await deleteRow())).toBe(
       blocked ? "Only approvers can delete a public page." : null,
     );
   },
@@ -350,10 +422,10 @@ test("roles that can't be read are said to be unchecked, with Try again, never t
     expect(document.body.textContent).toContain("We couldn’t check your permissions."),
   );
   expect(document.body.textContent).not.toContain("Only approvers can delete a public page.");
-  const reason = button("Delete page").getAttribute("aria-describedby");
-  expect(reason && document.getElementById(reason)?.textContent).toBe(
-    "We couldn’t check your permissions.",
+  await until(async () =>
+    expect(reasonFor(await deleteRow())).toBe("We couldn’t check your permissions."),
   );
+  await closeMenu();
 
   // Read at last: the notice goes, with its focused Try again, and the content takes the focus
   reachable = true;
@@ -363,8 +435,10 @@ test("roles that can't be read are said to be unchecked, with Try again, never t
   await until(() =>
     expect(document.body.textContent).not.toContain("We couldn’t check your permissions."),
   );
-  expect(button("Delete page").disabled).toBe(false);
   expect(document.activeElement).toBe(document.getElementById("workspace-content"));
+  await until(async () =>
+    expect((await deleteRow()).getAttribute("aria-disabled")).not.toBe("true"),
+  );
 });
 
 test("someone without the editor role is told why, and can't add, delete or create", async () => {
@@ -374,13 +448,15 @@ test("someone without the editor role is told why, and can't add, delete or crea
     [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
 
   await until(() => expect(document.body.textContent).toContain("you don’t have the editor role"));
-  await until(() => expect(button("Delete page").disabled).toBe(true));
-  expect(button("Add document").disabled).toBe(true);
-  const reason = button("Add document").getAttribute("aria-describedby");
+  await until(() => expect(button("Add page").disabled).toBe(true));
+  const reason = button("Add page").getAttribute("aria-describedby");
   expect(reason && document.getElementById(reason)?.textContent).toBe(
-    "You need the editor role to add or delete pages.",
+    "You need the editor role to add pages.",
   );
-  expect(button("Delete page").getAttribute("aria-describedby")).toBe(reason);
+  await until(async () =>
+    expect(reasonFor(await deleteRow())).toBe("You need the editor role to delete pages."),
+  );
+  await closeMenu();
 
   await act(async () => {
     await h.router.navigate({ to: "/services" });
@@ -394,8 +470,10 @@ test("an editor is offered adding and creating, with no read-only notice", async
   const button = (name: string) =>
     [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
 
-  await until(() => expect(button("Delete page").disabled).toBe(false));
-  expect(button("Add document").disabled).toBe(false);
+  await until(() => expect(button("Add page").disabled).toBe(false));
+  await until(async () =>
+    expect((await deleteRow()).getAttribute("aria-disabled")).not.toBe("true"),
+  );
   expect(document.body.textContent).not.toContain("you don’t have the editor role");
 });
 
@@ -467,6 +545,99 @@ async function editTitle(value: string) {
 
 const click = (label: string, scope: ParentNode = document) =>
   act(async () => control(label, scope).click());
+
+async function listedServiceDelete(title: string) {
+  const trigger = await screen.findByRole("button", { name: `Actions for ${title}` });
+  await act(async () => trigger.click());
+
+  return screen.getByRole("menuitem", { name: "Delete service…" });
+}
+
+test.each([
+  { listed: detail, reason: "Delete its other pages first." },
+  {
+    listed: { ...permit, service: { ...permit.service, visibility: "public" as const } },
+    reason: "Only approvers can delete a public service.",
+  },
+])("a blocked list delete explains why: $reason", async ({ listed, reason }) => {
+  const { service } = listed;
+  const h = await mountWorkspace("/services", { roles: ["editor"], services: [listed] });
+
+  const remove = vi.spyOn(h.router.options.context.api, "deletePage");
+  const item = await listedServiceDelete(service.title);
+  expect(item.getAttribute("aria-disabled")).toBe("true");
+  expect(reasonFor(item)).toBe(reason);
+  await act(async () => item.click());
+  await act(async () => screen.getByText(reason).click());
+  expect(h.router.state.location.href).toBe("/services");
+  expect(question()).toBeNull();
+  expect(remove).not.toHaveBeenCalled();
+  expect(h.asked).not.toContain(`/pages/${service.id}`);
+});
+
+test("a list delete stays disabled when its entry version cannot be read", async () => {
+  const h = await mountWorkspace("/services", { services: [permit] });
+  const api = h.router.options.context.api;
+  const answer = Promise.withResolvers<ApiPage>();
+  vi.spyOn(api, "page").mockReturnValueOnce(answer.promise);
+  const remove = vi.spyOn(api, "deletePage");
+  const item = await listedServiceDelete(permit.service.title);
+  expect(reasonFor(item)).toBe("Loading the entry page…");
+  await act(async () => answer.reject(new Error("Offline")));
+  await until(() =>
+    expect(reasonFor(item)).toBe("We couldn’t load the entry page. Reopen the menu to try again."),
+  );
+  expect(item.getAttribute("aria-disabled")).toBe("true");
+  await act(async () => item.click());
+  expect(question()).toBeNull();
+  expect(remove).not.toHaveBeenCalled();
+  expect(h.router.state.location.href).toBe("/services");
+});
+
+test("choosing Delete service from a row stays on the list and deletes only its confirmed entry version", async () => {
+  const h = await mountWorkspace("/services", { services: [detail, permit] });
+  const remove = vi.spyOn(h.router.options.context.api, "deletePage");
+  const item = await listedServiceDelete(permit.service.title);
+  await until(() => expect(item.getAttribute("aria-disabled")).not.toBe("true"));
+  await act(async () => item.click());
+  expect(h.router.state.location.href).toBe("/services");
+  expect(screen.getByRole("alertdialog", { name: "Delete this service?" }).textContent).toContain(
+    permit.service.title,
+  );
+  expect(remove).not.toHaveBeenCalled();
+  await click("Delete service", question());
+  await until(() => expect(question()).toBeNull());
+  expect(remove.mock.calls).toEqual([[permitPage.id, permitPage.version]]);
+  await until(() =>
+    expect(
+      screen.queryByRole("button", { name: `Actions for ${permit.service.title}` }),
+    ).toBeNull(),
+  );
+  expect(h.serverPages.has(detail.service.id)).toBe(true);
+  expect(h.router.state.location.href).toBe("/services");
+});
+
+test("a list delete cannot advance a retained dirty editor's version, even when the row reads a newer entry", async () => {
+  const h = await mountWorkspace("/services/permit/permit", { services: [permit] });
+  await until(() => expect(activeTitle()?.value).toBe(permitPage.title));
+  await editTitle("Unsaved permit");
+  // Keep the dirty pane mounted behind the list rather than discarding it through the leave dialog.
+  await act(async () => h.router.navigate({ to: "/services", ignoreBlocker: true }));
+  const newer = { ...permitPage, title: "Renamed permit", version: permitPage.version + 1 };
+  h.serverPages.set(permitPage.id, newer);
+  await act(async () => h.client.refetchQueries({ queryKey: ["content", "page", permitPage.id] }));
+  const remove = vi.spyOn(h.router.options.context.api, "deletePage");
+  const item = await listedServiceDelete(permit.service.title);
+  await until(() => expect(item.getAttribute("aria-disabled")).not.toBe("true"));
+  await act(async () => item.click());
+  expect(question().textContent).toContain(permitPage.title);
+  await click("Delete service", question());
+  await until(() => expect(question()?.textContent).toContain("This page changed."));
+  expect(remove.mock.calls).toEqual([[permitPage.id, permitPage.version]]);
+  expect(h.serverPages.get(permitPage.id)).toBe(newer);
+  expect(localStorage.getItem("govbb-editor:unsaved-work:permit")).toContain("Unsaved permit");
+  expect(h.router.state.location.href).toBe("/services");
+});
 
 test("Cancel preserves route, edited title and focus; confirmed Leave cannot resurrect discarded edits or undo", async () => {
   const h = await mountWorkspace();
@@ -620,7 +791,7 @@ test("the menu names the editor's screens, folded to icons beside a service's ow
   // Inside a service: a rail of icons, each still named, and the bar's way back to the list
   expect(menuLink("Services")?.getAttribute("aria-current")).toBe("page");
   expect(menuLink("Categories")?.querySelector(".sr-only")?.textContent).toBe("Categories");
-  expect(document.querySelector('nav[aria-label="Service documents"]')).not.toBeNull();
+  expect(document.querySelector('nav[aria-label="Service pages"]')).not.toBeNull();
   expect(document.querySelector("header a")?.textContent).toBe("Services");
 
   await act(async () => h.router.navigate({ to: "/categories" }));
@@ -630,7 +801,7 @@ test("the menu names the editor's screens, folded to icons beside a service's ow
   expect(menuLink("Categories")?.getAttribute("aria-current")).toBe("page");
   expect(menuLink("Categories")?.querySelector(".sr-only")).toBeNull();
   expect(menuLink("Services")?.hasAttribute("aria-current")).toBe(false);
-  expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
+  expect(document.querySelector('nav[aria-label="Service pages"]')).toBeNull();
   expect(document.querySelector("header a")?.textContent).toBe("Categories");
   await until(() => expect(document.body.textContent).toContain("No categories yet"));
 });
@@ -649,7 +820,7 @@ test.each(sitePages)(
     await until(() => expect(activeTitle()?.value).toBe(page.title));
     expect(menuLink("Site pages")?.getAttribute("aria-current")).toBe("page");
     expect(document.querySelector("header")?.textContent).toContain(page.title);
-    expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
+    expect(document.querySelector('nav[aria-label="Service pages"]')).toBeNull();
     expect(control("Save").getAttribute("aria-disabled")).toBe("true");
 
     // Even with categories to offer, a site page is offered none

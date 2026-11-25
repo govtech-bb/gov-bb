@@ -1,51 +1,47 @@
+import { Plus } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import { useId, type ReactNode } from "react";
 import { visibilityLabels, visibilityTones } from "../pages/visibility";
 import type { DraftStore } from "../persistence/draft-store";
-import { Button } from "../ui/button";
 import type { DrawerPanel } from "../ui/drawer";
 import { Sidebar } from "../ui/sidebar";
 import { StatusDot } from "../ui/status-dot";
-import { TextLink } from "../ui/text-link";
 import { DocumentLabel } from "./document-label";
 import type { ServiceNavRow } from "./service-pages";
 
 /**
- * API pages beneath their parents, with visibility indicators and the open editor's in-memory title.
+ * API pages beneath their parents, with visibility indicators and the open editor's in-memory title, under the
+ * service's name, and adding a page as the list's last row. What a page itself can do, such as its history and
+ * deleting it, is in the page's own bar.
  */
 export function ServiceNav({
   sidebar,
   serviceId,
+  title,
   rows,
   selectedId,
   stores,
   onAdd,
-  onDelete,
-  deleteBlocked,
   readOnly,
   loading = false,
 }: {
   /** Whether it shows, beside the page or as a drawer: `useSidebar`. */
   sidebar: DrawerPanel;
   serviceId: string;
+  /** The service's name, which heads the list beside the page. */
+  title?: string;
   rows: readonly ServiceNavRow[];
   selectedId: string | undefined;
   /** The open editors' drafts, by document. */
   stores: ReadonlyMap<string, DraftStore>;
   onAdd: () => void;
-  /** Deletes the selected page from the content API. */
-  onDelete?: () => void;
-  /** Why the selected page can't be deleted yet, such as the pages under it. */
-  deleteBlocked?: string;
-  /** Why nothing can be added or deleted, for someone who can't make changes. */
+  /** Why nothing can be added, for someone who can't make changes. */
   readOnly?: string;
-  /** Its pages are still loading: the rows known so far show, and nothing can be added or deleted yet. */
+  /** Its pages are still loading: the rows known so far show, and nothing can be added yet. */
   loading?: boolean;
 }) {
   const reason = useId();
   const pages = rows;
-  const blocked = readOnly ?? deleteBlocked;
-  const selected = pages.some((row) => row.document.id === selectedId);
 
   // A page that isn't public says so in words under its title, which its dot only backs up
   const item = (row: ServiceNavRow, nested: ReactNode[]) => (
@@ -86,8 +82,8 @@ export function ServiceNav({
   };
 
   return (
-    <Sidebar.Root sidebar={sidebar} label="Service documents">
-      <Sidebar.Header>
+    <Sidebar.Root sidebar={sidebar} label="Service pages">
+      <Sidebar.Header title={title}>
         <Sidebar.Toggle sidebar={sidebar} label="Pages" />
       </Sidebar.Header>
       <Sidebar.Content>
@@ -100,46 +96,19 @@ export function ServiceNav({
           )
         )}
         {!loading && (
-          <Sidebar.Actions>
-            <Button
-              variant="secondary"
-              disabled={!!readOnly}
-              aria-describedby={readOnly ? reason : undefined}
-              onClick={onAdd}
-            >
-              Add document
-            </Button>
-            {onDelete && (
-              <Button
-                disabled={!selected || !!blocked}
-                aria-describedby={blocked ? reason : undefined}
-                onClick={onDelete}
-              >
-                Delete page
-              </Button>
-            )}
-          </Sidebar.Actions>
-        )}
-        {blocked && (
-          <p id={reason} className="mt-2 text-14 text-muted">
-            {blocked}
-          </p>
-        )}
-        {selectedId && selected && (
-          <TextLink
-            className="mt-4 block w-fit text-14"
-            render={
-              <Link
-                to="/history/$pageId"
-                params={{ pageId: selectedId }}
-                search={{ service: serviceId }}
-                // As a page row does, so the drawer isn't open again on the way back
-                onClick={() => !sidebar.wide && sidebar.setOpen(false)}
-              />
-            }
+          <Sidebar.Action
+            icon={<Plus />}
+            disabled={!!readOnly}
+            aria-describedby={readOnly ? reason : undefined}
+            onClick={onAdd}
           >
-            View page history
-          </TextLink>
+            Add page
+          </Sidebar.Action>
+        )}
+        {readOnly && (
+          <p id={reason} className="mt-2 px-3 text-14 text-muted">
+            {readOnly}
+          </p>
         )}
       </Sidebar.Content>
     </Sidebar.Root>

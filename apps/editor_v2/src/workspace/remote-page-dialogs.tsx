@@ -15,7 +15,7 @@ import { Input } from "../ui/input";
 import { NativeSelect } from "../ui/native-select";
 import { toast } from "../ui/toast";
 import { ApiProblems, ApiProblemText } from "./api-problems";
-import { documentLabel, type PageDocument } from "./model";
+import { documentLabel, type PageDeleteSnapshot } from "./model";
 
 const CHANGED = "This item changed. Cancel and review the latest version before trying again.";
 
@@ -354,7 +354,7 @@ export function CreateRemotePageDialog({
         </Button>
       }
     >
-      <Field label="Document type">
+      <Field label="Page type">
         <NativeSelect
           value={kind}
           onChange={(event) => {
@@ -407,7 +407,7 @@ export function DeleteRemotePageDialog({
   api: EditorApi;
   /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
   open: boolean;
-  page: PageDocument & { version: number };
+  page: PageDeleteSnapshot;
   onClose: () => void;
   onDone: () => void;
   /** Where the focus goes once the page has gone, as the editor leaves it and its Delete page may go too. */
@@ -440,7 +440,7 @@ export function DeleteRemotePageDialog({
       title={service ? "Delete this service?" : "Delete this page?"}
       description={
         service
-          ? `${documentLabel(page)} is this service’s entry page, so deleting it deletes the service. It’s removed from the content API and, if it’s public, from the site. Any unsaved changes will be lost.`
+          ? `Deleting the entry page deletes the service “${page.title}”. It’s removed from the content API and, if it’s public, from the site. Any unsaved changes will be lost.`
           : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Any unsaved changes will be lost.`
       }
       confirmLabel={

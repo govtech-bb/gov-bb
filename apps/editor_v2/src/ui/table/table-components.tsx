@@ -74,6 +74,7 @@ export function DataTable({
   empty,
   marked,
   rowLink = false,
+  compact = false,
 }: {
   caption: string;
   loading?: boolean;
@@ -82,6 +83,8 @@ export function DataTable({
   marked?: string;
   /** Each row opens with its first link, such as its name's. */
   rowLink?: boolean;
+  /** Rows 8px shorter, for a long list read down its titles, such as Services. */
+  compact?: boolean;
 }) {
   const table = useTableContext();
   const rows = table.getRowModel().rows;
@@ -94,7 +97,10 @@ export function DataTable({
 
   // A plain click, not one that ends a selection of the row's words
   const open = (event: MouseEvent<HTMLTableRowElement>) => {
-    if (!(event.target instanceof Element) || event.target.closest(controls)) return;
+    // A portaled menu bubbles through its React row but isn't part of the clickable row.
+    if (!(event.target instanceof Element) || !event.currentTarget.contains(event.target)) return;
+
+    if (event.target.closest(controls)) return;
 
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
@@ -149,7 +155,8 @@ export function DataTable({
                   <td
                     key={column?.id ?? "loading"}
                     className={cn(
-                      "px-4 py-3.5 align-middle",
+                      "px-4 align-middle",
+                      compact ? "py-2.5" : "py-3.5",
                       column?.columnDef.meta?.secondary && secondary,
                     )}
                   >
@@ -201,7 +208,7 @@ export function DataTable({
                 key={row.id}
                 onClick={rowLink ? open : undefined}
                 className={cn(
-                  "border-t border-line transition-colors",
+                  "group/row border-t border-line transition-colors",
                   row.id === marked ? "bg-blue-10" : "hover:bg-tint",
                   // A step darker while pressed, which is all a tap shows
                   rowLink && "cursor-pointer active:bg-hover",
@@ -212,7 +219,8 @@ export function DataTable({
                     {(cell) => (
                       <td
                         className={cn(
-                          "px-4 py-3.5 align-middle",
+                          "px-4 align-middle",
+                          compact ? "py-2.5" : "py-3.5",
                           cell.column.columnDef.meta?.align === "end" && "text-end",
                           cell.column.columnDef.meta?.secondary && secondary,
                         )}

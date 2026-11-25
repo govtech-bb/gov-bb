@@ -132,7 +132,7 @@ try {
     await title.waitFor();
     assert.equal(await title.inputValue(), original.title);
     assert.equal(await button("Save").getAttribute("aria-disabled"), "true");
-    assert.equal(await button("Add document").count(), 0);
+    assert.equal(await button("Add page").count(), 0);
 
     if ((await button("Page settings").getAttribute("aria-expanded")) !== "true")
       await button("Page settings").click();

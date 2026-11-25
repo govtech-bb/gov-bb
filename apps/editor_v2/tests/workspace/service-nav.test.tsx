@@ -65,9 +65,7 @@ const top = (document: PageDocument): ServiceNavRow => ({ document, depth: 0 });
 const page = (title: string) => `---\ntitle: ${title}\n---\n\nAbout the fees.\n`;
 
 const rows = () =>
-  [...host.querySelectorAll('nav[aria-label="Service documents"] li')].map(
-    (item) => item.textContent,
-  );
+  [...host.querySelectorAll('nav[aria-label="Service pages"] li')].map((item) => item.textContent);
 
 const retitle = (document: PageDocument, title: string) => {
   const store = new DraftStore(page(document.title), govbbPageCodec);
@@ -109,28 +107,37 @@ test("closed API pages use server titles even when old browser drafts exist", as
   expect(rows()).toEqual(["Renamed elsewhere", "Contact"]);
 });
 
-test("Delete page says why it can't run yet, instead of failing after the author confirms", async () => {
+test("the list is headed by its service's name, two lines at most, with the whole name on hover", async () => {
+  const name =
+    "Apply to Environmental Health for an offensive trade licence to do work that may cause fumes, smells or waste";
+
+  await render({ title: name });
+
+  const heading = [...host.querySelectorAll("span")].find((span) => span.textContent === name)!;
+
+  expect(heading.classList).toContain("line-clamp-2");
+  expect(heading.getAttribute("title")).toBe(name);
+});
+
+test("Add page is the list's last row, and says why it can't run for someone who can't make changes", async () => {
   const entry = pageDocumentFromApi({ id: "entry", title: "Apply for a licence", role: "entry" });
 
-  const deleteButton = () =>
-    [...host.querySelectorAll("button")].find((button) => button.textContent === "Delete page")!;
+  const add = () =>
+    [...host.querySelectorAll("button")].find((button) => button.textContent === "Add page")!;
 
-  await render({
-    rows: [top(entry)],
-    selectedId: "entry",
-    onDelete: () => {},
-    deleteBlocked: "Delete or move the pages under this page first.",
-  });
+  await render({ rows: [top(entry)], readOnly: "You need the editor role to add pages." });
 
-  expect(deleteButton().disabled).toBe(true);
-  expect(
-    document.getElementById(deleteButton().getAttribute("aria-describedby")!)?.textContent,
-  ).toBe("Delete or move the pages under this page first.");
+  expect(add().disabled).toBe(true);
+  expect(document.getElementById(add().getAttribute("aria-describedby")!)?.textContent).toBe(
+    "You need the editor role to add pages.",
+  );
 
-  await render({ rows: [top(entry)], selectedId: "entry", onDelete: () => {} });
+  await render({ rows: [top(entry)] });
 
-  expect(deleteButton().disabled).toBe(false);
-  expect(deleteButton().hasAttribute("aria-describedby")).toBe(false);
+  expect(add().disabled).toBe(false);
+  expect(add().hasAttribute("aria-describedby")).toBe(false);
+  // After the pages, not apart from them under the list
+  expect(add().previousElementSibling?.tagName).toBe("UL");
 });
 
 test("a page sits in the list under its parent, dotted with how far it's published, and in words where it isn't public", async () => {
@@ -182,7 +189,7 @@ test("a page sits in the list under its parent, dotted with how far it's publish
 
 test("while a service's pages load, its sidebar says so, shows what's known and offers nothing yet", async () => {
   const entry = pageDocumentFromApi({ id: "entry", title: "Severance", role: "entry" });
-  await render({ rows: [top(entry)], loading: true, onDelete: () => {} });
+  await render({ rows: [top(entry)], loading: true });
 
   // Actions on the pages, that is: the header's Pages toggle only hides the list
   const actions = () => host.querySelectorAll('button:not([aria-label="Pages"])');
@@ -195,45 +202,7 @@ test("while a service's pages load, its sidebar says so, shows what's known and 
   ]);
   expect(actions()).toHaveLength(0);
 
-  await render({ rows: [top(entry)], onDelete: () => {} });
+  await render({ rows: [top(entry)] });
   expect(host.textContent).not.toContain("Loading pages…");
-  expect([...actions()].map((button) => button.textContent)).toEqual([
-    "Add document",
-    "Delete page",
-  ]);
-});
-
-test("View page history shows only for a selected page in the list, and opens its history", async () => {
-  const fees = pageDocumentFromApi({ id: "fees", title: "Fees", role: "supporting" });
-
-  const link = () =>
-    [...host.querySelectorAll("a")].find((item) => item.textContent === "View page history");
-
-  await render({ rows: [top(fees)] });
-  expect(link()).toBeUndefined();
-
-  await render({ rows: [top(fees)], selectedId: "gone" });
-  expect(link()).toBeUndefined();
-
-  await render({ rows: [top(fees)], selectedId: "fees" });
-  expect(link()?.getAttribute("href")).toBe("/history/fees?service=service");
-});
-
-test("on a narrow screen, View page history closes the Pages drawer, so it isn't open on the way back", async () => {
-  const fees = pageDocumentFromApi({ id: "fees", title: "Fees", role: "supporting" });
-  const setOpen = vi.fn();
-
-  await render({
-    sidebar: { id: "sidebar", wide: false, open: true, setOpen },
-    rows: [top(fees)],
-    selectedId: "fees",
-  });
-
-  const link = [...document.querySelectorAll("a")].find(
-    (item) => item.textContent === "View page history",
-  );
-
-  await act(async () => link!.click());
-
-  expect(setOpen).toHaveBeenCalledWith(false);
+  expect([...actions()].map((button) => button.textContent)).toEqual(["Add page"]);
 });

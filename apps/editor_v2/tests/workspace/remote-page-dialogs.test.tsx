@@ -998,7 +998,9 @@ test("deletion keeps the opened identity, version and warning through refresh an
     role: "supporting",
     version: 99,
   });
-  expect(document.body.textContent).toContain("Entry page is this service’s entry page");
+  expect(document.body.textContent).toContain(
+    "Deleting the entry page deletes the service “Fees”.",
+  );
   expect(document.body.textContent).toContain("Any unsaved changes will be lost.");
 
   const confirm = [

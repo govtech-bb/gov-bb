@@ -3,6 +3,9 @@ export type ServicePageRole = "entry" | "start" | "supporting";
 /** Navigation metadata for an API page; content belongs to its in-memory editor. */
 export type PageDocument = { id: string; title: string; kind: "page"; role: ServicePageRole };
 
+/** The page and version an author is being asked to delete. */
+export type PageDeleteSnapshot = PageDocument & { version: number };
+
 export type WorkspaceLocation = { serviceId: string; documentId?: string } | undefined;
 
 export function documentLabel(document: PageDocument) {
