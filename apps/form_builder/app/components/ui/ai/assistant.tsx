@@ -691,7 +691,7 @@ function ChatSession({
       return {
         applied: false,
         message:
-          "The change did not finish in time. It may still be saved — check the form before you try again.",
+          "The change did not finish in time. It may still be saved — check the draft before you try again.",
       };
     },
     [finishEdit],

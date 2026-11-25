@@ -542,7 +542,7 @@ it("ends a stalled save with a not-applied result after the time limit", async (
   expect(await result).toEqual({
     applied: false,
     message:
-      "The change did not finish in time. It may still be saved — check the form before you try again.",
+      "The change did not finish in time. It may still be saved — check the draft before you try again.",
   });
   expect(
     screen.queryByRole("button", { name: /Checking the proposed draft/ }),
@@ -556,7 +556,7 @@ it.each([
 ])(
   "ends stalled read tool %i with an error after the time limit",
   async (index, read, input) => {
-    vi.mocked(read).mockReturnValue(new Promise(() => {}));
+    vi.mocked(read).mockReturnValueOnce(new Promise(() => {}));
     render(<Assistant {...props} prepare={vi.fn()} />);
     await waitFor(() => expect(harness.options).toBeTruthy());
     vi.useFakeTimers();
