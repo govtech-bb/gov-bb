@@ -15,7 +15,7 @@ import {
   useGlobalAssistant,
   WorkspaceAssistant,
 } from "../../global-assistant";
-import { prepareFormDraft } from "../../builder/form-assistant";
+import { FormAssistant, prepareFormDraft } from "../../builder/form-assistant";
 import { recipeReducer } from "../../builder/recipe-reducer";
 import { restoreTranscript, historyKey } from "./history";
 import type { PreparedChange } from "./review";
@@ -29,6 +29,10 @@ vi.mock("./service-tools", () => ({
   readService: vi.fn(),
   readPage: vi.fn(),
   readForm: vi.fn(),
+}));
+vi.mock("../../../server/registry", async (original) => ({
+  ...(await original<object>()),
+  validateRecipe: vi.fn(async () => ({ ok: true, issues: [] })),
 }));
 vi.mock("../../services/service-state", () => ({
   useServiceIndex: () => ({ entries: [] }),
@@ -94,7 +98,7 @@ const proposal = {
   recipe: { formId: "test", title: "Proposed", steps: [] },
 };
 
-async function propose() {
+async function propose(args: object = proposal) {
   await act(async () => {
     await harness.options.fetcher(
       { messages: [], threadId: "t", runId: "r" },
@@ -109,7 +113,7 @@ async function propose() {
       id: "approval",
       toolCallId: "call",
       toolName: "apply_form_draft",
-      originalArgs: proposal,
+      originalArgs: args,
       canResolve: true,
       status: "pending",
       resolveInterrupt,
@@ -349,6 +353,61 @@ describe("a proposal that leaves out existing steps (#3876)", () => {
     expect(result.steps.find((item) => item.stepId === "two")?.title).toBe(
       "Changed",
     );
+  });
+
+  it("rejects a removeStepIds value that is not a list of ids", () => {
+    const proposal = {
+      formId: "fixed",
+      title: "Form",
+      steps: [step("one"), step("three")],
+    };
+    for (const value of ["one,two", null])
+      expect(() =>
+        prepareFormDraft(
+          draft,
+          proposal,
+          getCatalog(),
+          true,
+          value as unknown as string[],
+        ),
+      ).toThrow();
+  });
+
+  it("removes a listed step through the open form's prepare", async () => {
+    const onApply = vi.fn();
+    const element = () => (
+      <FormAssistant
+        user="alice"
+        documentId="one"
+        draft={draft}
+        catalog={getCatalog()}
+        readOnly={false}
+        onApply={onApply}
+      />
+    );
+    const view = render(element());
+    await waitFor(() => expect(harness.options).toBeTruthy());
+    const args = {
+      summary: "Remove step two",
+      recipe: {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("three")],
+      },
+      removeStepIds: ["two"],
+    };
+    await propose(args);
+    view.rerender(element());
+    const button = await screen.findByRole("button", {
+      name: "Apply to draft",
+    });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+    expect(
+      (await harness.options.tools[0].execute(args, { toolCallId: "call" }))
+        .applied,
+    ).toBe(true);
+    expect(stepIds(onApply.mock.calls[0][0])).toEqual(["one", "three"]);
   });
 
   it("still applies a full proposal that changes one step", () => {

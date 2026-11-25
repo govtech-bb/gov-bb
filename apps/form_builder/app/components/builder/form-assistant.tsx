@@ -1,6 +1,7 @@
 import {
   aiRecipeSchema,
   deserializeRecipe,
+  proposeFormTool,
   serializeRecipeDraft,
   type RecipeDraft,
   type RegistryCatalog,
@@ -26,9 +27,12 @@ export function prepareFormDraft(
   recipe: unknown,
   catalog: RegistryCatalog,
   fixedId: boolean,
-  removeStepIds: string[] = [],
+  removeStepIds?: string[],
 ): RecipeDraft {
   const parsed = aiRecipeSchema.parse(recipe);
+  // The open-form path passes the model's value through unparsed.
+  const removed =
+    proposeFormTool.inputSchema.shape.removeStepIds.parse(removeStepIds) ?? [];
   const incoming = deserializeRecipe(parsed as ServiceContractRecipe, catalog);
   // The assistant resends the whole recipe, so a step it leaves out would be
   // deleted. Only let it leave out steps it names in removeStepIds (#3876).
@@ -39,7 +43,7 @@ export function prepareFormDraft(
     .filter(
       (stepId) =>
         !isRequiredStep(stepId) &&
-        !removeStepIds.includes(stepId) &&
+        !removed.includes(stepId) &&
         !incoming.steps.some((step) => step.stepId === stepId),
     );
   if (dropped.length)
