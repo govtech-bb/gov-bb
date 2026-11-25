@@ -623,19 +623,40 @@ it("cancels Auto validation when stopped and never runs its apply handler", asyn
   await act(async () =>
     complete({ before: {}, after: { title: "Proposed" }, warnings: [], apply }),
   );
-  // The generation changed during validation, so the call ends instead of
-  // staying pending, and the model is told to ask again.
-  expect(resolve).toHaveBeenCalledOnce();
+  expect(resolve).not.toHaveBeenCalled();
   expect(
-    await harness.options.tools[0].execute(proposal, { toolCallId: "call" }),
-  ).toEqual({
-    applied: false,
-    message: expect.stringContaining("Request a fresh proposal"),
-  });
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
+  ).toBe(false);
   expect(apply).not.toHaveBeenCalled();
 });
 
-it("ends an Auto call with a fresh-proposal message when the editor becomes read-only during validation", async () => {
+it("cancels an Auto call when the editor becomes read-only during validation", async () => {
+  autoConversation();
+  let complete!: (value: PreparedChange) => void;
+  const apply = vi.fn();
+  const prepare = () =>
+    new Promise<PreparedChange>((resolve) => {
+      complete = resolve;
+    });
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  const cancel = vi.fn();
+  harness.interrupts[0].cancel = cancel;
+  act(() => publishInterrupts());
+  view.rerender(<Assistant {...props} readOnly prepare={prepare} />);
+  await act(async () =>
+    complete({ before: {}, after: { title: "Proposed" }, warnings: [], apply }),
+  );
+  // Read-only runs resume in ask mode, where the server refuses both an
+  // approval and a rejection for the edit tools.
+  expect(cancel).toHaveBeenCalledOnce();
+  expect(resolve).not.toHaveBeenCalled();
+  expect(apply).not.toHaveBeenCalled();
+});
+
+it("ends an Auto call with a fresh-proposal message when the draft changes during validation", async () => {
   autoConversation();
   let complete!: (value: PreparedChange) => void;
   const apply = vi.fn();
@@ -647,11 +668,17 @@ it("ends an Auto call with a fresh-proposal message when the editor becomes read
   await waitFor(() => expect(harness.options).toBeTruthy());
   const resolve = await propose();
   act(() => publishInterrupts());
-  view.rerender(<Assistant {...props} readOnly prepare={prepare} />);
+  view.rerender(
+    <Assistant
+      {...props}
+      revisionSource={{ title: "Manual edit" }}
+      prepare={prepare}
+    />,
+  );
   await act(async () =>
     complete({ before: {}, after: { title: "Proposed" }, warnings: [], apply }),
   );
-  expect(resolve).toHaveBeenCalledOnce();
+  expect(resolve).toHaveBeenCalledExactlyOnceWith(true);
   expect(
     await harness.options.tools[0].execute(proposal, { toolCallId: "call" }),
   ).toEqual({

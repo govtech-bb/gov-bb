@@ -119,6 +119,7 @@ type Approval = {
   status: string;
   canResolve: boolean;
   resolveInterrupt: (approved: boolean) => void;
+  cancel: () => void;
 };
 export type AssistantProps = {
   user: string;
@@ -755,21 +756,23 @@ function ChatSession({
       finishEdit(interrupt.toolCallId);
       return;
     }
+    // Stop, close and unmount call chat.stop(), which already ended the
+    // interrupt.
     if (
       !active.current ||
       !current.current.open ||
-      current.current.readOnly ||
       started !== generation.current
     ) {
-      // End the call instead of leaving it pending. With no approved change,
-      // execute refuses it and tells the model to request a fresh proposal.
-      // A rejection cannot carry that message: these tools have no
-      // approvalSchema. Stop, close and unmount reset the interrupts, so
-      // resolving then throws and there is nothing left to end.
-      approved.current.delete(interrupt.toolCallId);
+      finishEdit(interrupt.toolCallId);
+      return;
+    }
+    // A read-only run resumes in ask mode, where the server has no edit
+    // tools and refuses an approval or a rejection. Cancel the call instead
+    // of leaving it pending.
+    if (current.current.readOnly) {
       finishEdit(interrupt.toolCallId);
       try {
-        interrupt.resolveInterrupt(true);
+        interrupt.cancel();
       } catch {
         autoHandled.current.delete(interrupt.id);
       }
