@@ -574,6 +574,9 @@ test("a rejection refused (403) says why and reads the change and the roles agai
     String(url).endsWith("/editor/me"),
   ).length;
 
+  // One read answers both the roles and the id the screen needs
+  expect(roleReads).toBe(1);
+
   server.answer(() =>
     Response.json(
       { error: "forbidden", message: "You need the approver role to do this." },
