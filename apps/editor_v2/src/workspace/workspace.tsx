@@ -98,7 +98,8 @@ export function ServiceWorkspace({
   const historySearch = useSearch({ from: "/_workspace/history/$pageId", shouldThrow: false });
   const onHistory = !!historySearch;
   const onCollections = !!useMatch({ from: "/_workspace/collections", shouldThrow: false });
-  const onPeople = !!useMatch({ from: "/_workspace/people", shouldThrow: false });
+  const peopleSearch = useSearch({ from: "/_workspace/people", shouldThrow: false });
+  const onPeople = !!peopleSearch;
 
   const collectionSearch = useSearch({
     from: "/_workspace/collections/$key",
@@ -300,6 +301,13 @@ export function ServiceWorkspace({
         });
     },
     [collectionKey, routerNavigate],
+  );
+
+  // A person's panel lives in the People address too, so a refresh keeps it open
+  const openPerson = useCallback(
+    (person: string | undefined) =>
+      void routerNavigate({ to: "/people", search: person ? { person } : {}, replace: true }),
+    [routerNavigate],
   );
 
   const navigate = (next: WorkspaceLocation) =>
@@ -551,7 +559,7 @@ export function ServiceWorkspace({
           )}
           {!location && onPeople && (
             <section>
-              <PeopleScreen api={api} />
+              <PeopleScreen api={api} person={peopleSearch?.person} onPerson={openPerson} />
             </section>
           )}
           {!location && onCollections && (
