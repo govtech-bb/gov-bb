@@ -61,11 +61,13 @@ const APPLICATIONS_SQL = `
   where fs.status in ('submitted', 'processing', 'complete')`;
 
 // Payments: successful EzPay transactions with a real (numeric) transaction
-// number, one per transaction. date_settled is EzPay's own Barbados local
-// time, stored as given, so it is NOT shifted.
+// number. The unique index on transaction_number makes each transaction count
+// once. A payment EzPay settled for a different amount (payments.status
+// 'mismatched') still counts, with the EzPay amount: the money was received,
+// and the September services report counted these too. date_settled is EzPay's own Barbados local time, stored as given, so
+// it is NOT shifted.
 const PAYMENTS_SQL = `
-  select distinct on (pt.transaction_number)
-         p.form_id as "formId",
+  select p.form_id as "formId",
          to_char(pt.date_settled, 'YYYY-MM') as month,
          pt.amount::text as amount,
          ${IDENTITY_SQL} as identity
@@ -74,8 +76,7 @@ const PAYMENTS_SQL = `
   left join form_submissions fs on fs.id = p.submission_id
   where pt.status = 'success'
     and pt.transaction_number ~ '^[0-9]+$'
-    and pt.date_settled is not null
-  order by pt.transaction_number, pt.date_settled`;
+    and pt.date_settled is not null`;
 
 interface ApplicationRow {
   formId: string;

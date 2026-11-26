@@ -1,3 +1,5 @@
+import { GUARDS_METADATA } from "@nestjs/common/constants";
+import { AdminTokenGuard } from "@/common/guards/admin-token.guard";
 import { MonitoringController } from "./monitoring.controller";
 
 const mockRepo = {
@@ -55,6 +57,18 @@ describe("MonitoringController", () => {
 
       expect(result).toMatchObject({ status: "success" });
       expect(result.data).toEqual(report);
+    });
+
+    it("is behind the MONITORING_API_TOKEN guard", () => {
+      const guards = Reflect.getMetadata(
+        GUARDS_METADATA,
+        MonitoringController.prototype.mission6Report,
+      );
+      expect(guards).toHaveLength(1);
+      expect(guards[0]).toBeInstanceOf(AdminTokenGuard);
+      expect(guards[0]).toMatchObject({
+        envVarNames: ["MONITORING_API_TOKEN"],
+      });
     });
   });
 

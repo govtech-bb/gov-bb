@@ -13,6 +13,14 @@
  * `@gov.bb` and `barbados.gov.bb` are deliberately NOT left out: public
  * servants apply for services as citizens too.
  *
+ * On purpose, the rule reads EVERY email and person-name answer in the
+ * submission, not only the applicant's own (there is no standard applicant
+ * field across forms). A team address anywhere in a form almost always means
+ * a test; the cost is that a real citizen who names a GovTech colleague as a
+ * referee or emergency contact is left out too, which is rare. Name parts are
+ * joined per step, so a step holding two people (a birth certificate's
+ * parents) reads as one long name and won't match "John Doe".
+ *
  * The named inboxes live in a secret, never in code: this repo is public and
  * the list is staff email addresses.
  */
