@@ -240,6 +240,23 @@ describe("fetchFormDefinition", () => {
     expect(headers["X-Recipe-Preview"]).toBe("p-s3cret");
     expect(headers["X-Recipe-Draft"]).toBe("d-s3cret");
   });
+
+  // #3900: on Back, Forward and a restored tab, Chrome used an old cached
+  // definition without asking the API, and the submission failed with a 422.
+  it.each([
+    ["no preview or draft token", undefined, undefined],
+    ["a preview token", "p-s3cret", undefined],
+    ["a draft token", undefined, "d-s3cret"],
+    ["both tokens", "p-s3cret", "d-s3cret"],
+  ])(
+    'sends cache: "no-cache" with %s, so the browser asks the API',
+    async (_case, preview, draft) => {
+      mockFetch.mockResolvedValue(makeOkResponse(minimalServiceContract));
+      await fetchFormDefinition("passport-renewal", preview, draft);
+      const fetchOptions = mockFetch.mock.calls[0][1] as RequestInit;
+      expect(fetchOptions.cache).toBe("no-cache");
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
