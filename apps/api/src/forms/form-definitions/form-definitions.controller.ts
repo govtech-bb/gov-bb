@@ -139,6 +139,13 @@ export class FormDefinitionsController {
     // presence grants the visibility bypass cross-app — see #1646 Phase 3.
     @Headers("cookie") cookieHeader?: string,
   ): Promise<ApiResponseShape<ServiceContract>> {
+    // No browser, CDN or proxy may store any response of this route (#3903).
+    // On Back, Forward and restored tabs, Chrome reuses a stored copy however
+    // old, and sends no request (#3886); `no-cache` does not stop this. Preview
+    // and draft responses can also carry non-public or unpublished DB content.
+    // Set first, so the 410 and 404 error responses carry it too.
+    res?.setHeader("Cache-Control", "no-store");
+
     const override = await this.disabledOverridesService.find(formId);
     if (override) {
       // 410 Gone — the kill switch is engaged. Body shape matches the spec.
@@ -166,12 +173,6 @@ export class FormDefinitionsController {
       cookieValue !== undefined &&
       PREVIEW_COOKIE_BYPASS_VALUES.has(cookieValue);
     const bypassVisibility = validPreviewToken || hasPreviewCookie;
-
-    if (bypassVisibility || draft) {
-      // Prevent CDN/proxy/browser caching for preview/draft responses — they
-      // may carry non-public or unpublished DB content that must not be cached.
-      res?.setHeader("Cache-Control", "no-store");
-    }
 
     // Forms is a static client-only SPA and cannot set landing's httpOnly cookie
     // itself, so the API mints it here when a valid preview token arrives via
