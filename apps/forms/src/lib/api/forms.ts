@@ -75,6 +75,7 @@ const makeFetch = async <T extends ApiResponse>(
     method: "POST" | "GET" | "DELETE" | "PATCH";
     headers?: HeadersInit;
     body?: string; // JSON.stringify it before passing it.
+    cache?: RequestCache;
   } = { method: "GET" },
 ): Promise<{
   body: T;
@@ -153,7 +154,12 @@ export const fetchFormDefinition = async (
   const { body } = await makeFetch<FormDefinitionResponse>(
     `/form-definitions/${encodeURIComponent(contractId)}`,
     { not_found: `The form "${contractId}" could not be found.` },
-    Object.keys(headers).length > 0 ? { method: "GET", headers } : undefined,
+    // On Back, Forward and a restored tab, Chrome serves requests made before
+    // the page's `load` event from its HTTP cache without asking the API, even
+    // a weeks-old copy. An old definition can lack a field the API now
+    // requires, and the submission then fails with a 422 (#3886). "no-cache"
+    // makes the browser check with the API before it uses a cached copy.
+    { method: "GET", headers, cache: "no-cache" },
   );
 
   try {
