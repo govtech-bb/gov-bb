@@ -183,7 +183,12 @@ function FormView() {
     return stored ? applyPaymentReturn(stored, payment) : stored;
   });
 
+  // A page load that finds this form already started in the tab (a refresh,
+  // or the reload after the form changed, #3901) is the same application:
+  // keep the first start time, so `duration_seconds` covers all of it, and
+  // count no second start. A successful submit clears the start time.
   React.useEffect(() => {
+    if (getFormStartTime(formMeta.formId) !== null) return;
     trackEvent("form-start", {
       form: formMeta.formId,
       category: formCategory(formMeta.formId),
@@ -361,11 +366,13 @@ function FormView() {
           // steps, keyed as the API keys the bundle: every step, not only the
           // visible ones (a field a condition hides is not a missing field),
           // and a repeatable step with all its fields, before the split
-          // across a shared page and one page per instance.
-          const staleStepId = findStaleDefinitionStep(
-            error.errors,
-            formMeta.contractSteps,
-          );
+          // across a shared page and one page per instance. Only a 422 is
+          // the API's verdict on the answers: makeFetch also throws this
+          // error for any other status that carries `meta.errors`.
+          const staleStepId =
+            error.status === 422
+              ? findStaleDefinitionStep(error.errors, formMeta.contractSteps)
+              : undefined;
           if (staleStepId) {
             trackEvent("form-submit-error", {
               form: formMeta.formId,

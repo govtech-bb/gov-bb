@@ -1168,6 +1168,27 @@ describe("SubmissionConfirmation — the form changed (#3901)", () => {
     );
   });
 
+  // The router parses `?step=false` as the boolean false, which the route
+  // refuses. Its own serializer quotes such a value, so the step stays a string.
+  it.each(["false", "true", "null", "42"])(
+    "writes the step %s so the router reads it back as text",
+    (stepId) => {
+      stubLocation("?step=submission-confirmation");
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          submissionState={{ ...staleState, staleDefinitionStepId: stepId }}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Reload the form" }));
+
+      const url = new URL(assign.mock.calls[0][0], "https://forms.test");
+      expect(url.searchParams.get("step")).toBe(JSON.stringify(stepId));
+    },
+  );
+
   it("passes an axe audit", async () => {
     const { container } = renderStale();
     expect(await axe(container)).toHaveNoViolations();

@@ -511,6 +511,20 @@ export const restoreRepeatableStepsFromStorage = (
       });
     }
   }
+
+  // ── 3. Refill the shared answers from the saved base step ───────────────
+  // The submission copies `sharedData` into every instance, but only the
+  // shared-values page fills it. A page load past that page (a refresh, or
+  // the reload after the form changed, #3901) would send them empty.
+  for (const [baseStepId, config] of Object.entries(repeatableStepSettings)) {
+    if (!config.sharedData) continue;
+    for (const fieldId of Object.keys(config.sharedData)) {
+      const saved = savedData[getFullFieldId(baseStepId, fieldId)];
+      if (saved !== undefined) {
+        config.sharedData[fieldId] = saved as FormValues[string];
+      }
+    }
+  }
 };
 
 const handleMissingTargetStepIds = (

@@ -112,6 +112,8 @@ import {
   getSubmissionState,
   clearSubmissionState,
   storeSubmissionState,
+  getFormStartTime,
+  persistFormStartTime,
 } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
 import { rememberFormCategory } from "../../../lib/form-category";
@@ -293,6 +295,32 @@ describe("RouteComponent", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({ step: undefined });
     render(<Route.component />);
     expect(screen.getByTestId("form-renderer")).toBeInTheDocument();
+  });
+
+  // #3901: a page load that finds this form already started in the tab (a
+  // refresh, or the reload after the form changed) is the same application.
+  describe("form-start", () => {
+    it("counts the start and stamps its time on the first load", () => {
+      render(<Route.component />);
+
+      expect(trackEvent).toHaveBeenCalledWith("form-start", {
+        form: "test-form",
+        category: "test-category",
+      });
+      expect(persistFormStartTime).toHaveBeenCalledWith("test-form");
+    });
+
+    it("keeps the first start time and counts no second start on a reload", () => {
+      (getFormStartTime as Mock).mockReturnValueOnce(1_700_000_000_000);
+
+      render(<Route.component />);
+
+      expect(trackEvent).not.toHaveBeenCalledWith(
+        "form-start",
+        expect.anything(),
+      );
+      expect(persistFormStartTime).not.toHaveBeenCalled();
+    });
   });
 
   // Refreshing the browser on the confirmation step must keep the user there.
@@ -1255,6 +1283,12 @@ describe("RouteComponent onSubmit handler", () => {
           },
           stepId: "step1",
         },
+        // On an ordinary step, `instances` can be a field ID.
+        {
+          names: "a field called `instances` that is not in its step",
+          errors: { step1: { instances: ["Required"] } },
+          stepId: "step1",
+        },
       ])(
         "tells the citizen the form changed when the 422 names $names",
         async ({ errors, stepId }) => {
@@ -1279,6 +1313,50 @@ describe("RouteComponent onSubmit handler", () => {
           expect(mockNavigate).not.toHaveBeenCalled();
         },
       );
+
+      // makeFetch throws FormValidationError for any status that carries
+      // `meta.errors`. Only a 422 is the API's verdict on the answers.
+      it("keeps the failure panel for a status other than 422", async () => {
+        mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+        const onSubmit = renderAndExtractOnSubmit();
+        (postFormSubmission as Mock).mockRejectedValue(
+          new FormValidationError("Invalid input", 400, {
+            "new-step": { "new-field": ["Answer this"] },
+          }),
+        );
+
+        await act(async () => {
+          await onSubmit({ value: {} });
+        });
+
+        expect(
+          mockFormRendererProps.current.submissionState.staleDefinitionStepId,
+        ).toBeUndefined();
+        expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+          form: "test-form",
+          category: "test-category",
+          errors: "server",
+        });
+      });
+
+      it("keeps the failure panel for a 422 that is not step errors", async () => {
+        mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+        const onSubmit = renderAndExtractOnSubmit();
+        rejectWithFieldErrors({ message: "Invalid input" });
+
+        await act(async () => {
+          await onSubmit({ value: {} });
+        });
+
+        expect(
+          mockFormRendererProps.current.submissionState.staleDefinitionStepId,
+        ).toBeUndefined();
+        expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+          form: "test-form",
+          category: "test-category",
+          errors: "server",
+        });
+      });
 
       it("tracks form-submit-error with reason 'stale-definition'", async () => {
         mockGetVisibleSteps.mockReturnValue([stepWithParish]);

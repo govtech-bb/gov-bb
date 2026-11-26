@@ -1,4 +1,8 @@
 import ReactMarkdown from "react-markdown";
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+} from "@tanstack/react-router";
 import remarkGfm from "remark-gfm";
 import { interpolateConfirmationMarkdown } from "@govtech-bb/form-conditions";
 import { summaryValueToText } from "@govtech-bb/submission-summary";
@@ -40,15 +44,15 @@ const formatDate = (value?: string) => {
 // definition. The answers and the completed steps are in sessionStorage, so the
 // applicant goes back to `stepId` with their answers. Keep the search params
 // that select the definition (`preview`, `draft`) and the feedback form's
-// `source`. Remove the others, such as `payment`.
+// `source`. Remove the others, such as `payment`. The router's own serializer
+// reads and writes them, so a step ID such as `false` stays a string.
 function reloadFormAtStep(stepId: string) {
-  const current = new URLSearchParams(window.location.search);
-  const next = new URLSearchParams({ step: stepId });
-  for (const name of ["preview", "draft", "source"]) {
-    const value = current.get(name);
-    if (value !== null) next.set(name, value);
-  }
-  window.location.assign(`${window.location.pathname}?${next}`);
+  const { preview, draft, source }: Record<string, unknown> =
+    defaultParseSearch(window.location.search);
+  window.location.assign(
+    window.location.pathname +
+      defaultStringifySearch({ step: stepId, preview, draft, source }),
+  );
 }
 
 export default function SubmissionConfirmation({

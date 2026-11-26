@@ -183,4 +183,34 @@ describe("findStaleDefinitionStep (#3901)", () => {
       expect(findStaleDefinitionStep(bundle, STEPS)).toBeUndefined();
     }
   });
+
+  // `instances` holds a list of field maps only in a repeatable step's bundle.
+  // On an ordinary step it can be a field ID with its messages.
+  it("takes a field named `instances` with messages for a field", () => {
+    expect(
+      findStaleDefinitionStep(
+        { declaration: { instances: ["Required"] } },
+        STEPS,
+      ),
+    ).toBe("declaration");
+  });
+
+  // A key is a step only when its value has the shape of step errors. Any
+  // other body is not a stale form, so it must not offer a reload.
+  it("finds nothing when an entry does not have the shape of step errors", () => {
+    for (const bundle of [
+      { message: "Invalid input" },
+      { "new-step": "Invalid input" },
+      { "new-step": ["Required"] },
+      { "new-step": { name: "Required" } },
+      { "new-step": { name: [] } },
+      { "new-step": { instances: [["Required"]] } },
+      {
+        "new-step": { name: ["Required"] },
+        message: "Invalid input",
+      },
+    ]) {
+      expect(findStaleDefinitionStep(bundle, STEPS)).toBeUndefined();
+    }
+  });
 });
