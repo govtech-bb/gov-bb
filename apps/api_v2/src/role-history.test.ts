@@ -164,6 +164,31 @@ describe("role history", () => {
     expect(rows).toEqual([]);
   });
 
+  it("records a role given by email to someone who holds it already as taken away when they next sign in", async () => {
+    const from = await lastEvent();
+
+    const given = (
+      await asAdmin({
+        method: "POST",
+        url: "/editor/waiting-roles",
+        payload: { email: TEST_EDITOR.email, role: "editor" },
+      })
+    ).json();
+    expect((await signIn(TEST_EDITOR)).roles).toEqual(["reader", "editor"]);
+
+    const waiting = {
+      entity_kind: "waiting_role",
+      entity_id: given.id,
+      role: "editor",
+      granted_by: TEST_EMPLOYEE.id,
+      dated: true,
+    };
+    expect(await roleEvents(from)).toEqual([
+      { ...waiting, action: "created", actor: TEST_EMPLOYEE.id },
+      { ...waiting, action: "deleted", actor: "system" },
+    ]);
+  });
+
   it("records the admin role API_V2_ADMIN_EMAILS gives, with system as its actor", async () => {
     const from = await lastEvent();
 
