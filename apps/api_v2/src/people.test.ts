@@ -140,6 +140,11 @@ describe("revoke", () => {
 
   it("lets another admin take an admin role away", async () => {
     const other = { ...TEST_EMPLOYEE, id: UserId.parse("other-admin") };
+    // A real user: the audit history names who took the role away
+    await db.execute(
+      sql`insert into auth_user (id, name, email, "emailVerified")
+          values (${other.id}, 'Other admin', 'other-admin@govtech.bb', true)`,
+    );
 
     expectOk(await people.revoke(TEST_EMPLOYEE.id, "admin", other));
 

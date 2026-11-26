@@ -4,7 +4,7 @@
  * and roles are read from the database on every request.
  */
 
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import pino from "pino";
@@ -140,6 +140,7 @@ describe("a page's visibility", () => {
     const latest = await db
       .select({ action: changeEvents.action, actor: changeEvents.actor })
       .from(changeEvents)
+      .where(eq(changeEvents.entityKind, "content_page"))
       .orderBy(changeEvents.versionNo);
     expect(latest.at(-1)).toEqual({
       action: "published",

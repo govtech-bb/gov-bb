@@ -56,10 +56,9 @@ export class PostgresRoles implements RoleRecords, PeopleRecords {
   constructor(private readonly db: Database) {}
 
   /**
-   * Run `work` in one transaction with the grant's actor as `app.user_id`;
-   * an error result rolls back everything it wrote. No trigger on
-   * `user_roles` reads `app.user_id` yet, so only a grant's `granted_by`
-   * records who made a change.
+   * Run `work` in one transaction with the grant's actor as `app.user_id`,
+   * which the role triggers record as who made each change; an error result
+   * rolls back everything it wrote.
    */
   async atomically<R extends Result<unknown, Error>>(
     grant: Grant<"people:manage">,

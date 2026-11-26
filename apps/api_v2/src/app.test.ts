@@ -865,7 +865,12 @@ describe("POST /pages", () => {
       expect(response.statusCode).toBe(400);
       expect(await db.select().from(contentPages)).toEqual([]);
       expect(await db.select().from(searchChunks)).toEqual([]);
-      expect(await db.select().from(changeEvents)).toEqual([]);
+      expect(
+        await db
+          .select()
+          .from(changeEvents)
+          .where(eq(changeEvents.entityKind, "content_page")),
+      ).toEqual([]);
     },
   );
 
@@ -1108,6 +1113,7 @@ describe("PUT /pages/:id", () => {
     const rows = await db
       .select({ action: changeEvents.action })
       .from(changeEvents)
+      .where(eq(changeEvents.entityKind, "content_page"))
       .orderBy(changeEvents.versionNo);
     expect(rows.map((row) => row.action)).toEqual([
       "created",
@@ -1465,6 +1471,7 @@ describe("DELETE /pages/:id", () => {
     const events = await db
       .select({ action: changeEvents.action, actor: changeEvents.actor })
       .from(changeEvents)
+      .where(eq(changeEvents.entityKind, "content_page"))
       .orderBy(changeEvents.versionNo);
     expect(events).toEqual([
       { action: "created", actor: TEST_EMPLOYEE.id },
@@ -1814,7 +1821,8 @@ describe("employee access", () => {
     expect(saved.statusCode).toBe(200);
     const events = await db
       .select({ actor: changeEvents.actor })
-      .from(changeEvents);
+      .from(changeEvents)
+      .where(eq(changeEvents.entityKind, "content_page"));
     expect(events).toEqual([
       { actor: TEST_EMPLOYEE.id },
       { actor: TEST_EMPLOYEE.id },

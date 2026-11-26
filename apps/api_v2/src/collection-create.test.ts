@@ -83,7 +83,8 @@ const written = async () =>
   (
     await test.db.execute(
       sql`select (select count(*)::int from data_collections) as collections,
-                 (select count(*)::int from change_events) as events`,
+                 (select count(*)::int from change_events
+                   where entity_kind not in ('user_role', 'waiting_role')) as events`,
     )
   ).rows[0];
 
@@ -102,7 +103,8 @@ describe("who can create a collection", () => {
       expect(
         (
           await test.db.execute(
-            sql`select entity_kind, action, actor from change_events`,
+            sql`select entity_kind, action, actor from change_events
+                where entity_kind not in ('user_role', 'waiting_role')`,
           )
         ).rows,
       ).toEqual([
