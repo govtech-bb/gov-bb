@@ -6,13 +6,19 @@
 
 import type { FastifyInstance, InjectOptions } from "fastify";
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
+import { UserId, type Employee } from "./modules/auth";
+import { NewCollection } from "./modules/collection";
+import { PermissionDenied } from "./modules/permissions";
 import { PUBLIC_READ } from "./routes/responses";
 import { seed } from "./seed";
 import { CONTACTS } from "./seed-data/collections";
 import {
   createTestApp,
   createTestDb,
+  createTestServices,
+  expectOk,
+  TEST_EDITOR,
   TEST_EMPLOYEE,
   TEST_HEADERS,
   type TestDb,
@@ -396,4 +402,69 @@ describe("the seeded contacts", () => {
       "police-emergency",
     ]);
   }, 60_000);
+});
+
+describe("the collections:edit and collections:manage checks", () => {
+  const APPROVER: Employee = {
+    id: UserId.parse("approver-only-test"),
+    email: "approver-only@govtech.bb",
+    name: "Test approver only",
+    roles: ["approver"],
+  };
+
+  it("refuses every record write to an approver who isn't an editor, and writes nothing", async () => {
+    const created = await create("drug-service", DRUG_SERVICE);
+    expect(created.statusCode, created.body).toBe(201);
+    const { version } = created.json();
+    const { collections } = createTestServices(test.db);
+    const before = expectOk(await collections.read("contacts"));
+
+    const refusals = [
+      await collections.create("contacts", "new", { name: "New" }, APPROVER),
+      await collections.save(
+        "contacts",
+        "drug-service",
+        { ...DRUG_SERVICE, name: "Renamed" },
+        version,
+        APPROVER,
+      ),
+      await collections.delete("contacts", "drug-service", version, APPROVER),
+    ];
+
+    for (const refused of refusals) {
+      assert(!refused.ok);
+      expect(refused.error).toBeInstanceOf(PermissionDenied);
+      expect(refused.error.message).toBe(
+        "You don't have permission to add, change and delete collection records. Ask an admin for the editor role.",
+      );
+    }
+    expect(expectOk(await collections.read("contacts"))).toEqual(before);
+  });
+
+  it("refuses to let an editor who isn't an approver or admin create a collection, and creates nothing", async () => {
+    const { collections } = createTestServices(test.db);
+    const before = expectOk(await collections.list());
+
+    const refused = await collections.createCollection(
+      NewCollection.parse({
+        key: "offices",
+        title: "Offices",
+        record_key: "key",
+        schema: {
+          fields: [
+            { key: "key", label: "Key", type: "slug" },
+            { key: "name", label: "Name", type: "text" },
+          ],
+        },
+      }),
+      TEST_EDITOR,
+    );
+
+    assert(!refused.ok);
+    expect(refused.error).toBeInstanceOf(PermissionDenied);
+    expect(refused.error.message).toBe(
+      "You don't have permission to create a collection. Ask an admin for the approver or admin role.",
+    );
+    expect(expectOk(await collections.list())).toEqual(before);
+  });
 });
