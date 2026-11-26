@@ -4277,7 +4277,7 @@ export interface paths {
         get?: never;
         /**
          * Grant an employee a role
-         * @description Needs the admin role (403 otherwise). Records the admin as the grantor; a role already held is left as it was. 404 for someone who has never signed in.
+         * @description Needs the admin role (403 otherwise). Records the admin as the grantor; a role already held is left as it was. 404 for someone who has never signed in. 403, with the reason, for `reader`, which everyone holds without a grant.
          */
         put: {
             parameters: {
@@ -4285,7 +4285,7 @@ export interface paths {
                 header?: never;
                 path: {
                     id: string;
-                    role: "editor" | "approver" | "admin";
+                    role: "reader" | "editor" | "approver" | "admin";
                 };
                 cookie?: never;
             };
@@ -4387,7 +4387,7 @@ export interface paths {
         post?: never;
         /**
          * Revoke an employee's role
-         * @description Needs the admin role (403 otherwise). It applies to their next request. A role they do not hold is not an error.
+         * @description Needs the admin role (403 otherwise). It applies to their next request. A role they do not hold is not an error. 403, with the reason, for `reader`, which nobody can lose, and for revoking your own role when it is the one that lets you manage roles.
          */
         delete: {
             parameters: {
@@ -4395,7 +4395,7 @@ export interface paths {
                 header?: never;
                 path: {
                     id: string;
-                    role: "editor" | "approver" | "admin";
+                    role: "reader" | "editor" | "approver" | "admin";
                 };
                 cookie?: never;
             };

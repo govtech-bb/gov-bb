@@ -4,6 +4,7 @@ import { grantFor, TEST_EMPLOYEE } from "../test-db";
 import type { CategoryRecords } from "./category-editing";
 import type { CollectionStore } from "./collection-editing";
 import type { PageRecords } from "./page-editing";
+import type { PeopleRecords } from "./people";
 
 describe("a write transaction", () => {
   it("opens only with the grant from its own service's permission check", () => {
@@ -12,6 +13,7 @@ describe("a write transaction", () => {
       pages: PageRecords,
       categories: CategoryRecords,
       collections: CollectionStore,
+      people: PeopleRecords,
     ) => {
       const nothing = async () => ok(undefined);
 
@@ -35,7 +37,21 @@ describe("a write transaction", () => {
         { actor: TEST_EMPLOYEE.id, permission: "pages:edit" },
         nothing,
       );
+      await people.atomically(
+        // @ts-expect-error: a page grant doesn't open a role change.
+        grantFor(TEST_EMPLOYEE, "pages:edit"),
+        nothing,
+      );
+      await people.atomically(
+        // @ts-expect-error: seeing people doesn't open a role change.
+        grantFor(TEST_EMPLOYEE, "people:read"),
+        nothing,
+      );
       await pages.atomically(grantFor(TEST_EMPLOYEE, "pages:publish"), nothing);
+      await people.atomically(
+        grantFor(TEST_EMPLOYEE, "people:manage"),
+        nothing,
+      );
       await categories.atomically(
         grantFor(TEST_EMPLOYEE, "categories:manage"),
         nothing,

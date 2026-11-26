@@ -18,7 +18,8 @@ import type {
   RevisionStateConflict,
 } from "../modules/page";
 import { Redacted } from "../modules/redacted";
-import type { EmployeeGate, RoleRecords } from "../services/editor-access";
+import type { EmployeeGate } from "../services/editor-access";
+import type { IPeople } from "../services/people";
 import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
 import { editorCategoryRoutes } from "./categories";
@@ -99,11 +100,11 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   categories: ICategoryEditing;
   collections: CollectionEditing;
   access: EmployeeGate;
-  roles: RoleRecords;
+  people: IPeople;
   editorOrigin: string;
 }> = async (
   editor,
-  { editing, index, categories, collections, access, roles, editorOrigin },
+  { editing, index, categories, collections, access, people, editorOrigin },
 ) => {
   editor.decorateRequest("employee", null);
   editor.addHook("onRequest", async (request, reply) => {
@@ -289,7 +290,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   await editor.register(editorCategoryRoutes, { categories, actor });
   await editor.register(editorCollectionRoutes, { collections, actor });
-  await editor.register(editorRoleRoutes, { roles, actor });
+  await editor.register(editorRoleRoutes, { people, actor });
   editor.route({
     method: "GET",
     url: "/editor/me",

@@ -35,6 +35,7 @@ import {
   type Permission,
 } from "./modules/permissions";
 import { ok, type Result } from "./modules/result";
+import { People } from "./services/people";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
@@ -254,7 +255,7 @@ export async function createTestApp(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
       roles,
     ),
-    roles,
+    people: new People(roles),
     auth: options.auth ?? {
       handle: async () =>
         Response.json({ error: "test_auth_not_configured" }, { status: 404 }),

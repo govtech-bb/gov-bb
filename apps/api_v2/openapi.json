@@ -8215,7 +8215,7 @@
         "tags": [
           "admin"
         ],
-        "description": "Needs the admin role (403 otherwise). Records the admin as the grantor; a role already held is left as it was. 404 for someone who has never signed in.",
+        "description": "Needs the admin role (403 otherwise). Records the admin as the grantor; a role already held is left as it was. 404 for someone who has never signed in. 403, with the reason, for `reader`, which everyone holds without a grant.",
         "parameters": [
           {
             "schema": {
@@ -8230,6 +8230,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "reader",
                 "editor",
                 "approver",
                 "admin"
@@ -8388,7 +8389,7 @@
         "tags": [
           "admin"
         ],
-        "description": "Needs the admin role (403 otherwise). It applies to their next request. A role they do not hold is not an error.",
+        "description": "Needs the admin role (403 otherwise). It applies to their next request. A role they do not hold is not an error. 403, with the reason, for `reader`, which nobody can lose, and for revoking your own role when it is the one that lets you manage roles.",
         "parameters": [
           {
             "schema": {
@@ -8403,6 +8404,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "reader",
                 "editor",
                 "approver",
                 "admin"

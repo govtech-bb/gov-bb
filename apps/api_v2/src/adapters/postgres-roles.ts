@@ -8,11 +8,13 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Database } from "../db";
 import { EmployeeView, UserNotFound } from "../modules/auth";
-import { GrantableRole } from "../modules/permissions";
+import { GrantableRole, type Grant } from "../modules/permissions";
 import { ContentStoreUnavailable } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import { userRoles } from "../schema";
 import type { RoleRecords } from "../services/editor-access";
+import type { PeopleRecords } from "../services/people";
+import { transactAs } from "./postgres-transaction";
 
 /** Drizzle wraps the driver's error, so the SQLSTATE is on the cause. */
 const missingUser = z.object({ cause: z.object({ code: z.literal("23503") }) });
@@ -42,9 +44,24 @@ async function attempt<T>(
 }
 
 /** Who holds which role, in `user_roles`. */
-export class PostgresRoles implements RoleRecords {
+export class PostgresRoles implements RoleRecords, PeopleRecords {
   /** The process's database handle. */
   constructor(private readonly db: Database) {}
+
+  /**
+   * Run `work` in one transaction with the grant's actor as `app.user_id`;
+   * an error result rolls back everything it wrote. No trigger on
+   * `user_roles` reads `app.user_id` yet, so only a grant's `granted_by`
+   * records who made a change.
+   */
+  async atomically<R extends Result<unknown, Error>>(
+    grant: Grant<"people:manage">,
+    work: (records: PostgresRoles) => Promise<R>,
+  ): Promise<R | Result<never, ContentStoreUnavailable>> {
+    return transactAs(this.db, grant.actor, { contentLock: false }, (tx) =>
+      work(new PostgresRoles(tx)),
+    );
+  }
 
   /** The user's roles, leaving out a stored name this build doesn't know. */
   async rolesOf(
