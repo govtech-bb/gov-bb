@@ -235,18 +235,22 @@ function AddPersonDialog({
     },
   });
 
-  // The API's reason for refusing the address, while the field still holds it
-  const refusedAddress =
-    giving.error instanceof ApiFailure &&
-    giving.error.code === "email_not_allowed" &&
-    giving.variables?.email === address
-      ? apiMessage(giving.error)
+  // The API refused the address itself: its reason goes beside the field while the field still holds that address,
+  // and never in the banner, which is for every other failure
+  const refusal =
+    giving.error instanceof ApiFailure && giving.error.code === "email_not_allowed"
+      ? giving.error
       : undefined;
 
+  const refusedAddress =
+    refusal && giving.variables?.email === address ? apiMessage(refusal) : undefined;
+
   const failed =
-    giving.error && !refusedAddress
-      ? apiFailureMessages(giving.error, "We couldn’t give those roles. Try again.", (field) =>
-          field === "email" ? "Work email" : "Roles",
+    giving.error && !refusal
+      ? apiFailureMessages(
+          giving.error,
+          "Try again: a role that was given stays as it is.",
+          (field) => (field === "email" ? "Work email" : "Roles"),
         )
       : [];
 
@@ -335,8 +339,9 @@ function AddPersonDialog({
           </p>
         )}
       </FieldGroup>
+      {/* The roles go out together, so one may have been given while another failed */}
       {failed.length > 0 && (
-        <Banner tone="error" title="Nothing was given">
+        <Banner tone="error" title="Not every role was given">
           {failed.join(" ")}
         </Banner>
       )}
@@ -395,6 +400,10 @@ export function PeopleScreen({
       const waiting = person.waiting.find((one) => one.role === role);
 
       if (waiting) await api.takeWaitingRole(waiting.id);
+    },
+    // Their row goes with their last waiting role, so their panel mustn't open by itself if they're given one again
+    onSuccess: (_, { person, give }) => {
+      if (!give && person.waiting?.length === 1) setWaitingEmail(undefined);
     },
     // The signed-in admin's own roles may have changed, and with them "Your access" and what the editor offers
     onSettled: () =>
@@ -491,7 +500,13 @@ export function PeopleScreen({
       : undefined;
 
   const addButton = (variant: "accent" | "secondary") => (
-    <Button variant={variant} size="md" disabled={!manage} onClick={startAdding}>
+    <Button
+      variant={variant}
+      size="md"
+      // The dialog needs the roles to offer and the people already signed in
+      disabled={!manage || !catalogue.data || !people}
+      onClick={startAdding}
+    >
       Add someone
     </Button>
   );
