@@ -8536,7 +8536,7 @@
     },
     "/editor/me": {
       "get": {
-        "summary": "The signed-in employee and their roles",
+        "summary": "The signed-in employee, their roles and what those let them do",
         "tags": [
           "auth"
         ],
@@ -8572,12 +8572,155 @@
                           "admin"
                         ]
                       }
+                    },
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "pages:edit",
+                          "pages:publish",
+                          "collections:edit",
+                          "collections:manage",
+                          "categories:manage",
+                          "people:read",
+                          "people:manage"
+                        ]
+                      },
+                      "description": "Everything the employee's roles let them do, without repeats. The editor decides what to offer from this list; api_v2 checks each change itself."
                     }
                   },
                   "required": [
                     "id",
                     "email",
                     "name",
+                    "roles",
+                    "permissions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/editor/roles": {
+      "get": {
+        "summary": "Every role, with what it lets a person do",
+        "tags": [
+          "auth"
+        ],
+        "description": "Any signed-in employee can read it. The editor shows these words, so it needs no wording of its own for any role.",
+        "security": [
+          {
+            "editorSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "editor",
+                              "approver",
+                              "admin"
+                            ]
+                          },
+                          "lets": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "One phrase for each permission the role holds, in table order. Each completes \"This role lets you …\"."
+                          }
+                        },
+                        "required": [
+                          "role",
+                          "lets"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
                     "roles"
                   ],
                   "additionalProperties": false

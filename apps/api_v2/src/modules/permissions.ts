@@ -61,6 +61,9 @@ const isPermission = (name: string): name is Permission =>
 const HELD_PERMISSIONS: readonly HeldPermission[] =
   Object.keys(PERMISSIONS).filter(isPermission);
 
+/** Parses a permission. */
+export const Permission = z.enum(HELD_PERMISSIONS);
+
 /** The permissions a set of roles holds, without repeats, in PERMISSIONS order. */
 export function permissionsOf(roles: readonly Role[]): readonly Permission[] {
   const held = new Set<Permission>(
@@ -77,11 +80,18 @@ export function rolesWith(permission: Permission): readonly Role[] {
 }
 
 /** A role and what it lets a person do, worded for the person. */
-export interface RoleDescription {
-  readonly role: Role;
-  /** One phrase for each permission the role holds, in table order. */
-  readonly lets: readonly string[];
-}
+export const RoleDescription = z.object({
+  role: Role,
+  lets: z
+    .array(z.string())
+    .describe(
+      "One phrase for each permission the role holds, in table order. " +
+        'Each completes "This role lets you …".',
+    ),
+});
+
+/** A role and what it lets a person do, worded for the person. */
+export type RoleDescription = z.infer<typeof RoleDescription>;
 
 /** Every role with what it lets a person do. */
 export function roleCatalogue(): readonly RoleDescription[] {
