@@ -145,6 +145,7 @@ type Approval = {
   status: string;
   canResolve: boolean;
   resolveInterrupt: (approved: boolean) => void;
+  cancel: () => void;
 };
 export type AssistantProps = {
   user: string;
@@ -799,13 +800,26 @@ function ChatSession({
       finishEdit(interrupt.toolCallId);
       return;
     }
+    // Stop, close and unmount call chat.stop(), which already ended the
+    // interrupt.
     if (
       !active.current ||
       !current.current.open ||
-      current.current.readOnly ||
       started !== generation.current
     ) {
       finishEdit(interrupt.toolCallId);
+      return;
+    }
+    // A read-only run resumes in ask mode, where the server has no edit
+    // tools and refuses an approval or a rejection. Cancel the call instead
+    // of leaving it pending.
+    if (current.current.readOnly) {
+      finishEdit(interrupt.toolCallId);
+      try {
+        interrupt.cancel();
+      } catch {
+        autoHandled.current.delete(interrupt.id);
+      }
       return;
     }
     approved.current.set(interrupt.toolCallId, change);
@@ -915,6 +929,19 @@ function ChatSession({
       upload.current?.abort();
     }
   }, [open, stop]);
+  // A read-only editor skips Auto and shows the review card. When the claim
+  // comes back, retry this run's approvals so their Auto card does not wait
+  // forever. Restored approvals have no binding and stay manual.
+  useEffect(() => {
+    if (readOnly || latest.current.permission !== "auto") return;
+    for (const interrupt of chat.interrupts)
+      if (
+        interrupt.kind === "tool-approval" &&
+        bindings.current.has(interrupt.toolCallId)
+      )
+        void autoApply(interrupt);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- only a claim change retries
+  }, [readOnly]);
   useEffect(() => {
     const viewport = feed.current;
     const content = viewport?.firstElementChild;
