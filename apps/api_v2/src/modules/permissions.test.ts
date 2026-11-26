@@ -152,6 +152,10 @@ describe("authorize", () => {
     } as const).not.toExtend<Grant<"pages:edit">>();
   });
 
+  it("doesn't let a grant for one permission pass for another", () => {
+    expectTypeOf<Grant<"pages:edit">>().not.toExtend<Grant<"pages:publish">>();
+  });
+
   it("doesn't compile a copy of a grant with another permission or actor", () => {
     const grant = expectOk(authorize(actor(["editor"]), "pages:edit"));
 

@@ -127,7 +127,7 @@ class Granted<P extends Permission> {
  * Proof that `authorize` allowed an employee to use a permission. Only
  * `authorize` can make one.
  */
-export type Grant<P extends Permission = Permission> = Granted<P>;
+export type Grant<P extends Permission> = Granted<P>;
 
 /**
  * Decide whether an employee may use a permission. Call it before any write.

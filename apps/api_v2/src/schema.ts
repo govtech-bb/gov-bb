@@ -31,7 +31,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { ROLES, type Role } from "./modules/permissions";
+import { ROLES } from "./modules/permissions";
 import type { CollectionSchema, RecordData } from "./modules/collection";
 import {
   REVISION_STATUSES,
@@ -397,7 +397,7 @@ export const userRoles = pgTable(
   "user_roles",
   {
     userId: text("user_id").notNull(),
-    role: text("role").$type<Role>().notNull(),
+    role: text("role").notNull(),
     // The admin who granted it; null when api_v2 granted it itself: admin
     // and editor from API_V2_ADMIN_EMAILS, or the default editor role that
     // first sign-in granted before #3412.
