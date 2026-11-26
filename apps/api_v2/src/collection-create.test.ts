@@ -7,7 +7,8 @@
 import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { UserId, type Employee, type Role } from "./modules/auth";
+import { UserId, type Employee } from "./modules/auth";
+import type { Role } from "./modules/permissions";
 import { ok } from "./modules/result";
 import {
   createTestApp,

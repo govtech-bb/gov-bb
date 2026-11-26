@@ -26,7 +26,8 @@ import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
 import { ping, type Database } from "./db";
-import { ROLES, UserId, type Employee } from "./modules/auth";
+import { UserId, type Employee } from "./modules/auth";
+import { DEFAULT_ROLE, ROLES } from "./modules/permissions";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
@@ -175,11 +176,14 @@ export async function registerEmployees(
           values (${employee.id}, ${employee.name}, ${employee.email}, true)
           on conflict do nothing`,
     );
-    for (const role of employee.roles)
+    for (const role of employee.roles) {
+      // Everyone holds the default role without a row.
+      if (role === DEFAULT_ROLE) continue;
       await db.execute(
         sql`insert into user_roles (user_id, role) values (${employee.id}, ${role})
             on conflict do nothing`,
       );
+    }
   }
 }
 /** Explicit origins used by HTTP integration tests. */

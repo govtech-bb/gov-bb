@@ -1,0 +1,179 @@
+/**
+ * Who may do what in the editor. This file is the only place that ties a
+ * role to a permission.
+ */
+
+import { z } from "zod";
+import type { Employee, UserId } from "./auth";
+import { err, ok, type Result } from "./result";
+
+/**
+ * Every permission, with what it lets a person do. The wording completes
+ * "You don't have permission to …" and "This role lets you …".
+ */
+export const PERMISSIONS = {
+  "content:read": "read all the content",
+  "pages:edit":
+    "create, change and delete pages, restore an earlier version, and submit a change for review",
+  "pages:publish": "publish or reject a change",
+  "collections:edit": "add, change and delete collection records",
+  "collections:manage": "create a collection",
+  "categories:manage": "add, change, move and delete categories",
+  "people:read": "see who has signed in and what roles they have",
+  "people:manage": "give and take away roles",
+} as const;
+
+/** One thing an employee may do. */
+export type Permission = keyof typeof PERMISSIONS;
+
+/**
+ * What each role holds. Roles don't include each other: an approver is not
+ * an editor. Everyone holds `reader` without a stored row, so no other role
+ * repeats `content:read`.
+ */
+const ROLE_PERMISSIONS = {
+  reader: ["content:read"],
+  editor: ["pages:edit", "collections:edit"],
+  approver: ["pages:publish", "categories:manage", "collections:manage"],
+  admin: ["people:read", "people:manage", "collections:manage"],
+} as const satisfies Record<string, readonly Permission[]>;
+
+/** A role. Every one but `DEFAULT_ROLE` is stored in `user_roles`. */
+export type Role = keyof typeof ROLE_PERMISSIONS;
+
+const isRole = (name: string): name is Role =>
+  Object.hasOwn(ROLE_PERMISSIONS, name);
+
+/** Every role, in table order. The API's role list derives from it. */
+export const ROLES: readonly Role[] =
+  Object.keys(ROLE_PERMISSIONS).filter(isRole);
+
+/** Parses a role. */
+export const Role = z.enum(ROLES);
+
+/** The role every signed-in employee holds without a stored row. Nobody can give it or take it away. */
+export const DEFAULT_ROLE = "reader" satisfies Role;
+
+/** A role an admin gives and takes away, and `user_roles` stores: every role but the default. */
+export type GrantableRole = Exclude<Role, typeof DEFAULT_ROLE>;
+
+const isGrantable = (role: Role): role is GrantableRole =>
+  role !== DEFAULT_ROLE;
+
+/** Every grantable role, in table order. The `user_roles` check derives from it. */
+export const GRANTABLE_ROLES: readonly GrantableRole[] =
+  ROLES.filter(isGrantable);
+
+/** Parses a role an admin can give or take away. */
+export const GrantableRole = z.enum(GRANTABLE_ROLES);
+
+/** A permission that at least one role holds. */
+type HeldPermission = (typeof ROLE_PERMISSIONS)[Role][number];
+
+const isPermission = (name: string): name is Permission =>
+  Object.hasOwn(PERMISSIONS, name);
+
+/**
+ * Every permission, in the order PERMISSIONS lists them. Typed as held, so a
+ * permission that no role holds doesn't compile.
+ */
+const HELD_PERMISSIONS: readonly HeldPermission[] =
+  Object.keys(PERMISSIONS).filter(isPermission);
+
+/** Parses a permission. */
+export const Permission = z.enum(HELD_PERMISSIONS);
+
+/**
+ * The permissions a set of roles holds, with the default role's, without
+ * repeats, in PERMISSIONS order.
+ */
+export function permissionsOf(roles: readonly Role[]): readonly Permission[] {
+  const held = new Set<Permission>([
+    ...ROLE_PERMISSIONS[DEFAULT_ROLE],
+    ...roles.flatMap((role) => ROLE_PERMISSIONS[role]),
+  ]);
+  return HELD_PERMISSIONS.filter((permission) => held.has(permission));
+}
+
+/** The roles that hold a permission, in table order. */
+export function rolesWith(permission: Permission): readonly Role[] {
+  return ROLES.filter((role) =>
+    ROLE_PERMISSIONS[role].some((held) => held === permission),
+  );
+}
+
+/** A role and what it lets a person do, worded for the person. */
+export const RoleDescription = z.object({
+  role: Role,
+  lets: z
+    .array(z.string())
+    .describe(
+      "One phrase for each permission the role holds, in table order. " +
+        'Each completes "This role lets you …".',
+    ),
+});
+
+/** A role and what it lets a person do, worded for the person. */
+export type RoleDescription = z.infer<typeof RoleDescription>;
+
+/** Every role with what it lets a person do. */
+export function roleCatalogue(): readonly RoleDescription[] {
+  return ROLES.map((role) => ({
+    role,
+    lets: ROLE_PERMISSIONS[role].map((permission) => PERMISSIONS[permission]),
+  }));
+}
+
+/** An employee asked for something their roles don't hold. */
+export class PermissionDenied extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "PermissionDenied";
+  /** The roles that would have allowed it, for the person to ask for. */
+  readonly heldBy: readonly Role[];
+
+  /** `attempted` replaces the permission's own words when they are too broad. */
+  constructor(
+    readonly permission: Permission,
+    attempted: string = PERMISSIONS[permission],
+  ) {
+    const heldBy = rolesWith(permission);
+    super(
+      `You don't have permission to ${attempted}. Ask an admin for the ${heldBy.join(" or ")} role.`,
+    );
+    this.heldBy = heldBy;
+  }
+}
+
+// Not exported, so only `authorize` can construct one. The private member
+// stops an object literal, or a spread copy of a real grant with another
+// permission or actor, from passing for one.
+class Granted<P extends Permission> {
+  declare private readonly granted: true;
+
+  constructor(
+    readonly actor: UserId,
+    readonly permission: P,
+  ) {}
+}
+
+/**
+ * Proof that `authorize` allowed an employee to use a permission. Only
+ * `authorize` can make one.
+ */
+export type Grant<P extends Permission> = Granted<P>;
+
+/**
+ * Decide whether an employee may use a permission. Call it before any write.
+ *
+ * @param options.to - What the employee is trying to do, for the refusal, when
+ *   the permission's own wording is too broad.
+ */
+export function authorize<P extends Permission>(
+  actor: Pick<Employee, "id" | "roles">,
+  permission: P,
+  options: { readonly to?: string } = {},
+): Result<Grant<P>, PermissionDenied> {
+  return permissionsOf(actor.roles).includes(permission)
+    ? ok(new Granted(actor.id, permission))
+    : err(new PermissionDenied(permission, options.to));
+}

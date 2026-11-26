@@ -1,14 +1,6 @@
 import { z } from "zod";
+import { Role } from "./permissions";
 import { err, ok, type Result } from "./result";
-
-/** What an employee may do, as `user_roles` stores it. */
-export const ROLES = ["editor", "approver", "admin"] as const;
-
-/** Parses a role. */
-export const Role = z.enum(ROLES);
-
-/** A role: `editor` writes content, `approver` changes what citizens see, `admin` grants and revokes roles. */
-export type Role = z.infer<typeof Role>;
 
 /**
  * An `auth_user` id: what the history records as a change's actor. Not
@@ -60,16 +52,6 @@ export class Forbidden extends Error {
   /** Describe the required account without exposing rejected profile data. */
   constructor() {
     super("Use a Google Workspace account on an allowed domain.");
-  }
-}
-
-/** A change to what citizens see, by an employee without the approver role. */
-export class NotApprover extends Error {
-  /** Stable protocol-projection discriminator. */
-  readonly _tag = "NotApprover";
-  /** Say who can make the change, and why when it isn't a visibility change. */
-  constructor(message = "Only approvers can change who can see a page.") {
-    super(message);
   }
 }
 

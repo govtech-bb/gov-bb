@@ -1,15 +1,23 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance, InjectOptions } from "fastify";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   createTestApp,
   createTestDb,
+  createTestServices,
+  expectOk,
   SELF_APPROVAL,
+  TEST_EDITOR,
   TEST_HEADERS,
   type TestDb,
 } from "./test-db";
-import { RESERVED_CATEGORY_PATHS } from "./modules/category";
+import {
+  CategoryId,
+  CategoryOrder,
+  RESERVED_CATEGORY_PATHS,
+} from "./modules/category";
+import { PermissionDenied } from "./modules/permissions";
 import { AuthUnavailable, Forbidden } from "./modules/auth";
 import { err } from "./modules/result";
 
@@ -663,5 +671,46 @@ describe("editor categories", () => {
     expect(response.statusCode).toBe(500);
     expect(response.json()).toEqual({ error: "internal_error" });
     expect(response.headers["cache-control"]).toBe("no-store");
+  });
+});
+
+describe("the categories:manage check", () => {
+  it("refuses an editor every category write, and writes nothing", async () => {
+    const kept = await create("kept");
+    const id = CategoryId.parse(kept.id);
+    const version = kept.version;
+    const { categories } = createTestServices(test.db);
+    const before = expectOk(await categories.list());
+
+    const refusals = [
+      await categories.create(
+        { ...fields("added"), parent_id: null },
+        TEST_EDITOR,
+      ),
+      await categories.update(
+        id,
+        { ...fields("renamed"), parent_id: null },
+        version,
+        TEST_EDITOR,
+      ),
+      await categories.reorder(
+        CategoryOrder.parse({
+          parent_id: null,
+          expected: [{ id, version }],
+          ordered_ids: [id],
+        }),
+        TEST_EDITOR,
+      ),
+      await categories.delete(id, version, TEST_EDITOR),
+    ];
+
+    for (const refused of refusals) {
+      assert(!refused.ok);
+      expect(refused.error).toBeInstanceOf(PermissionDenied);
+      expect(refused.error.message).toBe(
+        "You don't have permission to add, change, move and delete categories. Ask an admin for the approver role.",
+      );
+    }
+    expect(expectOk(await categories.list())).toEqual(before);
   });
 });

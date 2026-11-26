@@ -5,13 +5,20 @@
  */
 
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, assert, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import pino from "pino";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import type { Database } from "./db";
 import { PostgresPages } from "./adapters/postgres-pages";
+import { SelfApproval, UserId, type Employee } from "./modules/auth";
 import { PageDocument, withDefaults, type PageId } from "./modules/page";
+import {
+  PERMISSIONS,
+  PermissionDenied,
+  ROLES,
+  type Permission,
+} from "./modules/permissions";
 import { Redacted } from "./modules/redacted";
 import { ok } from "./modules/result";
 import { changeEvents } from "./schema";
@@ -62,17 +69,16 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
 const stored = async (id: PageId) =>
   expectOk(await new PostgresPages(db).find(id));
 
-const FORBIDDEN = {
+/** The 403 for an editor who tried `to`, which only the approver role allows. */
+const forbidden = (to: string) => ({
   error: "forbidden",
-  message: "Only approvers can change who can see a page.",
-};
+  message: `You don't have permission to ${to}. Ask an admin for the approver role.`,
+});
 
-const START_LINK_FORBIDDEN = {
-  error: "forbidden",
-  message:
-    "A start page under a public page decides whether citizens see its Start " +
-    "link, so only an approver can add, move, rename or delete it.",
-};
+const START_LINK_FORBIDDEN = forbidden(
+  "add, move, rename or delete a start page under a public page, because " +
+    "it decides whether citizens see that page's Start link",
+);
 
 describe("a page's visibility", () => {
   it("is not changed by a non-approver's save, which leaves the page as it was", async () => {
@@ -88,7 +94,7 @@ describe("a page's visibility", () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual(FORBIDDEN);
+    expect(response.json()).toEqual(forbidden("change who can see a page"));
     expect(await stored(page.id)).toEqual(PageDocument.parse(page));
   });
 
@@ -151,7 +157,7 @@ describe("creating a page", () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual(FORBIDDEN);
+    expect(response.json()).toEqual(forbidden("create a public page"));
     expect(expectOk(await services.index.version()).count).toBe(0);
   });
 
@@ -179,7 +185,7 @@ describe("deleting a page", () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual(FORBIDDEN);
+    expect(response.json()).toEqual(forbidden("delete a public page"));
     expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect(expectOk(await services.index.version()).count).toBe(1);
   });
@@ -396,7 +402,8 @@ describe("GET /editor/me", () => {
       id: TEST_EDITOR.id,
       email: TEST_EDITOR.email,
       name: TEST_EDITOR.name,
-      roles: ["editor"],
+      roles: ["reader", "editor"],
+      permissions: ["content:read", "pages:edit", "collections:edit"],
     });
   });
 });
@@ -497,7 +504,7 @@ describe("role management", () => {
     }
     expect(
       (await requestAs(app, TEST_EDITOR, { url: "/editor/me" })).json().roles,
-    ).toEqual(["editor"]);
+    ).toEqual(["reader", "editor"]);
     expect(
       (await requestAs(app, TEST_EMPLOYEE, { url: "/editor/me" })).json().roles,
     ).toContain("admin");
@@ -516,7 +523,7 @@ describe("API_V2_ADMIN_EMAILS", () => {
       await access.requireEmployee(new Redacted("cookie")),
     );
 
-    expect(employee.roles).toEqual(["editor", "admin"]);
+    expect(employee.roles).toEqual(["reader", "editor", "admin"]);
     const { rows } = await db.execute<{ granted_by: string | null }>(
       sql`select granted_by from user_roles
           where user_id = ${TEST_EDITOR.id} and role = 'admin'`,
@@ -555,5 +562,201 @@ describe("a role store that fails", () => {
     } finally {
       await logged.close();
     }
+  });
+});
+
+describe("GET /editor/roles", () => {
+  it("describes every role in the table, in its words, to any signed-in employee", async () => {
+    const response = await requestAs(app, TEST_EDITOR, {
+      url: "/editor/roles",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const { roles } = response.json();
+    // The route holds no list of its own: a role added to the table appears.
+    expect(roles.map(({ role }: { role: string }) => role)).toEqual(ROLES);
+    expect(roles).toContainEqual({
+      role: "approver",
+      lets: [
+        PERMISSIONS["pages:publish"],
+        PERMISSIONS["categories:manage"],
+        PERMISSIONS["collections:manage"],
+      ],
+    });
+  });
+
+  it("needs a signed-in employee", async () => {
+    const response = await app.inject({
+      url: "/editor/roles",
+      headers: { origin: TEST_HTTP_CONFIG.editorOrigin },
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+});
+
+describe("the Reader role", () => {
+  const NEWCOMER: Employee = {
+    id: UserId.parse("newcomer-test"),
+    email: "newcomer@govtech.bb",
+    name: "Test newcomer",
+    roles: [],
+  };
+  const storedRoles = async () =>
+    (
+      await db.execute(
+        sql`select user_id, role from user_roles order by user_id, role`,
+      )
+    ).rows;
+
+  it("is all someone signing in for the first time holds: they read the content and change nothing", async () => {
+    const page = await seedPage();
+    const newcomer = await createTestApp(db, {
+      sessions: sessionsFor([NEWCOMER]),
+    });
+    try {
+      const as = (options: Parameters<typeof requestAs>[2]) =>
+        requestAs(newcomer, NEWCOMER, options);
+      const pages = expectOk(await services.index.version());
+      const categories = expectOk(await services.categories.list());
+
+      expect((await as({ url: "/editor/me" })).json().roles).toEqual([
+        "reader",
+      ]);
+      expect((await as({ url: `/pages/${page.id}` })).statusCode).toBe(200);
+      expect((await as({ url: "/editor/categories" })).statusCode).toBe(200);
+      const pageWrite = await as({
+        method: "POST",
+        url: "/pages",
+        payload: aPage(),
+      });
+      const categoryWrite = await as({
+        method: "POST",
+        url: "/editor/categories",
+        payload: {
+          title: "New",
+          slug: "new",
+          parent_id: null,
+          description: null,
+        },
+      });
+
+      expect(pageWrite.statusCode).toBe(403);
+      expect(categoryWrite.statusCode).toBe(403);
+      expect(expectOk(await services.index.version())).toEqual(pages);
+      expect(expectOk(await services.categories.list())).toEqual(categories);
+    } finally {
+      await newcomer.close();
+    }
+  });
+
+  it("is held by every existing user, with no row in user_roles", async () => {
+    const before = await storedRoles();
+
+    expect(
+      (await requestAs(app, TEST_EDITOR, { url: "/editor/me" })).json().roles,
+    ).toEqual(["reader", "editor"]);
+    expect(await storedRoles()).toEqual(before);
+    expect(before).not.toContainEqual(
+      expect.objectContaining({ role: "reader" }),
+    );
+  });
+
+  it("can't be given or taken away through the role routes, or stored", async () => {
+    const before = await storedRoles();
+
+    for (const method of ["PUT", "DELETE"] as const)
+      expect(
+        (
+          await requestAs(app, TEST_EMPLOYEE, {
+            method,
+            url: `/editor/employees/${TEST_EDITOR.id}/roles/reader`,
+          })
+        ).statusCode,
+      ).toBe(400);
+    expect(await storedRoles()).toEqual(before);
+    await expect(
+      db.execute(
+        sql`insert into user_roles (user_id, role) values (${TEST_EDITOR.id}, 'reader')`,
+      ),
+    ).rejects.toThrow();
+  });
+});
+
+describe("the pages:edit and pages:publish checks", () => {
+  const APPROVER_ONLY: Employee = {
+    id: UserId.parse("approver-only-test"),
+    email: "approver-only@govtech.bb",
+    name: "Test approver only",
+    roles: ["approver"],
+  };
+
+  /** Each result refused for lacking `permission`. */
+  const refusedFor = (
+    permission: Permission,
+    results: readonly { ok: boolean; error?: unknown }[],
+  ) => {
+    for (const result of results) {
+      assert(!result.ok);
+      expect(result.error).toBeInstanceOf(PermissionDenied);
+      expect(result.error).toMatchObject({ permission });
+    }
+  };
+
+  it("refuses every page write to an approver who isn't an editor, and writes nothing", async () => {
+    const page = await seedPage({ visibility: "preview" });
+    const publicPage = await seedPage({
+      url: "/money-financial-support/public",
+    });
+    const { editing } = createTestServices(db);
+    const before = expectOk(await services.index.version());
+
+    refusedFor("pages:edit", [
+      await editing.create(aPage({ visibility: "draft" }), APPROVER_ONLY),
+      await editing.save(
+        page.id,
+        withDefaults(aPage({ title: "Changed", visibility: "preview" })),
+        page.version,
+        APPROVER_ONLY,
+      ),
+      await editing.restore(page.id, 1, page.version, APPROVER_ONLY),
+      await editing.submit(publicPage.id, publicPage.version, APPROVER_ONLY),
+      await editing.delete(page.id, page.version, APPROVER_ONLY),
+      await editing.delete(publicPage.id, publicPage.version, APPROVER_ONLY),
+    ]);
+    expect(expectOk(await services.index.version())).toEqual(before);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
+    expect(await stored(publicPage.id)).toEqual(PageDocument.parse(publicPage));
+  });
+
+  it("refuses to publish or reject to an editor who isn't an approver, and changes nothing", async () => {
+    const page = await seedPage();
+    const { editing } = createTestServices(db);
+    const before = expectOk(await services.index.version());
+
+    refusedFor("pages:publish", [
+      await editing.publish(page.id, page.version, TEST_EDITOR),
+      await editing.reject(page.id, "No", page.version, TEST_EDITOR),
+    ]);
+    expect(expectOk(await services.index.version())).toEqual(before);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
+  });
+
+  it("needs both permissions to create a page as public, and then the self-approval rule", async () => {
+    const { editing } = createTestServices(db);
+
+    const asEditor = await editing.create(aPage(), TEST_EDITOR);
+    const asApprover = await editing.create(aPage(), APPROVER_ONLY);
+    const asBoth = await editing.create(aPage(), TEST_EMPLOYEE);
+
+    refusedFor("pages:publish", [asEditor]);
+    assert(!asEditor.ok);
+    expect(asEditor.error.message).toBe(
+      "You don't have permission to create a public page. Ask an admin for the approver role.",
+    );
+    refusedFor("pages:edit", [asApprover]);
+    assert(!asBoth.ok);
+    expect(asBoth.error).toBeInstanceOf(SelfApproval);
+    expect(expectOk(await services.index.version()).count).toBe(0);
   });
 });

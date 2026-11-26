@@ -4196,7 +4196,7 @@ export interface paths {
                                 id: string;
                                 email: string;
                                 name: string;
-                                roles: ("editor" | "approver" | "admin")[];
+                                roles: ("reader" | "editor" | "approver" | "admin")[];
                             }[];
                         };
                     };
@@ -4492,7 +4492,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The signed-in employee and their roles */
+        /** The signed-in employee, their roles and what those let them do */
         get: {
             parameters: {
                 query?: never;
@@ -4512,7 +4512,97 @@ export interface paths {
                             id: string;
                             email: string;
                             name: string;
-                            roles: ("editor" | "approver" | "admin")[];
+                            roles: ("reader" | "editor" | "approver" | "admin")[];
+                            /** @description Everything the employee's roles let them do, without repeats. The editor decides what to offer from this list; api_v2 checks each change itself. */
+                            permissions: ("content:read" | "pages:edit" | "pages:publish" | "collections:edit" | "collections:manage" | "categories:manage" | "people:read" | "people:manage")[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/editor/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every role, with what it lets a person do
+         * @description Any signed-in employee can read it. The editor shows these words, so it needs no wording of its own for any role.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            roles: {
+                                /** @enum {string} */
+                                role: "reader" | "editor" | "approver" | "admin";
+                                /** @description One phrase for each permission the role holds, in table order. Each completes "This role lets you …". */
+                                lets: string[];
+                            }[];
                         };
                     };
                 };
