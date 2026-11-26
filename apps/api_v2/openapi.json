@@ -8092,6 +8092,7 @@
                             "items": {
                               "type": "string",
                               "enum": [
+                                "reader",
                                 "editor",
                                 "approver",
                                 "admin"
@@ -8567,6 +8568,7 @@
                       "items": {
                         "type": "string",
                         "enum": [
+                          "reader",
                           "editor",
                           "approver",
                           "admin"

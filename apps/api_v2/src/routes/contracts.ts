@@ -17,7 +17,7 @@ import {
   SearchDocument,
 } from "../modules/navigation";
 import { EmployeeView } from "../modules/auth";
-import { Role } from "../modules/permissions";
+import { GrantableRole } from "../modules/permissions";
 import {
   EditorPage,
   NewPage,
@@ -111,7 +111,7 @@ const categoryInUse = z.object({
   message: z.string(),
   blockers: CategoryBlockers,
 });
-const roleParams = z.object({ id: z.string().min(1), role: Role });
+const roleParams = z.object({ id: z.string().min(1), role: GrantableRole });
 
 const categoryParams = z.object({ id: CategoryId });
 const categoryErrors = {

@@ -7,7 +7,7 @@ import {
   type Identity,
   type UserNotFound,
 } from "../modules/auth";
-import type { Role } from "../modules/permissions";
+import { DEFAULT_ROLE, type GrantableRole } from "../modules/permissions";
 import type { ContentStoreUnavailable } from "../modules/page";
 import type { Redacted } from "../modules/redacted";
 import { err, ok, type Result } from "../modules/result";
@@ -20,20 +20,22 @@ export interface SessionReader {
   ): Promise<Result<Identity | null, Forbidden | AuthUnavailable>>;
 }
 
-/** Who holds which role, a row each. */
+/** Who holds which role, a row each. The default role has no rows. */
 export interface RoleRecords {
-  /** The user's roles, none when they hold none. */
-  rolesOf(userId: string): Promise<Result<Role[], ContentStoreUnavailable>>;
+  /** The user's stored roles, none when they hold none. */
+  rolesOf(
+    userId: string,
+  ): Promise<Result<GrantableRole[], ContentStoreUnavailable>>;
   /** Grant a role, recording who granted it (null for api_v2 itself); holding it already is not an error. */
   grant(
     userId: string,
-    role: Role,
+    role: GrantableRole,
     grantedBy: string | null,
   ): Promise<Result<void, UserNotFound | ContentStoreUnavailable>>;
   /** Revoke a role; not holding it is not an error. */
   revoke(
     userId: string,
-    role: Role,
+    role: GrantableRole,
   ): Promise<Result<void, ContentStoreUnavailable>>;
   /** Everyone who has signed in, with their roles, by email. */
   employees(): Promise<Result<EmployeeView[], ContentStoreUnavailable>>;
@@ -62,7 +64,8 @@ export class EditorAccess implements EmployeeGate {
   /**
    * Reject missing, expired, revoked or unavailable sessions before editor
    * operations. Roles are read on every request, so a revocation applies to
-   * the next one; a listed admin who lacks admin or editor is granted it here.
+   * the next one. Every admitted employee holds the default role first; a
+   * listed admin who lacks admin or editor is granted it here.
    */
   async requireEmployee(
     credential: Redacted<string> | undefined,
@@ -77,7 +80,7 @@ export class EditorAccess implements EmployeeGate {
       return err(
         new AuthUnavailable({ lookup: "roles", operation: "rolesOf" }),
       );
-    // A listed admin can also write: a new user has no role (ADR 0134).
+    // A listed admin can also write: a new user has only Reader (ADR 0134).
     if (this.adminEmails.includes(identity.email))
       for (const role of ["admin", "editor"] as const) {
         if (roles.value.includes(role)) continue;
@@ -92,7 +95,7 @@ export class EditorAccess implements EmployeeGate {
       id: identity.id,
       email: identity.email,
       name: identity.name,
-      roles: roles.value,
+      roles: [DEFAULT_ROLE, ...roles.value],
     });
   }
 }

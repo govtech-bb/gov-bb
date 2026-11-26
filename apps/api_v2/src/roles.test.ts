@@ -11,6 +11,7 @@ import pino from "pino";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import type { Database } from "./db";
 import { PostgresPages } from "./adapters/postgres-pages";
+import { UserId, type Employee } from "./modules/auth";
 import { PageDocument, withDefaults, type PageId } from "./modules/page";
 import { Redacted } from "./modules/redacted";
 import { ok } from "./modules/result";
@@ -396,7 +397,7 @@ describe("GET /editor/me", () => {
       id: TEST_EDITOR.id,
       email: TEST_EDITOR.email,
       name: TEST_EDITOR.name,
-      roles: ["editor"],
+      roles: ["reader", "editor"],
     });
   });
 });
@@ -497,7 +498,7 @@ describe("role management", () => {
     }
     expect(
       (await requestAs(app, TEST_EDITOR, { url: "/editor/me" })).json().roles,
-    ).toEqual(["editor"]);
+    ).toEqual(["reader", "editor"]);
     expect(
       (await requestAs(app, TEST_EMPLOYEE, { url: "/editor/me" })).json().roles,
     ).toContain("admin");
@@ -516,7 +517,7 @@ describe("API_V2_ADMIN_EMAILS", () => {
       await access.requireEmployee(new Redacted("cookie")),
     );
 
-    expect(employee.roles).toEqual(["editor", "admin"]);
+    expect(employee.roles).toEqual(["reader", "editor", "admin"]);
     const { rows } = await db.execute<{ granted_by: string | null }>(
       sql`select granted_by from user_roles
           where user_id = ${TEST_EDITOR.id} and role = 'admin'`,
@@ -555,5 +556,93 @@ describe("a role store that fails", () => {
     } finally {
       await logged.close();
     }
+  });
+});
+
+describe("the Reader role", () => {
+  const NEWCOMER: Employee = {
+    id: UserId.parse("newcomer-test"),
+    email: "newcomer@govtech.bb",
+    name: "Test newcomer",
+    roles: [],
+  };
+  const storedRoles = async () =>
+    (
+      await db.execute(
+        sql`select user_id, role from user_roles order by user_id, role`,
+      )
+    ).rows;
+
+  it("is all someone signing in for the first time holds: they read the content and change nothing", async () => {
+    const page = await seedPage();
+    const newcomer = await createTestApp(db, {
+      sessions: sessionsFor([NEWCOMER]),
+    });
+    try {
+      const as = (options: Parameters<typeof requestAs>[2]) =>
+        requestAs(newcomer, NEWCOMER, options);
+      const pages = expectOk(await services.index.version());
+      const categories = expectOk(await services.categories.list());
+
+      expect((await as({ url: "/editor/me" })).json().roles).toEqual([
+        "reader",
+      ]);
+      expect((await as({ url: `/pages/${page.id}` })).statusCode).toBe(200);
+      expect((await as({ url: "/editor/categories" })).statusCode).toBe(200);
+      const pageWrite = await as({
+        method: "POST",
+        url: "/pages",
+        payload: aPage(),
+      });
+      const categoryWrite = await as({
+        method: "POST",
+        url: "/editor/categories",
+        payload: {
+          title: "New",
+          slug: "new",
+          parent_id: null,
+          description: null,
+        },
+      });
+
+      expect(pageWrite.statusCode).toBe(403);
+      expect(categoryWrite.statusCode).toBe(403);
+      expect(expectOk(await services.index.version())).toEqual(pages);
+      expect(expectOk(await services.categories.list())).toEqual(categories);
+    } finally {
+      await newcomer.close();
+    }
+  });
+
+  it("is held by every existing user, with no row in user_roles", async () => {
+    const before = await storedRoles();
+
+    expect(
+      (await requestAs(app, TEST_EDITOR, { url: "/editor/me" })).json().roles,
+    ).toEqual(["reader", "editor"]);
+    expect(await storedRoles()).toEqual(before);
+    expect(before).not.toContainEqual(
+      expect.objectContaining({ role: "reader" }),
+    );
+  });
+
+  it("can't be given or taken away through the role routes, or stored", async () => {
+    const before = await storedRoles();
+
+    for (const method of ["PUT", "DELETE"] as const)
+      expect(
+        (
+          await requestAs(app, TEST_EMPLOYEE, {
+            method,
+            url: `/editor/employees/${TEST_EDITOR.id}/roles/reader`,
+          })
+        ).statusCode,
+      ).toBe(400);
+    expect(await storedRoles()).toEqual(before);
+    await expect(
+      db.execute(
+        sql`insert into user_roles (user_id, role) values (${TEST_EDITOR.id}, 'reader')`,
+      ),
+    ).rejects.toThrow();
   });
 });
