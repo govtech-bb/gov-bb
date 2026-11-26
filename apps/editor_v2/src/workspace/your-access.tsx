@@ -57,10 +57,11 @@ export function YourAccess({
       />
       <Popover.Content aria-labelledby={title} align="end" className="w-88">
         <Popover.Title id={title}>Your access</Popover.Title>
-        {roles.isError || catalogue.isError ? (
-          <p className="mt-2 text-14 text-ink">We couldn’t check your access.</p>
-        ) : held.length === 0 ? (
+        {roles.isPending || catalogue.isPending ? (
           <p className="mt-2 text-14 text-ink">Checking your access…</p>
+        ) : held.length === 0 ? (
+          // Either read failed, or one came back with no roles to show
+          <p className="mt-2 text-14 text-ink">We couldn’t check your access.</p>
         ) : (
           <>
             <dl className="mt-2 grid gap-3 text-14 text-ink">

@@ -117,7 +117,7 @@ async function mountWorkspace(
     roles = ["editor", "approver"],
     publicIds = [],
     me,
-    catalogue = CATALOGUE,
+    catalogue = async () => Response.json({ roles: CATALOGUE }),
     serverPages = new Map<string, ApiPage>([
       ...pages,
       ...sitePages.map((page) => [page.id, page] as const),
@@ -127,8 +127,8 @@ async function mountWorkspace(
     publicIds?: readonly string[];
     /** How /editor/me answers, when not at once with `roles`. */
     me?: () => Promise<Response>;
-    /** The roles /editor/roles describes. */
-    catalogue?: readonly { role: string; lets: readonly string[] }[];
+    /** How /editor/roles answers. */
+    catalogue?: () => Promise<Response>;
     /** The pages /pages/:id reads and saves, kept across mounts when passed in. */
     serverPages?: Map<string, ApiPage>;
   } = {},
@@ -186,7 +186,7 @@ async function mountWorkspace(
           ? me()
           : Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
 
-      if (path === "/editor/roles") return Response.json({ roles: catalogue });
+      if (path === "/editor/roles") return catalogue();
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
@@ -883,11 +883,40 @@ describe("Your access", () => {
   test("shows a role the editor has never heard of, in the API's words", async () => {
     await mountWorkspace("/services/service/fees", {
       me: meWith(["reader", "publisher"]),
-      catalogue: [...CATALOGUE, { role: "publisher", lets: ["publish a change straight away"] }],
+      catalogue: async () =>
+        Response.json({
+          roles: [...CATALOGUE, { role: "publisher", lets: ["publish a change straight away"] }],
+        }),
     });
     await open();
 
     expect(popup()!.textContent).toContain("publisherYou can publish a change straight away.");
+  });
+
+  test("shows a role whose description it can't read by name, with no words", async () => {
+    await mountWorkspace("/services/service/fees", {
+      me: meWith(["reader", "publisher"]),
+      catalogue: async () =>
+        Response.json({ roles: [...CATALOGUE, { role: "publisher", lets: [1] }] }),
+    });
+    await open();
+
+    const dialog = popup()!;
+    expect([...dialog.querySelectorAll("dt")].map((term) => term.textContent)).toEqual([
+      "reader",
+      "publisher",
+    ]);
+    expect(dialog.querySelectorAll("dd")).toHaveLength(1);
+  });
+
+  test("says it couldn't check when the roles' words can't be read", async () => {
+    await mountWorkspace("/services/service/fees", {
+      me: meWith(["reader", "editor"]),
+      catalogue: async () => Response.json({}, { status: 500 }),
+    });
+    await open();
+
+    expect(popup()!.textContent).toBe("Your accessWe couldn’t check your access.");
   });
 
   test("closes with Escape, giving the focus back to the email", async () => {
