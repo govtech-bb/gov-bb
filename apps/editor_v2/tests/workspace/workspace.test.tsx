@@ -1021,6 +1021,9 @@ describe("People", () => {
     { id: "bob", email: "bob@govtech.bb", name: "Bob", roles: ["reader"] },
   ];
 
+  const REFUSAL =
+    "You can't take away your own admin role, because you'd lose the permission to give and take away roles. Ask someone else who can.";
+
   const meWith = (permissions: readonly string[]) => async () =>
     Response.json({
       id: "me",
@@ -1032,6 +1035,28 @@ describe("People", () => {
 
   const catalogue = async () => Response.json({ roles: PEOPLE_CATALOGUE });
 
+  /** Answers the list at once, and holds each role change until the test answers it. */
+  function heldChanges() {
+    const changes: string[] = [];
+    const answers: ((response: Response) => void)[] = [];
+
+    return {
+      changes,
+      answer: (response: Response) => act(async () => answers.shift()!(response)),
+      people: async (path: string, init?: RequestInit) => {
+        if (path === "/editor/employees") return Response.json({ employees: EMPLOYEES });
+
+        changes.push(`${init?.method} ${path}`);
+
+        return new Promise<Response>((resolve) => answers.push(resolve));
+      },
+    };
+  }
+
+  const done = () => new Response(null, { status: 204 });
+
+  const refusal = () => Response.json({ error: "forbidden", message: REFUSAL }, { status: 403 });
+
   const box = (name: string) => document.querySelector<HTMLElement>(`[aria-label="${name}"]`);
 
   const ticked = (name: string) => box(name)?.getAttribute("aria-checked");
@@ -1042,15 +1067,26 @@ describe("People", () => {
   const listed = () =>
     [...document.querySelectorAll<HTMLAnchorElement>("tbody a")].map((link) => link.textContent);
 
-  const row = (name: string) =>
-    [...document.querySelectorAll("tbody tr")].find(
-      (tr) => tr.querySelector("a")?.textContent === name,
-    );
+  const nameLink = (name: string) =>
+    [...document.querySelectorAll<HTMLAnchorElement>("tbody a")].find(
+      (link) => link.textContent === name,
+    )!;
+
+  const row = (name: string) => nameLink(name).closest("tr")!;
 
   const panel = () => document.querySelector<HTMLElement>('[role="dialog"]');
 
-  const openPanel = (name: string) =>
-    act(async () => row(name)!.querySelector<HTMLAnchorElement>("a")!.click());
+  const openPanel = async (name: string) => {
+    await act(async () => nameLink(name).click());
+    await until(() => expect(panel()?.textContent).toContain(`${name.toLowerCase()}@govtech.bb`));
+  };
+
+  const closePanel = async () => {
+    await act(async () =>
+      panel()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click(),
+    );
+    await until(() => expect(panel()).toBeNull());
+  };
 
   test("is hidden from someone without people:read, and opened directly asks for no staff data", async () => {
     const h = await mountWorkspace("/people", {
@@ -1064,42 +1100,53 @@ describe("People", () => {
     expect(document.body.textContent).not.toContain("ann@govtech.bb");
   });
 
-  test("lists everyone with the roles they hold beyond Reader's, and a person's panel gives and takes them", async () => {
-    const changes: string[] = [];
+  test("lists everyone with the roles they hold beyond Reader's, and a person's panel gives and takes them, one at a time", async () => {
+    const held = heldChanges();
+    let asked = 0;
+    const me = meWith(["content:read", "people:read", "people:manage"]);
     await mountWorkspace("/people", {
-      me: meWith(["content:read", "people:read", "people:manage"]),
-      catalogue,
-      people: async (path, init) => {
-        if (path === "/editor/employees") return Response.json({ employees: EMPLOYEES });
+      me: () => {
+        asked += 1;
 
-        changes.push(`${init?.method} ${path}`);
-
-        return new Response(null, { status: 204 });
+        return me();
       },
+      catalogue,
+      people: held.people,
     });
 
     await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
     expect(menuLink("People")?.getAttribute("aria-current")).toBe("page");
     expect(document.querySelector("h1")?.textContent).toBe("People");
-    expect(row("Ann")!.textContent).toContain("Editor");
-    expect(row("Bob")!.textContent).toContain("Reader only");
+    expect(row("Ann").textContent).toContain("Editor");
+    expect(row("Bob").textContent).toContain("Reader only");
     expect(panel()).toBeNull();
 
     await openPanel("Bob");
-    await until(() => expect(panel()?.textContent).toContain("bob@govtech.bb"));
     expect(panel()!.textContent).toContain("Lets them publish a change.");
     expect(ticked("reader for Bob")).toBe("true");
     expect(off("reader for Bob")).toBe(true);
     expect(ticked("approver for Bob")).toBe("false");
     expect(off("approver for Bob")).toBe(false);
+
+    // While a change is on its way, no other can start, so a refusal can't be lost to a second change
     await act(async () => box("approver for Bob")!.click());
+    await until(() => expect(ticked("approver for Bob")).toBe("true"));
+    expect(held.changes).toEqual(["PUT /editor/employees/bob/roles/approver"]);
+    expect(off("approver for Bob")).toBe(true);
+    expect(off("editor for Bob")).toBe(true);
+    const askedBefore = asked;
+    await held.answer(done());
+    await until(() => expect(off("editor for Bob")).toBe(false));
+    // The admin's own roles may have changed, so "Your access" asks again
+    await until(() => expect(asked).toBeGreaterThan(askedBefore));
 
     await openPanel("Ann");
-    await until(() => expect(ticked("editor for Ann")).toBe("true"));
+    expect(ticked("editor for Ann")).toBe("true");
     await act(async () => box("editor for Ann")!.click());
+    await held.answer(done());
 
     await until(() =>
-      expect(changes).toEqual([
+      expect(held.changes).toEqual([
         "PUT /editor/employees/bob/roles/approver",
         "DELETE /editor/employees/ann/roles/editor",
       ]),
@@ -1107,29 +1154,95 @@ describe("People", () => {
   });
 
   test("opens a person's panel from the address, and shows there the API's reason when a change is refused", async () => {
+    const held = heldChanges();
     await mountWorkspace("/people?person=ann", {
       me: meWith(["content:read", "people:read", "people:manage"]),
       catalogue,
-      people: async (path) =>
-        path === "/editor/employees"
-          ? Response.json({ employees: EMPLOYEES })
-          : Response.json(
-              {
-                error: "forbidden",
-                message:
-                  "You can't take away your own admin role, because you'd lose the permission to give and take away roles. Ask someone else who can.",
-              },
-              { status: 403 },
-            ),
+      people: held.people,
     });
 
     await until(() => expect(box("editor for Ann")).not.toBeNull());
     await act(async () => box("editor for Ann")!.click());
+    await held.answer(refusal());
 
-    await until(() =>
-      expect(panel()?.textContent).toContain("You can't take away your own admin role"),
-    );
+    await until(() => expect(panel()?.textContent).toContain(REFUSAL));
     expect(ticked("editor for Ann")).toBe("true");
+  });
+
+  test("keeps a refusal that lands after its panel closed for that person's panel, and no one else's", async () => {
+    const held = heldChanges();
+    await mountWorkspace("/people?person=ann", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: held.people,
+    });
+
+    await until(() => expect(box("editor for Ann")).not.toBeNull());
+    await act(async () => box("editor for Ann")!.click());
+    await closePanel();
+    await held.answer(refusal());
+
+    await openPanel("Bob");
+    expect(panel()!.textContent).not.toContain(REFUSAL);
+    await closePanel();
+
+    await openPanel("Ann");
+    expect(panel()!.textContent).toContain(REFUSAL);
+    expect(ticked("editor for Ann")).toBe("true");
+  });
+
+  test("gives focus back to the person's name when their panel closes", async () => {
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    nameLink("Bob").focus();
+    await openPanel("Bob");
+    await until(() => expect(panel()!.contains(document.activeElement)).toBe(true));
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+
+    await until(() => expect(panel()).toBeNull());
+    await until(() => expect(document.activeElement).toBe(nameLink("Bob")));
+  });
+
+  test("says the roles couldn't load, with a retry, rather than list people without them", async () => {
+    let fails = true;
+    await mountWorkspace("/people?person=ann", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue: async () =>
+        fails ? Response.json({}, { status: 500 }) : Response.json({ roles: PEOPLE_CATALOGUE }),
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(document.body.textContent).toContain("We could not load roles"));
+    expect(listed()).toEqual([]);
+    expect(panel()).toBeNull();
+
+    fails = false;
+    await click("Try again");
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    await until(() => expect(ticked("editor for Ann")).toBe("true"));
+  });
+
+  test("leaves Reader's switch changeable for a catalogue that doesn't say everyone holds it", async () => {
+    await mountWorkspace("/people?person=bob", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue: async () =>
+        Response.json({ roles: PEOPLE_CATALOGUE.map(({ role, lets }) => ({ role, lets })) }),
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(box("reader for Bob")).not.toBeNull());
+    expect(ticked("reader for Bob")).toBe("true");
+    expect(off("reader for Bob")).toBe(false);
+    expect(panel()!.textContent).not.toContain("Everyone has this role.");
   });
 
   test("finds people by name or email, and by a role they hold", async () => {

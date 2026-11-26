@@ -6,6 +6,7 @@ import type { EditorApi, Employees } from "../api/client";
 import { apiFailureMessages } from "../api/failure-messages";
 import {
   employeesQuery,
+  meQuery,
   permissionsQuery,
   roleCatalogueQuery,
   type RoleDescription,
@@ -187,12 +188,23 @@ export function PeopleScreen({
   const employees = useQuery({ ...employeesQuery(api), enabled: read });
   const catalogue = useQuery({ ...roleCatalogueQuery(api), enabled: read });
   const load = listLoadView(employees, "people");
-  const open = employees.data?.find((employee) => employee.id === openId);
+  // Without the roles the list can't say who holds what, so their failure is the list's failure
+  const rolesLoad = listLoadView(catalogue, "roles");
+
+  // A person opens once there are roles to show them with
+  const open = catalogue.data
+    ? employees.data?.find((employee) => employee.id === openId)
+    : undefined;
 
   const changing = useMutation({
     mutationFn: ({ id, role, give }: Change) =>
       give ? api.grantRole(id, role) : api.revokeRole(id, role),
-    onSettled: () => client.invalidateQueries({ queryKey: employeesQuery(api).queryKey }),
+    // The signed-in admin's own roles may have changed, and with them "Your access" and what the editor offers
+    onSettled: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: employeesQuery(api).queryKey }),
+        client.invalidateQueries({ queryKey: meQuery(api).queryKey }),
+      ]),
   });
 
   const pending = changing.isPending ? changing.variables : undefined;
@@ -247,13 +259,15 @@ export function PeopleScreen({
     initialState: { sorting: [{ id: "person", desc: false }] },
   });
 
-  const refused = changing.error
-    ? apiFailureMessages(
-        changing.error,
-        "We couldn’t change that role. Try again.",
-        (field) => field,
-      )[0]
-    : undefined;
+  // In the panel of the person whose change was refused, even one closed while it was on its way and opened again
+  const refused =
+    changing.error && changing.variables?.id === open?.id
+      ? apiFailureMessages(
+          changing.error,
+          "We couldn’t change that role. Try again.",
+          (field) => field,
+        )[0]
+      : undefined;
 
   return (
     <table.AppTable>
@@ -269,7 +283,7 @@ export function PeopleScreen({
             />
           ) : undefined
         }
-        status={read ? load.status : undefined}
+        status={read ? (load.status ?? rolesLoad.status) : undefined}
         notices={
           <>
             {read && !manage && (
@@ -278,9 +292,10 @@ export function PeopleScreen({
               </Banner>
             )}
             {read && load.notices}
+            {read && rolesLoad.notices}
           </>
         }
-        failure={read ? load.failure : undefined}
+        failure={read ? load.failure || rolesLoad.failure : undefined}
       >
         {permissions && !read ? (
           <EmptyState
@@ -304,11 +319,7 @@ export function PeopleScreen({
       <Drawer
         open={!!open}
         onOpenChange={(next) => {
-          if (next) return;
-
-          // A refusal belongs to the panel it was shown in
-          changing.reset();
-          onPerson(undefined);
+          if (!next) onPerson(undefined);
         }}
         side="end"
         label="Person"
@@ -365,7 +376,9 @@ export function PeopleScreen({
                             ? pending.give
                             : open.roles.some((held) => held === description.role)
                         }
-                        disabled={!manage || description.everyone || changingThis}
+                        // One change at a time: the mutation keeps only the latest, so a second would lose the
+                        // first's refusal
+                        disabled={!manage || description.everyone || changing.isPending}
                         onCheckedChange={(checked) =>
                           changing.mutate({ id: open.id, role: description.role, give: checked })
                         }
