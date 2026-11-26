@@ -312,6 +312,35 @@ test.each([
   },
 );
 
+test.each([
+  { permissions: ["content:read", "collections:edit"], records: true, pages: false },
+  { permissions: ["content:read", "pages:edit"], records: false, pages: true },
+])(
+  "records follow collections:edit and pages follow pages:edit, with no read-only notice for $permissions",
+  async ({ permissions, records, pages }) => {
+    const h = await mountWorkspace("/collections/contacts", {
+      me: async () =>
+        Response.json({
+          id: "me",
+          email: "author@govtech.bb",
+          name: "Author",
+          roles: ["reader", "made-up"],
+          permissions,
+        }),
+    });
+
+    const button = (text: string) =>
+      [...document.querySelectorAll("button")].find((item) => item.textContent === text);
+
+    await until(() => expect(button("Add record")?.disabled).toBe(!records));
+    expect(document.body.textContent).not.toContain("but not change them");
+
+    await act(async () => h.router.navigate({ to: "/services" }));
+    await until(() => expect(button("Create service")?.disabled).toBe(!pages));
+    expect(document.body.textContent).not.toContain("but not change them");
+  },
+);
+
 test("a role the editor has never heard of gets what its permissions allow, with no change to the editor", async () => {
   await mountWorkspace("/services/service/fees", {
     publicIds: ["fees"],

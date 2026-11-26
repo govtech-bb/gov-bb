@@ -23,7 +23,6 @@ export function employeeSession() {
   };
 }
 
-/** Compose real editor/browser code with a session fixture at its HTTP boundary. */
 /** What api_v2's table lets each role do, so a fixture can answer GET /editor/me as the API does. */
 const ROLE_PERMISSIONS = {
   reader: ["content:read"],
@@ -37,6 +36,7 @@ export function permissionsOf(roles) {
   return [...new Set(["reader", ...roles].flatMap((role) => ROLE_PERMISSIONS[role] ?? []))];
 }
 
+/** Compose real editor/browser code with a session fixture at its HTTP boundary. */
 export async function authenticatedContext(browser, options) {
   const context = await browser.newContext(options);
   await context.route("**/api/auth/get-session*", (route) =>
