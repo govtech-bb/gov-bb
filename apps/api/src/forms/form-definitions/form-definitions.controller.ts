@@ -139,11 +139,12 @@ export class FormDefinitionsController {
     // presence grants the visibility bypass cross-app — see #1646 Phase 3.
     @Headers("cookie") cookieHeader?: string,
   ): Promise<ApiResponseShape<ServiceContract>> {
-    // No browser, CDN or proxy may store any response of this route (#3903).
-    // On Back, Forward and restored tabs, Chrome reuses a stored copy however
-    // old, and sends no request (#3886); `no-cache` does not stop this. Preview
-    // and draft responses can also carry non-public or unpublished DB content.
-    // Set first, so the 410 and 404 error responses carry it too.
+    // No browser, CDN or proxy may store any response this handler sends
+    // (#3903). On Back, Forward and restored tabs, Chrome reuses a stored copy
+    // however old, and sends no request (#3886); `no-cache` does not stop
+    // this. Preview and draft responses can also carry non-public or
+    // unpublished DB content. Set first, so the 410 and 404 error responses
+    // carry it too.
     res?.setHeader("Cache-Control", "no-store");
 
     const override = await this.disabledOverridesService.find(formId);
