@@ -600,7 +600,14 @@ describe("GET /editor/roles", () => {
         PERMISSIONS["categories:manage"],
         PERMISSIONS["collections:manage"],
       ],
+      everyone: false,
     });
+    // Only the role everyone holds without being given it
+    expect(
+      roles.filter(({ everyone }: { everyone: boolean }) => everyone),
+    ).toEqual([
+      { role: "reader", lets: [PERMISSIONS["content:read"]], everyone: true },
+    ]);
   });
 
   it("needs a signed-in employee", async () => {
