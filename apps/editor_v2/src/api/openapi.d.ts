@@ -4502,8 +4502,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Give a role by email to someone who hasn't signed in yet
-         * @description Needs the admin role (403 otherwise). The role becomes theirs with their first request after they sign in. A role already waiting for that address is left as it was. 403, with the reason, for `reader`; 400, with the reason, for an address on a domain that can't sign in.
+         * Give a role by email, to someone who may not have signed in yet
+         * @description Needs the admin role (403 otherwise). The role becomes theirs with their next request, or their first once they sign in. A role already waiting for that address is left as it was. 403, with the reason, for `reader`; 400, with the reason, for an address on a domain that can't sign in.
          */
         post: {
             parameters: {
@@ -4627,7 +4627,7 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Take away a role still waiting for its person's first sign-in
+         * Take away a role given by email that hasn't reached its person yet
          * @description Needs the admin role (403 otherwise). 404 when it isn't waiting any more: taken away already, or moved by its person's first sign-in.
          */
         delete: {

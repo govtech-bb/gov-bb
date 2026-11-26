@@ -198,6 +198,10 @@ const workspaceIdentity = z.object({
   }),
 });
 
+/** An address's domain, the part after its @, as sign-in matches it to the Workspace. */
+export const emailDomain = (email: string) =>
+  email.slice(email.indexOf("@") + 1);
+
 /**
  * Admit fresh Google claims on both provisioning and returning OAuth sign-ins:
  * a verified email on an allowed Workspace domain, issued by that Workspace.
@@ -216,7 +220,7 @@ export function admitWorkspaceIdentity(
   if (
     email !== profile.email ||
     !allowedDomains.includes(profile.hd) ||
-    email.split("@")[1] !== profile.hd
+    emailDomain(email) !== profile.hd
   )
     return err(new Forbidden());
   return ok(undefined);

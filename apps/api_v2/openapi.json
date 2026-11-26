@@ -8570,11 +8570,11 @@
     },
     "/editor/waiting-roles": {
       "post": {
-        "summary": "Give a role by email to someone who hasn't signed in yet",
+        "summary": "Give a role by email, to someone who may not have signed in yet",
         "tags": [
           "admin"
         ],
-        "description": "Needs the admin role (403 otherwise). The role becomes theirs with their first request after they sign in. A role already waiting for that address is left as it was. 403, with the reason, for `reader`; 400, with the reason, for an address on a domain that can't sign in.",
+        "description": "Needs the admin role (403 otherwise). The role becomes theirs with their next request, or their first once they sign in. A role already waiting for that address is left as it was. 403, with the reason, for `reader`; 400, with the reason, for an address on a domain that can't sign in.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8760,7 +8760,7 @@
     },
     "/editor/waiting-roles/{id}": {
       "delete": {
-        "summary": "Take away a role still waiting for its person's first sign-in",
+        "summary": "Take away a role given by email that hasn't reached its person yet",
         "tags": [
           "admin"
         ],

@@ -27,6 +27,13 @@ function knownRoles(names: readonly string[]): GrantableRole[] {
   });
 }
 
+/** A waiting role's columns, as WaitingRoleView reads them. */
+const waitingRole = {
+  id: waitingRoles.id,
+  email: waitingRoles.email,
+  role: waitingRoles.role,
+};
+
 /** An employee as stored, with only the roles this build knows. */
 const storedEmployee = EmployeeView.extend({
   roles: z.array(z.string()).transform(knownRoles),
@@ -137,11 +144,7 @@ export class PostgresRoles implements RoleRecords, PeopleRecords {
   async waiting(): Promise<Result<WaitingRoleView[], ContentStoreUnavailable>> {
     const rows = await attempt("waiting", () =>
       this.db
-        .select({
-          id: waitingRoles.id,
-          email: waitingRoles.email,
-          role: waitingRoles.role,
-        })
+        .select(waitingRole)
         .from(waitingRoles)
         .orderBy(sql`${waitingRoles.email} collate "C"`, waitingRoles.role),
     );
@@ -167,11 +170,7 @@ export class PostgresRoles implements RoleRecords, PeopleRecords {
         .values({ email, role, grantedBy })
         .onConflictDoNothing();
       return this.db
-        .select({
-          id: waitingRoles.id,
-          email: waitingRoles.email,
-          role: waitingRoles.role,
-        })
+        .select(waitingRole)
         .from(waitingRoles)
         .where(and(eq(waitingRoles.email, email), eq(waitingRoles.role, role)));
     });

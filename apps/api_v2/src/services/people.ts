@@ -8,6 +8,7 @@ import {
   type UserNotFound,
   type WaitingRoleView,
 } from "../modules/auth";
+import { emailDomain } from "../modules/auth";
 import type { ContentStoreUnavailable } from "../modules/page";
 import {
   authorize,
@@ -219,7 +220,7 @@ export class People implements IPeople {
     if (role === DEFAULT_ROLE) return err(new DefaultRoleChange());
     // As sign-in admits it: lowercased, on an allowed domain
     const address = email.toLowerCase();
-    if (!this.allowedDomains.includes(address.slice(address.indexOf("@") + 1)))
+    if (!this.allowedDomains.includes(emailDomain(address)))
       return err(new EmailNotAllowed(this.allowedDomains));
     return this.records.atomically(grant.value, (records) =>
       records.addWaiting(address, role, grant.value.actor),

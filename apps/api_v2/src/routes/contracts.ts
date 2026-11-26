@@ -865,10 +865,10 @@ export const SCHEMAS = {
     response: { 204: z.undefined(), 400: error, 500: error, ...authErrors },
   },
   giveWaitingRole: {
-    summary: "Give a role by email to someone who hasn't signed in yet",
+    summary: "Give a role by email, to someone who may not have signed in yet",
     description:
       "Needs the admin role (403 otherwise). The role becomes theirs with " +
-      "their first request after they sign in. A role already waiting for " +
+      "their next request, or their first once they sign in. A role already waiting for " +
       "that address is left as it was. 403, with the reason, for `reader`; " +
       "400, with the reason, for an address on a domain that can't sign in.",
     tags: ["admin"],
@@ -877,7 +877,8 @@ export const SCHEMAS = {
     response: { 201: WaitingRoleView, 400: error, 500: error, ...authErrors },
   },
   takeWaitingRole: {
-    summary: "Take away a role still waiting for its person's first sign-in",
+    summary:
+      "Take away a role given by email that hasn't reached its person yet",
     description:
       "Needs the admin role (403 otherwise). 404 when it isn't waiting any " +
       "more: taken away already, or moved by its person's first sign-in.",
