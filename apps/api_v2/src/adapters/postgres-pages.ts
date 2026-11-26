@@ -87,6 +87,7 @@ import type {
 } from "../services/page-editing";
 import type { PageRoute, PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
+import { transactAs } from "./postgres-transaction";
 
 const categoryDatabaseRow = EditorCategory.omit({
   updated_at: true,
@@ -277,25 +278,9 @@ export class PostgresPages
     actorId: UserId,
     work: (records: PostgresPages) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
-    let refused: R | undefined;
-    try {
-      return await this.db.transaction(async (tx) => {
-        await tx.execute(
-          sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
-        );
-        await tx.execute(
-          sql`select set_config('app.user_id', ${actorId}, true)`,
-        );
-        const result = await work(new PostgresPages(tx));
-        if (!result.ok) {
-          refused = result;
-          tx.rollback();
-        }
-        return result;
-      });
-    } catch (cause) {
-      return refused ?? err(new ContentStoreUnavailable("transaction", cause));
-    }
+    return transactAs(this.db, actorId, { contentLock: true }, (tx) =>
+      work(new PostgresPages(tx)),
+    );
   }
 
   /** Read the rule and exact page together, so a concurrent move cannot fall between two lookups. */
