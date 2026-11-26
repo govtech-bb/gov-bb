@@ -1,10 +1,5 @@
 import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
-import {
-  NotApprover,
-  SelfApproval,
-  type Employee,
-  type UserId,
-} from "../modules/auth";
+import { SelfApproval, type Employee, type UserId } from "../modules/auth";
 import {
   changesOf,
   creationOf,
@@ -34,6 +29,7 @@ import {
   type SaveFields,
   segmentsOf,
 } from "../modules/page";
+import { authorize, type PermissionDenied } from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 import type { LastEditedBy } from "../modules/content-attribution";
 import type { EditVersion } from "../modules/edit-concurrency";
@@ -237,18 +233,24 @@ export class PageEditing {
    * public, and index it. Only an approver creates one public, and not one
    * they wrote, which is every one, unless self-approval is allowed.
    */
-  create(
+  async create(
     page: NewPage,
     actor: Employee,
   ): Promise<
     Result<
       EditorPage,
-      PageRejected | NotApprover | SelfApproval | ContentStoreUnavailable
+      PageRejected | PermissionDenied | SelfApproval | ContentStoreUnavailable
     >
   > {
+    const grant = authorize(actor, "pages:edit");
+    if (!grant.ok) return grant;
+    if (page.visibility === "public") {
+      const publishing = authorize(actor, "pages:publish", {
+        to: "create a public page",
+      });
+      if (!publishing.ok) return publishing;
+    }
     return this.records.atomically(actor.id, async (records) => {
-      if (page.visibility === "public" && !actor.roles.includes("approver"))
-        return err(new NotApprover());
       // Its author wrote all of it, so another approver makes it public.
       if (page.visibility === "public" && !this.review.allowSelfApproval)
         return err(new SelfApproval(CREATED_PUBLIC));
@@ -295,7 +297,7 @@ export class PageEditing {
    * it since it was last public, in this save or before, is refused: another
    * approver makes it public (#3201).
    */
-  save(
+  async save(
     id: PageId,
     fields: SaveFields,
     expectedVersion: EditVersion,
@@ -306,11 +308,13 @@ export class PageEditing {
       | PageRejected
       | PageNotFound
       | PageConflict
-      | NotApprover
+      | PermissionDenied
       | SelfApproval
       | ContentStoreUnavailable
     >
   > {
+    const grant = authorize(actor, "pages:edit");
+    if (!grant.ok) return grant;
     return this.records.atomically(actor.id, async (records) => {
       const checked = await versionedPage(records, id, expectedVersion);
       if (!checked.ok) return checked;
@@ -328,7 +332,7 @@ export class PageEditing {
    * version. A public page's restore goes into its pending revision, as any
    * save does, and is reviewed before citizens see it.
    */
-  restore(
+  async restore(
     id: PageId,
     versionNo: number,
     expectedVersion: EditVersion,
@@ -341,11 +345,13 @@ export class PageEditing {
       | PageConflict
       | VersionNotFound
       | VersionNotRestorable
-      | NotApprover
+      | PermissionDenied
       | SelfApproval
       | ContentStoreUnavailable
     >
   > {
+    const grant = authorize(actor, "pages:edit");
+    if (!grant.ok) return grant;
     return this.records.atomically(actor.id, async (records) => {
       const checked = await versionedPage(records, id, expectedVersion);
       if (!checked.ok) return checked;
@@ -376,15 +382,16 @@ export class PageEditing {
   ): Promise<
     Result<
       EditorPage,
-      PageRejected | NotApprover | SelfApproval | ContentStoreUnavailable
+      PageRejected | PermissionDenied | SelfApproval | ContentStoreUnavailable
     >
   > {
     const { live: current, revision: pending } = checked;
-    if (
-      fields.visibility !== current.visibility &&
-      !actor.roles.includes("approver")
-    )
-      return err(new NotApprover());
+    if (fields.visibility !== current.visibility) {
+      const publishing = authorize(actor, "pages:publish", {
+        to: "change who can see a page",
+      });
+      if (!publishing.ok) return publishing;
+    }
 
     const invalidContent = markdownRejection(
       current.visibility === "public" && fields.visibility !== "public"
@@ -502,6 +509,7 @@ export class PageEditing {
   ): Promise<
     Result<
       RevisionView,
+      | PermissionDenied
       | PageNotFound
       | RevisionNotFound
       | PageConflict
@@ -509,6 +517,8 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
+    const grant = authorize(actor, "pages:edit");
+    if (!grant.ok) return grant;
     const submitted = await this.records.atomically(
       actor.id,
       async (records) => {
@@ -571,10 +581,13 @@ export class PageEditing {
       | RevisionNotFound
       | PageConflict
       | RevisionStateConflict
+      | PermissionDenied
       | SelfApproval
       | ContentStoreUnavailable
     >
   > {
+    const grant = authorize(actor, "pages:publish");
+    if (!grant.ok) return grant;
     const rejected = await this.records.atomically(
       actor.id,
       async (records) => {
@@ -632,11 +645,14 @@ export class PageEditing {
       | RevisionNotFound
       | PageConflict
       | RevisionStateConflict
+      | PermissionDenied
       | SelfApproval
       | PageRejected
       | ContentStoreUnavailable
     >
   > {
+    const grant = authorize(actor, "pages:publish");
+    if (!grant.ok) return grant;
     const published = await this.records.atomically(
       actor.id,
       async (records) => {
@@ -709,7 +725,7 @@ export class PageEditing {
   }
 
   /** Delete only the displayed identity; a missing target is not a successful deletion. */
-  delete(
+  async delete(
     id: PageId,
     expectedVersion: EditVersion,
     actor: Employee,
@@ -719,18 +735,21 @@ export class PageEditing {
       | PageNotFound
       | PageConflict
       | PageRejected
-      | NotApprover
+      | PermissionDenied
       | ContentStoreUnavailable
     >
   > {
+    const grant = authorize(actor, "pages:edit");
+    if (!grant.ok) return grant;
     return this.records.atomically(actor.id, async (records) => {
       const checked = await versionedPage(records, id, expectedVersion);
       if (!checked.ok) return checked;
-      if (
-        checked.value.live.visibility === "public" &&
-        !actor.roles.includes("approver")
-      )
-        return err(new NotApprover());
+      if (checked.value.live.visibility === "public") {
+        const publishing = authorize(actor, "pages:publish", {
+          to: "delete a public page",
+        });
+        if (!publishing.ok) return publishing;
+      }
       const gated = await startLinkGate(
         records,
         actor,
@@ -744,10 +763,10 @@ export class PageEditing {
   }
 }
 
-/** Why an editor's start sub-page write is refused, since it isn't a visibility change. */
-const START_LINK_REFUSAL =
-  "A start page under a public page decides whether citizens see its Start " +
-  "link, so only an approver can add, move, rename or delete it.";
+/** What an editor tried, in a start sub-page refusal, since it isn't a visibility change. */
+const START_LINK_CHANGE =
+  "add, move, rename or delete a start page under a public page, because " +
+  "it decides whether citizens see that page's Start link";
 
 /**
  * Refuse an editor's write that adds, removes, moves or renames a hidden
@@ -763,16 +782,17 @@ async function startLinkGate(
   actor: Employee,
   before: StartStepPlace | null,
   after: StartStepPlace | null,
-): Promise<Result<void, NotApprover | ContentStoreUnavailable>> {
-  if (actor.roles.includes("approver")) return ok(undefined);
+): Promise<Result<void, PermissionDenied | ContentStoreUnavailable>> {
+  const publishing = authorize(actor, "pages:publish", {
+    to: START_LINK_CHANGE,
+  });
+  if (publishing.ok) return ok(undefined);
   const hidBefore = await publicPageHiddenFrom(records, before);
   if (!hidBefore.ok) return hidBefore;
   const hidesAfter = await publicPageHiddenFrom(records, after);
   if (!hidesAfter.ok) return hidesAfter;
   // Compared by page, so moving one between public pages is refused too.
-  return hidBefore.value === hidesAfter.value
-    ? ok(undefined)
-    : err(new NotApprover(START_LINK_REFUSAL));
+  return hidBefore.value === hidesAfter.value ? ok(undefined) : publishing;
 }
 
 /** Where a page sits, and who sees it: all that decides a Start link. */

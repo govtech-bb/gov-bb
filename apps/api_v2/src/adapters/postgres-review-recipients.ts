@@ -8,6 +8,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Database } from "../db";
 import { ContentStoreUnavailable, PageId } from "../modules/page";
+import { rolesWith } from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 import type { ReviewRecipients } from "../services/review-notifications";
 
@@ -32,10 +33,14 @@ export class PostgresReviewRecipients implements ReviewRecipients {
   async approvers(): Promise<
     Result<{ id: string; email: string }[], ContentStoreUnavailable>
   > {
+    const publishers = sql.join(
+      rolesWith("pages:publish").map((role) => sql`${role}`),
+      sql`, `,
+    );
     const rows = await attempt("approvers", () =>
       this.db.execute(sql`
-        select u.id, u.email from auth_user u
-        join user_roles r on r.user_id = u.id and r.role = 'approver'
+        select distinct u.id, u.email from auth_user u
+        join user_roles r on r.user_id = u.id and r.role in (${publishers})
         order by u.email`),
     );
     return rows.ok ? ok(z.array(Approver).parse(rows.value.rows)) : rows;

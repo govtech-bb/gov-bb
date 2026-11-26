@@ -21,6 +21,7 @@ import {
   type RecordRejected,
 } from "../modules/collection";
 import type { ContentStoreUnavailable } from "../modules/page";
+import { authorize, type PermissionDenied } from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 
 /** Collection storage. */
@@ -78,6 +79,7 @@ export interface CollectionStore {
 
 /** Why a record write was refused. */
 export type RecordWriteFailure =
+  | PermissionDenied
   | CollectionNotFound
   | RecordNotFound
   | RecordExists
@@ -87,13 +89,15 @@ export type RecordWriteFailure =
 
 /** Why creating a collection was refused. */
 export type CollectionCreateFailure =
+  | PermissionDenied
   | CollectionRejected
   | CollectionExists
   | ContentStoreUnavailable;
 
 /**
- * Reading collections, and editors' changes to their records. Each write is
- * checked against the collection's field list and recorded against the
+ * Reading collections, and editors' changes to their records. Each write
+ * needs `collections:edit`, or `collections:manage` to create a collection,
+ * is checked against the collection's field list and is recorded against the
  * employee. A required record version refuses writes based on content the
  * editor has not read.
  */
@@ -132,12 +136,14 @@ export class CollectionEditing {
   }
 
   /** Add a record the collection does not have yet. */
-  create(
+  async create(
     key: string,
     recordKey: string,
     data: Readonly<Record<string, unknown>>,
     actor: Employee,
   ): Promise<Result<EditorCollectionRecord, RecordWriteFailure>> {
+    const grant = authorize(actor, "collections:edit");
+    if (!grant.ok) return grant;
     return this.store.atomically(actor.id, async (store) => {
       const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
@@ -152,13 +158,15 @@ export class CollectionEditing {
   }
 
   /** Replace a record's data. */
-  save(
+  async save(
     key: string,
     recordKey: string,
     data: Readonly<Record<string, unknown>>,
     expectedVersion: EditVersion,
     actor: Employee,
   ): Promise<Result<RecordEnvelope, RecordWriteFailure>> {
+    const grant = authorize(actor, "collections:edit");
+    if (!grant.ok) return grant;
     return this.store.atomically(actor.id, async (store) => {
       const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
@@ -180,12 +188,14 @@ export class CollectionEditing {
   }
 
   /** Delete a record. */
-  delete(
+  async delete(
     key: string,
     recordKey: string,
     expectedVersion: EditVersion,
     actor: Employee,
   ): Promise<Result<void, RecordWriteFailure>> {
+    const grant = authorize(actor, "collections:edit");
+    if (!grant.ok) return grant;
     return this.store.atomically(actor.id, async (store) => {
       const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
@@ -203,6 +213,8 @@ export class CollectionEditing {
     input: NewCollection,
     actor: Employee,
   ): Promise<Result<CollectionView, CollectionCreateFailure>> {
+    const grant = authorize(actor, "collections:manage");
+    if (!grant.ok) return grant;
     const parsed = parseNewCollection(input);
     if (!parsed.ok) return parsed;
     return this.store.atomically(actor.id, async (store) => {

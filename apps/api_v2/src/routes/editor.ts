@@ -2,8 +2,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
 import type { CollectionEditing } from "../services/collection-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import type { Employee, NotApprover, SelfApproval } from "../modules/auth";
-import type { GrantableRole } from "../modules/permissions";
+import type { Employee, SelfApproval } from "../modules/auth";
+import type { GrantableRole, PermissionDenied } from "../modules/permissions";
 import type {
   ContentStoreUnavailable,
   PageConflict,
@@ -50,7 +50,7 @@ function pageRefused(
     | RevisionNotFound
     | PageConflict
     | RevisionStateConflict
-    | NotApprover
+    | PermissionDenied
     | SelfApproval
     | PageRejected
     | ContentStoreUnavailable,
@@ -71,7 +71,7 @@ function pageRefused(
       return reply
         .status(409)
         .send({ error: error.reason, message: error.message });
-    case "NotApprover":
+    case "PermissionDenied":
     case "SelfApproval":
       return reply
         .status(403)
