@@ -104,6 +104,37 @@ export const meQuery = (api: Pick<EditorApi, "me">) =>
 export const rolesQuery = (api: Pick<EditorApi, "me">) =>
   queryOptions({ ...meQuery(api), select: (me) => me.roles });
 
+/** A role and what it lets a person do, worded by the API. */
+export interface RoleDescription {
+  readonly role: string;
+  readonly lets: readonly string[];
+}
+
+const isRoleDescription = (value: unknown): value is RoleDescription =>
+  value instanceof Object &&
+  "role" in value &&
+  isText(value.role) &&
+  "lets" in value &&
+  Array.isArray(value.lets) &&
+  value.lets.every(isText);
+
+/**
+ * Every role with what it lets a person do, in the API's words, so the editor holds none of its own. A description it
+ * can't read is left out.
+ */
+export const roleCatalogueQuery = (api: Pick<EditorApi, "roles">) =>
+  queryOptions({
+    queryKey: ["role-catalogue"],
+    queryFn: async (): Promise<readonly RoleDescription[]> => {
+      const catalogue: unknown = await api.roles();
+
+      return catalogue instanceof Object && "roles" in catalogue && Array.isArray(catalogue.roles)
+        ? catalogue.roles.filter(isRoleDescription)
+        : [];
+    },
+    staleTime: Infinity,
+  });
+
 /** The signed-in employee's user id, which tells a change they worked on from anyone else's; null if not given. */
 export const employeeIdQuery = (api: Pick<EditorApi, "me">) =>
   queryOptions({ ...meQuery(api), select: (me) => me.id });

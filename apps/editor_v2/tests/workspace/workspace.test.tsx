@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { act, type ReactNode } from "react";
-import { afterEach, beforeAll, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
 import { AuthFailure, type EditorAuth } from "../../src/auth/session";
 import { routeTree } from "../../src/routeTree.gen";
@@ -91,12 +91,33 @@ afterEach(() => {
   localStorage.clear();
 });
 
+/** The roles as the API describes them. */
+const CATALOGUE = [
+  { role: "reader", lets: ["read all the content"] },
+  {
+    role: "editor",
+    lets: [
+      "create, change and delete pages, restore an earlier version, and submit a change for review",
+      "add, change and delete collection records",
+    ],
+  },
+  {
+    role: "approver",
+    lets: [
+      "publish or reject a change",
+      "add, change, move and delete categories",
+      "create a collection",
+    ],
+  },
+];
+
 async function mountWorkspace(
   path = "/services/service/fees",
   {
     roles = ["editor", "approver"],
     publicIds = [],
     me,
+    catalogue = CATALOGUE,
     serverPages = new Map<string, ApiPage>([
       ...pages,
       ...sitePages.map((page) => [page.id, page] as const),
@@ -106,6 +127,8 @@ async function mountWorkspace(
     publicIds?: readonly string[];
     /** How /editor/me answers, when not at once with `roles`. */
     me?: () => Promise<Response>;
+    /** The roles /editor/roles describes. */
+    catalogue?: readonly { role: string; lets: readonly string[] }[];
     /** The pages /pages/:id reads and saves, kept across mounts when passed in. */
     serverPages?: Map<string, ApiPage>;
   } = {},
@@ -162,6 +185,8 @@ async function mountWorkspace(
         return me
           ? me()
           : Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
+
+      if (path === "/editor/roles") return Response.json({ roles: catalogue });
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
@@ -800,4 +825,80 @@ test("menu and bar links keep the focus as the screen changes and the menu folds
   await until(() => expect(document.querySelector("h1")?.textContent).toBe("Services"));
   expect(crumb.isConnected).toBe(true);
   expect(crumb.textContent).toBe("Services");
+});
+
+describe("Your access", () => {
+  const meWith = (roles: readonly string[]) => async () =>
+    Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
+
+  const trigger = () =>
+    [...document.querySelectorAll<HTMLButtonElement>("header button")].find((button) =>
+      button.textContent?.includes("author@govtech.bb"),
+    )!;
+
+  const popup = () => document.querySelector('[role="dialog"]');
+
+  const open = async () => {
+    await until(() => expect(trigger()).toBeDefined());
+    await act(async () => trigger().click());
+    await until(() => expect(popup()?.textContent).not.toContain("Checking your access"));
+  };
+
+  test("opens from the email, named, with each role and what it lets you do in the API's words", async () => {
+    await mountWorkspace("/services/service/fees", {
+      me: meWith(["reader", "editor", "approver"]),
+    });
+
+    // The email stays in its name, so speech input can say what's on screen
+    await until(() =>
+      expect(trigger()?.getAttribute("aria-label")).toBe("author@govtech.bb, your access"),
+    );
+    expect(trigger().getAttribute("aria-haspopup")).toBe("dialog");
+    await open();
+
+    const dialog = popup()!;
+    expect(document.getElementById(dialog.getAttribute("aria-labelledby")!)?.textContent).toBe(
+      "Your access",
+    );
+    expect([...dialog.querySelectorAll("dt")].map((term) => term.textContent)).toEqual([
+      "reader",
+      "editor",
+      "approver",
+    ]);
+    expect(dialog.textContent).toContain(
+      "You can publish or reject a change; add, change, move and delete categories; and create a collection.",
+    );
+    expect(dialog.textContent).not.toContain("Ask an admin");
+  });
+
+  test("tells someone with only the Reader role who to ask", async () => {
+    await mountWorkspace("/services/service/fees", { me: meWith(["reader"]) });
+    await open();
+
+    expect(popup()!.textContent).toBe(
+      "Your accessreaderYou can read all the content.Ask an admin if you need to make changes.",
+    );
+  });
+
+  test("shows a role the editor has never heard of, in the API's words", async () => {
+    await mountWorkspace("/services/service/fees", {
+      me: meWith(["reader", "publisher"]),
+      catalogue: [...CATALOGUE, { role: "publisher", lets: ["publish a change straight away"] }],
+    });
+    await open();
+
+    expect(popup()!.textContent).toContain("publisherYou can publish a change straight away.");
+  });
+
+  test("closes with Escape, giving the focus back to the email", async () => {
+    await mountWorkspace("/services/service/fees", { me: meWith(["reader", "editor"]) });
+    await open();
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+
+    await until(() => expect(popup()).toBeNull());
+    expect(document.activeElement).toBe(trigger());
+  });
 });
