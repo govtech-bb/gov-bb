@@ -25,10 +25,9 @@ import { err, ok, type Result } from "../modules/result";
 export interface PeopleRecords {
   /**
    * Run `work` as one transaction, with the grant's actor set as the
-   * transaction's actor; a failed Result rolls it back. Only a
-   * `people:manage` check opens one. Nothing records that actor for role
-   * changes yet: a grant's `granted_by` says who gave it, and a revoke
-   * leaves no record of who made it.
+   * transaction's actor, whom the audit history records for each role
+   * change; a failed Result rolls it back. Only a `people:manage` check
+   * opens one.
    */
   atomically<R extends Result<unknown, Error>>(
     grant: Grant<"people:manage">,

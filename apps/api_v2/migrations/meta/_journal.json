@@ -29,6 +29,13 @@
       "when": 1795714611982,
       "tag": "0003_waiting_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795726470584,
+      "tag": "0004_role_history",
+      "breakpoints": true
     }
   ]
 }

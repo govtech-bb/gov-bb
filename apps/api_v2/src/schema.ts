@@ -327,7 +327,8 @@ export const searchChunks = pgTable(
  * writes a row on every change to a content table (`record_change`) and on
  * each review step of a page's revision (`record_review`), both in
  * `migrations/0001_triggers.sql`, which is what a live-update feed would read
- * from. `actor` is the user whose transaction
+ * from. It also writes one for every role given or taken away, as
+ * `user_role` and `waiting_role` (`migrations/0004_role_history.sql`). `actor` is the user whose transaction
  * made the change, or `system`.
  *
  * The snapshot is the row that changed, so its shape follows the action, not

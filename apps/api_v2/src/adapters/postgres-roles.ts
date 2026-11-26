@@ -56,10 +56,9 @@ export class PostgresRoles implements RoleRecords, PeopleRecords {
   constructor(private readonly db: Database) {}
 
   /**
-   * Run `work` in one transaction with the grant's actor as `app.user_id`;
-   * an error result rolls back everything it wrote. No trigger on
-   * `user_roles` reads `app.user_id` yet, so only a grant's `granted_by`
-   * records who made a change.
+   * Run `work` in one transaction with the grant's actor as `app.user_id`,
+   * which the role triggers record as who made each change; an error result
+   * rolls back everything it wrote.
    */
   async atomically<R extends Result<unknown, Error>>(
     grant: Grant<"people:manage">,
@@ -119,23 +118,32 @@ export class PostgresRoles implements RoleRecords, PeopleRecords {
   }
 
   /**
-   * Move the roles waiting for this email to the user, in one statement: the
-   * delete hands each waiting row to one request only, and user_roles' key
-   * keeps a role the user holds already from being granted twice.
+   * Move the roles waiting for this email to the user, in one transaction. A
+   * role the user holds already only leaves `waiting_roles`, which the audit
+   * history records as taken away. The rest move to `user_roles` in one
+   * statement, marked as a claim (`app.claiming`) so each is recorded once,
+   * as the person's: the delete hands each waiting row to one request only,
+   * and user_roles' key keeps a role from being granted twice.
    */
   async claimWaiting(
     userId: string,
     email: string,
   ): Promise<Result<void, ContentStoreUnavailable>> {
     const claimed = await attempt("claimWaiting", () =>
-      this.db.execute(sql`
-        with claimed as (
-          delete from waiting_roles where email = ${email}
-          returning role, granted_by, granted_at
-        )
-        insert into user_roles (user_id, role, granted_by, granted_at)
-        select ${userId}, role, granted_by, granted_at from claimed
-        on conflict do nothing`),
+      this.db.transaction(async (tx) => {
+        await tx.execute(sql`
+          delete from waiting_roles w using user_roles u
+           where w.email = ${email} and u.user_id = ${userId} and u.role = w.role`);
+        await tx.execute(sql`select set_config('app.claiming', 'on', true)`);
+        await tx.execute(sql`
+          with claimed as (
+            delete from waiting_roles where email = ${email}
+            returning role, granted_by, granted_at
+          )
+          insert into user_roles (user_id, role, granted_by, granted_at)
+          select ${userId}, role, granted_by, granted_at from claimed
+          on conflict do nothing`);
+      }),
     );
     return claimed.ok ? ok(undefined) : claimed;
   }

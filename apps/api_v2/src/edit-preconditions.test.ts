@@ -133,7 +133,7 @@ describe("HTTP edit preconditions", () => {
       expect(current.title).toBe("Winner");
       const history = (
         await test.pool.query(
-          "select action, actor from change_events order by version_no",
+          "select action, actor from change_events where entity_kind = 'content_page' order by version_no",
         )
       ).rows;
       expect(history).toEqual([

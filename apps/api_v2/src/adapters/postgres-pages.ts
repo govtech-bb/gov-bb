@@ -16,6 +16,7 @@ import {
   inArray,
   isNull,
   max,
+  notInArray,
   or,
   sql,
   TransactionRollbackError,
@@ -255,6 +256,9 @@ export async function writeSearchChunks(
     .insert(searchChunks)
     .values(chunks.map((chunk, ordinal) => ({ pageId, ordinal, ...chunk })));
 }
+
+/** The audit history's entity kinds for roles (`migrations/0004_role_history.sql`), which aren't content. */
+const ROLE_EVENT_KINDS = ["user_role", "waiting_role"];
 
 /** Pages, categories, search text and the change log, in the content database. */
 export class PostgresPages
@@ -1270,12 +1274,17 @@ export class PostgresPages
     );
   }
 
-  /** The change log's size and newest timestamp. */
+  /**
+   * The change log's size and newest timestamp, over content only: a role
+   * given or taken away changes no page, so it doesn't move the site's
+   * version or send the editor to read its lists again.
+   */
   changeLogVersion(): Promise<Result<EstateVersion, ContentStoreUnavailable>> {
     return attempt("changeLogVersion", async () => {
       const [row] = await this.db
         .select({ count: count(), latest: max(changeEvents.occurredAt) })
-        .from(changeEvents);
+        .from(changeEvents)
+        .where(notInArray(changeEvents.entityKind, ROLE_EVENT_KINDS));
       return {
         count: row?.count ?? 0,
         latest: row?.latest?.toISOString() ?? null,
