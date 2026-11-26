@@ -272,7 +272,7 @@ describe("FormDefinitionsController", () => {
   });
 
   describe("get (GET /form-definitions/:formId)", () => {
-    it("calls service.findByFormId with no bypass/draft when both headers are absent", async () => {
+    it("calls service.findByFormId with no bypass/draft and sets Cache-Control: no-store when both headers are absent (#3903)", async () => {
       const contract = {
         formId: "passport-renewal",
         title: "Passport Renewal",
@@ -291,7 +291,9 @@ describe("FormDefinitionsController", () => {
         bypassVisibility: false,
         draft: false,
       });
-      expect(res.setHeader).not.toHaveBeenCalled();
+      // A public response must not be stored either: Chrome reuses a stored
+      // copy on Back, Forward and restored tabs, however old (#3886).
+      expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
       expect(result).toMatchObject({ status: "success", data: contract });
     });
 
@@ -344,6 +346,8 @@ describe("FormDefinitionsController", () => {
       await expect(
         controller.get("missing-form", undefined, undefined, res as never),
       ).rejects.toThrow("Not found");
+      // Set before the lookup, so the error response is not stored either.
+      expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
     });
 
     describe("X-Recipe-Preview token (visibility bypass)", () => {
@@ -370,7 +374,7 @@ describe("FormDefinitionsController", () => {
         expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
       });
 
-      it("passes bypassVisibility:false and does NOT set Cache-Control when token is wrong", async () => {
+      it("passes bypassVisibility:false and still sets Cache-Control: no-store when token is wrong", async () => {
         mockConfigService.get.mockReturnValue("s3cret");
         const contract = {
           formId: "passport-renewal",
@@ -390,7 +394,7 @@ describe("FormDefinitionsController", () => {
           bypassVisibility: false,
           draft: false,
         });
-        expect(res.setHeader).not.toHaveBeenCalled();
+        expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
       });
 
       it("fails closed when configuredToken is empty even if header matches", async () => {
@@ -409,7 +413,7 @@ describe("FormDefinitionsController", () => {
           bypassVisibility: false,
           draft: false,
         });
-        expect(res.setHeader).not.toHaveBeenCalled();
+        expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
       });
     });
 
@@ -437,7 +441,7 @@ describe("FormDefinitionsController", () => {
         expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
       });
 
-      it("passes draft:false and does NOT set Cache-Control when token is wrong", async () => {
+      it("passes draft:false and still sets Cache-Control: no-store when token is wrong", async () => {
         mockConfigService.get.mockReturnValue("s3cret");
         const contract = {
           formId: "passport-renewal",
@@ -457,7 +461,7 @@ describe("FormDefinitionsController", () => {
           bypassVisibility: false,
           draft: false,
         });
-        expect(res.setHeader).not.toHaveBeenCalled();
+        expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
       });
     });
 
@@ -504,6 +508,8 @@ describe("FormDefinitionsController", () => {
       expect(mockService.findByFormId).not.toHaveBeenCalled();
       // …and no cookie is minted for a tombstoned form.
       expect(res.cookie).not.toHaveBeenCalled();
+      // Set before the kill switch fires, so the 410 is not stored either.
+      expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
     });
 
     describe("shared preview cookie (#1646 Phase 3)", () => {
@@ -673,7 +679,7 @@ describe("FormDefinitionsController", () => {
           bypassVisibility: false,
           draft: false,
         });
-        expect(res.setHeader).not.toHaveBeenCalled();
+        expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
         expect(res.cookie).not.toHaveBeenCalled();
       });
 
