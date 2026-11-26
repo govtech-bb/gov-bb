@@ -13,7 +13,7 @@ import {
   employeeIdQuery,
   reviewQueueQuery,
   revisionQuery,
-  rolesQuery,
+  permissionsQuery,
 } from "../api/queries";
 import { Badge } from "../ui/badge";
 import { Banner } from "../ui/banner";
@@ -45,7 +45,7 @@ const At = ({ value }: { value: string }) => (
 export function ReviewQueueScreen({ api }: { api: EditorApi }) {
   const queue = useQuery(reviewQueueQuery(api));
   const load = listLoadView(queue, "the review queue");
-  const approver = useQuery(rolesQuery(api)).data?.includes("approver") ?? false;
+  const approver = useQuery(permissionsQuery(api)).data?.includes("pages:publish") ?? false;
 
   return (
     <>
@@ -270,7 +270,7 @@ export function ReviewScreen({
   const client = useQueryClient();
   const navigate = useNavigate();
   const revision = useQuery(revisionQuery(api, pageId));
-  const approver = useQuery(rolesQuery(api)).data?.includes("approver") ?? false;
+  const approver = useQuery(permissionsQuery(api)).data?.includes("pages:publish") ?? false;
   const me = useQuery(employeeIdQuery(api)).data;
 
   const submitter = useQuery(reviewQueueQuery(api)).data?.find(

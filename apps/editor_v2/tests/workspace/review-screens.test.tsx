@@ -18,6 +18,7 @@ import {
 } from "../../src/api/client";
 import { Toaster } from "../../src/ui/toast";
 import { ReviewQueueScreen, ReviewScreen } from "../../src/workspace/review-screens";
+import { permissionsOf } from "../helpers/employee";
 
 const PAGE = "44444444-4444-4444-8444-444444444444";
 
@@ -124,7 +125,13 @@ function contentApi(
     }
 
     if (path === "/editor/me")
-      return Response.json({ id: "me", email: "me@govtech.bb", name: "Me", roles });
+      return Response.json({
+        id: "me",
+        email: "me@govtech.bb",
+        name: "Me",
+        roles,
+        permissions: permissionsOf(roles),
+      });
 
     if (path === "/editor/page-paths") return paths();
 

@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { EditorApi, PageHistoryEntry } from "../api/client";
 import { writes } from "../api/writes";
 import { pageFieldLabel } from "../api/page-fields";
-import { historyQuery, pageQuery, rolesQuery } from "../api/queries";
+import { historyQuery, pageQuery, permissionsQuery } from "../api/queries";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { formatDayAndTime } from "../ui/dates";
@@ -72,7 +72,7 @@ export function HistoryScreen({
   const client = useQueryClient();
   const history = useQuery(historyQuery(api, pageId));
   const page = useQuery(pageQuery(api, pageId));
-  const editor = useQuery(rolesQuery(api)).data?.includes("editor") ?? false;
+  const editor = useQuery(permissionsQuery(api)).data?.includes("pages:edit") ?? false;
   const load = listLoadView(history, "this page’s history");
   const entries = history.data;
   const [shown, setShown] = useState(SHOWN);

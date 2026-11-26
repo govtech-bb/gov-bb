@@ -16,6 +16,7 @@ import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
 import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-session";
 import { pageControl, renderInPage } from "../helpers/page-editor";
+import { permissionsOf } from "../helpers/employee";
 
 const page: ApiPage = {
   version: 1,
@@ -64,7 +65,13 @@ async function mountPage(
       if (url.endsWith("/editor/me"))
         return Promise.resolve(
           roles
-            ? Response.json({ id: "me", email: "me@govtech.bb", name: "Me", roles })
+            ? Response.json({
+                id: "me",
+                email: "me@govtech.bb",
+                name: "Me",
+                roles,
+                permissions: permissionsOf(roles),
+              })
             : Response.json({}, { status: 503 }),
         );
 
