@@ -8,6 +8,10 @@ const mockWebhookDestinations = {
   getAudit: vi.fn(),
 };
 
+const mockMission6 = {
+  report: vi.fn(),
+};
+
 describe("MonitoringController", () => {
   let controller: MonitoringController;
 
@@ -16,6 +20,7 @@ describe("MonitoringController", () => {
     controller = new MonitoringController(
       mockRepo as never,
       mockWebhookDestinations as never,
+      mockMission6 as never,
     );
   });
 
@@ -33,6 +38,23 @@ describe("MonitoringController", () => {
 
       expect(result).toMatchObject({ status: "success" });
       expect(result.data).toEqual(audit);
+    });
+  });
+
+  describe("mission6Report (GET /monitoring/mission6)", () => {
+    it("returns the Mission 6 figures", async () => {
+      const report = {
+        generatedAt: "2026-11-26T19:00:00.000Z",
+        services: { "form-a": "Apply for A" },
+        applications: [],
+        payments: [],
+      };
+      mockMission6.report.mockResolvedValue(report);
+
+      const result = await controller.mission6Report();
+
+      expect(result).toMatchObject({ status: "success" });
+      expect(result.data).toEqual(report);
     });
   });
 
