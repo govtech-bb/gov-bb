@@ -321,6 +321,39 @@ describe("RouteComponent", () => {
       );
       expect(persistFormStartTime).not.toHaveBeenCalled();
     });
+
+    // A successful submit clears the start time. A refresh of its receipt
+    // must not start a timer, or the next application in the tab reuses it.
+    it("starts no timer on the receipt, and one on the next application", () => {
+      let startTime: number | null = null;
+      (getFormStartTime as Mock).mockImplementation(() => startTime);
+      (persistFormStartTime as Mock).mockImplementation(() => {
+        startTime = 1_700_000_000_000;
+      });
+      const formStarts = () =>
+        (trackEvent as Mock).mock.calls.filter(
+          ([name]) => name === "form-start",
+        );
+      vi.spyOn(Route, "useSearch").mockReturnValue({
+        step: "submission-confirmation",
+      });
+
+      const { rerender } = render(<Route.component />);
+
+      expect(formStarts()).toEqual([]);
+      expect(persistFormStartTime).not.toHaveBeenCalled();
+
+      // The applicant starts the same form again, in the same tab.
+      vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
+      rerender(<Route.component />);
+      vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step2" });
+      rerender(<Route.component />);
+
+      expect(formStarts()).toEqual([
+        ["form-start", { form: "test-form", category: "test-category" }],
+      ]);
+      expect(persistFormStartTime).toHaveBeenCalledTimes(1);
+    });
   });
 
   // Refreshing the browser on the confirmation step must keep the user there.

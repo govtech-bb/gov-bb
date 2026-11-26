@@ -186,15 +186,18 @@ function FormView() {
   // A page load that finds this form already started in the tab (a refresh,
   // or the reload after the form changed, #3901) is the same application:
   // keep the first start time, so `duration_seconds` covers all of it, and
-  // count no second start. A successful submit clears the start time.
+  // count no second start. A successful submit clears the start time. The
+  // receipt starts nothing: the next application in the tab starts its own
+  // timer on its first form step.
   React.useEffect(() => {
+    if (step === "submission-confirmation") return;
     if (getFormStartTime(formMeta.formId) !== null) return;
     trackEvent("form-start", {
       form: formMeta.formId,
       category: formCategory(formMeta.formId),
     });
     persistFormStartTime(formMeta.formId);
-  }, [formMeta.formId]);
+  }, [formMeta.formId, step]);
 
   // Secret hygiene: once a `?preview=` token has unlocked the form, drop it from
   // the URL (matching landing) so the secret doesn't linger in history. Only
@@ -346,6 +349,15 @@ function FormView() {
         repeatableStepSettingsRef.current,
         hiddenFields,
       );
+      // A failed submission: the general failure panel, or with a stale step
+      // the form-changed panel. Both start from this state.
+      const failed: SubmissionState = {
+        submissionSuccess: false,
+        hasPayment: false,
+        referenceNumber: "",
+        date: "",
+        serviceName: formMeta.formId,
+      };
       let response;
       try {
         response = await postFormSubmission(formMeta, formattedData, preview);
@@ -380,11 +392,7 @@ function FormView() {
               errors: "stale-definition",
             });
             setSubmissionState({
-              submissionSuccess: false,
-              hasPayment: false,
-              referenceNumber: "",
-              date: "",
-              serviceName: formMeta.formId,
+              ...failed,
               staleDefinitionStepId: staleStepId,
             });
             return;
@@ -431,13 +439,7 @@ function FormView() {
         // Commit a failed state so the confirmation step shows the
         // "Something went wrong" panel with a retry, instead of leaving the
         // citizen frozen with no feedback. No response means no reference data.
-        setSubmissionState({
-          submissionSuccess: false,
-          hasPayment: false,
-          referenceNumber: "",
-          date: "",
-          serviceName: formMeta.formId,
-        });
+        setSubmissionState(failed);
         return;
       }
 

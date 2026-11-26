@@ -94,9 +94,9 @@ function isRepeatableStepErrors(value: unknown): boolean {
  * Give all the steps of the definition as the contract has them
  * (`FormMeta.contractSteps`), not only the visible steps: a field that a
  * condition hides is not a missing field. `_step` holds errors for the step
- * itself, so it is not a field name. The fields in a repeatable step's bundle
- * (`{ _step?, instances }`) are not examined: that bundle keeps the general
- * failure panel (see `resolveServerFieldErrors`).
+ * itself, so it is not a field name. A repeatable step's bundle
+ * (`{ _step?, instances }`) is not examined, and its step is not looked up:
+ * that bundle keeps the general failure panel (see `resolveServerFieldErrors`).
  *
  * A key is a step only when its value has the shape of step errors. A body
  * with any other value is not a validation bundle, so it finds nothing.
@@ -111,17 +111,22 @@ export function findStaleDefinitionStep(
 ): string | undefined {
   if (!isRecord(errors)) return undefined;
   const entries = Object.entries(errors);
+  // An ordinary step's map must hold a message: an empty map rejects no
+  // answer, so it is no evidence of an old definition. (`{}` stays valid
+  // inside `instances`, where it holds the place of an instance.)
   const isBundle = entries.every(
     ([, stepErrors]) =>
-      isFieldErrorMap(stepErrors) || isRepeatableStepErrors(stepErrors),
+      (isFieldErrorMap(stepErrors) && Object.keys(stepErrors).length > 0) ||
+      isRepeatableStepErrors(stepErrors),
   );
   if (!isBundle) return undefined;
 
   const isStale = entries.some(([stepId, stepErrors]) => {
+    // A repeatable step's bundle keeps the general failure panel, also when
+    // the form does not have its step.
+    if (!isFieldErrorMap(stepErrors)) return false;
     const step = steps.find((s) => s.stepId === stepId);
     if (!step) return true;
-    // A repeatable step's bundle keeps the general failure panel.
-    if (!isFieldErrorMap(stepErrors)) return false;
     return Object.keys(stepErrors).some(
       (key) =>
         key !== "_step" && !step.fields.some((field) => field.fieldId === key),

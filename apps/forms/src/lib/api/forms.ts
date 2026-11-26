@@ -344,6 +344,16 @@ export const formatDataForSubmission = (
     // step has a sharedFields behaviour. In that case the base step is a
     // separate "shared values" page, NOT an instance — see setupRepeatSteps.
     const hasSharedFields = Object.keys(sharedData ?? {}).length > 0;
+    // A shared answer can outlive its field's visibility: the restore after
+    // a reload refills it from storage (#3901). Send only the shared answers
+    // that the base step still shows. `sharedData` itself keeps them all.
+    const hiddenFieldIds = new Set(hiddenFields.map((field) => field.id));
+    const visibleSharedData = Object.fromEntries(
+      Object.entries(sharedData ?? {}).filter(
+        ([fieldId]) =>
+          !hiddenFieldIds.has(`${stepId}${stepFieldIdConcactenator}${fieldId}`),
+      ),
+    );
 
     for (const orderedStepId of currentRepeatSettings.orderedStepIds) {
       // Don't fold the base step as an instance for a shared-fields step: its
@@ -385,7 +395,7 @@ export const formatDataForSubmission = (
       // Similarly, the values for shared fields shall be put in each array instance.
       collapsedRepeatables[stepId].push({
         ...currentRepeatable,
-        ...sharedData,
+        ...visibleSharedData,
       });
     }
     toDelete.push(...currentRepeatSettings.orderedStepIds.slice(1));

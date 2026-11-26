@@ -178,6 +178,47 @@ describe("findStaleDefinitionStep (#3901)", () => {
     ).toBeUndefined();
   });
 
+  // A repeatable step's bundle keeps the general failure panel, also when
+  // its step is not in the form. With no instance errors, `instances` is [].
+  it("does not take a repeatable step's bundle for a missing step", () => {
+    expect(
+      findStaleDefinitionStep(
+        { "new-repeat": { _step: ["At least one entry"], instances: [] } },
+        STEPS,
+      ),
+    ).toBeUndefined();
+  });
+
+  // An empty map holds no rejected answer, so it is not evidence of a stale
+  // form. Then the known `declaration-confirmed` error shows inline.
+  it("does not take an empty step map for a step in the bundle", () => {
+    expect(
+      findStaleDefinitionStep(
+        {
+          blank: {},
+          declaration: { "declaration-confirmed": ["Required"] },
+        },
+        STEPS,
+      ),
+    ).toBeUndefined();
+  });
+
+  // Inside `instances`, `{}` holds the place of an instance with no errors.
+  it("accepts an empty instance in a repeatable step's bundle", () => {
+    expect(
+      findStaleDefinitionStep(
+        {
+          "about-restaurant": {
+            _step: ["Provide at least 2 entries"],
+            instances: [{}],
+          },
+          declaration: { "regulations-acknowledged": ["Confirm this"] },
+        },
+        STEPS,
+      ),
+    ).toBe("about-restaurant");
+  });
+
   it("finds nothing in a body that carries no bundle", () => {
     for (const bundle of [undefined, null, "boom", [], ["Bad payload"], {}]) {
       expect(findStaleDefinitionStep(bundle, STEPS)).toBeUndefined();

@@ -1307,6 +1307,50 @@ describe("restoreRepeatableStepsFromStorage", () => {
       ]);
     });
 
+    // The new definition can hide a shared field that the old one showed.
+    // The restore keeps the saved answer, but the submission must not send it.
+    it("does not send a shared answer that the form now hides", () => {
+      const repeatSettings: RepeatableStepSettings = {};
+      const steps = setupRepeatSteps(
+        [
+          makeStep(
+            "volunteers",
+            ["team-name", "team-area", "volunteer-name"],
+            [
+              makeRepeatableBehaviour(1, 2),
+              makeSharedFieldsBehaviour(["team-name", "team-area"]),
+            ],
+          ),
+        ],
+        repeatSettings,
+      );
+      const saved = {
+        ...savedData,
+        "volunteers_team-area": "Christ Church",
+      };
+
+      restoreRepeatableStepsFromStorage(
+        saved,
+        makeFormMeta(steps),
+        repeatSettings,
+      );
+      const payload = formatDataForSubmission(
+        { ...saved } as Record<string, string>,
+        repeatSettings,
+        [makeField("team-area", "volunteers")],
+      );
+
+      expect(payload.volunteers).toEqual([
+        { "team-name": "Demo volunteers", "volunteer-name": "Sam Example" },
+      ]);
+      expect(payload.volunteers[0]).not.toHaveProperty("team-area");
+      // The form keeps the answer, in case the field shows again.
+      expect(repeatSettings.volunteers.sharedData).toEqual({
+        "team-name": "Demo volunteers",
+        "team-area": "Christ Church",
+      });
+    });
+
     it("keeps a shared answer empty when nothing was saved for it", () => {
       const { repeatSettings, formMeta } = setUpVolunteers();
 
