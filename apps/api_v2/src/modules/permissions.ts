@@ -38,7 +38,7 @@ const ROLE_PERMISSIONS = {
   admin: ["people:read", "people:manage", "collections:manage"],
 } as const satisfies Record<string, readonly Permission[]>;
 
-/** A role, as `user_roles` stores it. */
+/** A role. Every one but `DEFAULT_ROLE` is stored in `user_roles`. */
 export type Role = keyof typeof ROLE_PERMISSIONS;
 
 const isRole = (name: string): name is Role =>
