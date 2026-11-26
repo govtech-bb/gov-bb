@@ -387,7 +387,7 @@ describe("an employee whose editor role is revoked", () => {
     expect(response.json()).toEqual({
       error: "forbidden",
       message:
-        "You need the editor role to make changes. Ask an admin to grant it.",
+        "You don't have permission to create, change and delete pages, restore an earlier version, and submit a change for review. Ask an admin for the editor role.",
     });
     expect((await stored(page.id))?.title).toBe(page.title);
   });

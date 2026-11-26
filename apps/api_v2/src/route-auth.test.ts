@@ -6,15 +6,13 @@
  * it sits behind sign-in and runs as the employee, or is added to
  * PUBLIC_WRITES.
  *
- * The same goes for roles (#3187, #3197): every write route declares the
- * role it needs and refuses an employee with no role, no write route lets a
- * signed-in employee who is not an approver change what citizens see, and
- * no admin route answers someone who is not an admin. A route that changes
- * what citizens see declares the approver role, unless it is one of the page
- * writes whose approver check is in PageEditing (#3199). Every category write
- * declares the approver role, so landing shows only what an approver changed
- * (#3201). A route may name several roles, any one of which will do (#3681),
- * but never none.
+ * The same goes for permissions, which the services check, not the routes:
+ * a valid request to every write route is refused to an employee who holds
+ * only Reader and writes nothing, so a route whose service forgets its check
+ * fails here. No write route lets a signed-in employee who can't publish
+ * change what citizens see (#3199), every category write needs
+ * categories:manage, so landing shows only what an approver changed (#3201),
+ * and no admin route answers someone who can't manage people.
  */
 
 import { randomUUID } from "node:crypto";
@@ -39,12 +37,7 @@ import {
   TEST_HTTP_CONFIG,
 } from "./test-db";
 
-const registered: {
-  method: string;
-  url: string;
-  tags: string[];
-  role?: string | readonly string[];
-}[] = [];
+const registered: { method: string; url: string; tags: string[] }[] = [];
 
 // Fastify announces each instance on this channel as it is created, before
 // buildApp adds a route, so every route the app registers is seen.
@@ -53,11 +46,8 @@ const recordRoutes = (message: unknown) =>
     "onRoute",
     (route) => {
       const tags = (route.schema as { tags?: string[] } | undefined)?.tags;
-      const role = (
-        route.config as { role?: string | readonly string[] } | undefined
-      )?.role;
       for (const method of [route.method].flat())
-        registered.push({ method, url: route.url, tags: tags ?? [], role });
+        registered.push({ method, url: route.url, tags: tags ?? [] });
     },
   );
 
@@ -74,7 +64,7 @@ const writes = () =>
       !READS.has(method) && !PUBLIC_WRITES.has(`${method} ${url}`),
   );
 
-/** A signed-in employee holding no role, as one is after an admin revokes theirs. */
+/** A signed-in employee holding only Reader, as one is after an admin revokes their roles. */
 const NO_ROLES: Employee = {
   id: UserId.parse("no-roles-test"),
   email: "no-roles@govtech.bb",
@@ -151,25 +141,16 @@ it("refuses every write without a session and leaves the database unchanged", as
   });
 });
 
-it("declares the role every write route needs, so none is open to any employee", () => {
-  const undeclared = writes()
-    .filter(({ role }) => [role ?? []].flat().length === 0)
-    .map(({ method, url }) => `${method} ${url}`);
-  expect(undeclared).toEqual([]);
-});
-
-it("refuses every write to an employee with no role and leaves the database unchanged", async () => {
+it("refuses a valid request to every write route to an employee who holds only Reader, and leaves the database unchanged", async () => {
   await db.execute(
     sql`insert into auth_user (id, name, email, "emailVerified")
         values (${NO_ROLES.id}, ${NO_ROLES.name}, ${NO_ROLES.email}, true)`,
   );
-  // A draft, so no refusal here is the approver check's.
-  const page = expectOk(
-    await createTestServices(db).editing.create(
-      aPage({ visibility: "draft" }),
-      TEST_EMPLOYEE,
-    ),
-  );
+  // Valid, so each reaches its service rather than stopping at validation:
+  // only the service's permission check can refuse it.
+  const requests: [string, InjectOptions][] = [];
+  for (const [n, { method, url }] of writes().entries())
+    requests.push([`${method} ${url}`, await requestFor(method, url, n)]);
   const snapshot = async () =>
     (
       await db.execute(sql`
@@ -185,25 +166,43 @@ it("refuses every write to an employee with no role and leaves the database unch
   const signedIn = await createTestApp(db, {
     sessions: { findSession: async () => ok(NO_ROLES) },
   });
-  for (const { method, url } of writes()) {
-    const response = await signedIn.inject({
-      method: method as InjectOptions["method"],
-      url: url
-        .replace(":id", page.id)
-        .replace(":role", "editor")
-        .replaceAll("*", "x"),
-      payload: withDefaults(aPage({ url: "/written", visibility: "draft" })),
-      headers: TEST_HEADERS,
-    });
-    expect(response.statusCode, `${method} ${url}`).toBe(403);
-    expect(response.json(), `${method} ${url}`).toEqual({
+  for (const [route, request] of requests) {
+    const response = await signedIn.inject(request);
+    expect(response.statusCode, route).toBe(403);
+    expect(response.json(), route).toEqual({
       error: "forbidden",
-      message: expect.stringMatching(/role/),
+      message: expect.stringMatching(/^You don't have permission to /),
     });
   }
   await signedIn.close();
   expect(await snapshot()).toEqual(before);
 });
+
+/** A valid request to a write route, about something of the database's own. */
+async function requestFor(
+  method: string,
+  url: string,
+  n: number,
+): Promise<InjectOptions> {
+  return url.startsWith("/editor/categories")
+    ? categoryWrite(method, url, n)
+    : url === "/collections"
+      ? collectionCreate(n)
+      : url.startsWith("/collections")
+        ? recordWrite(method, url, n)
+        : url.startsWith("/editor/employees")
+          ? roleWrite(method, url)
+          : pageWrite(method, url, n);
+}
+
+/** A signed-in request to give or take away the editor's approver role. */
+function roleWrite(method: string, url: string): InjectOptions {
+  return {
+    method: method as InjectOptions["method"],
+    url: url.replace(":id", TEST_EDITOR.id).replace(":role", "approver"),
+    headers: TEST_HEADERS,
+  };
+}
 
 /** A signed-in request to a page route, about a page of the database's own. */
 async function pageWrite(
@@ -239,7 +238,10 @@ async function pageWrite(
       (method === "DELETE" ? `?expected_version=${version}` : ""),
     payload:
       url.includes("/revision/") || url.endsWith("/restore")
-        ? { expected_version: version }
+        ? {
+            expected_version: version,
+            ...(url.endsWith("/reject") ? { comment: "Rejected" } : {}),
+          }
         : {
             ...fields,
             ...(method === "PUT" ? { expected_version: version } : {}),
@@ -384,13 +386,7 @@ it("records every signed-in write against the employee", async () => {
     if (`${method} ${url}` in NOT_CONTENT) continue;
     // Something of the database's own for the route to act on, so only the
     // route's change can carry the employee's id.
-    const request = url.startsWith("/editor/categories")
-      ? await categoryWrite(method, url, n)
-      : url === "/collections"
-        ? collectionCreate(n)
-        : url.startsWith("/collections")
-          ? await recordWrite(method, url, n)
-          : await pageWrite(method, url, n);
+    const request = await requestFor(method, url, n);
     const before = new Set((await eventsSoFar()).map((event) => event.id));
     const response = await app.inject(request);
     expect(response.statusCode, `${method} ${url}`).toBeLessThan(300);
@@ -428,18 +424,6 @@ const NOT_PAGE_VISIBILITY: Readonly<Record<string, string>> = {
   "PUT /editor/employees/:id/roles/:role": "grants a role, in user_roles",
   "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
 };
-
-/**
- * Page writes that change what citizens see only sometimes, so they declare
- * the editor role and PageEditing refuses a non-approver the changes that
- * need one. Every other route that changes what citizens see must declare
- * the approver role.
- */
-const GATED_IN_PAGE_EDITING = new Set([
-  "POST /pages",
-  "PUT /pages/:id",
-  "DELETE /pages/:id",
-]);
 
 /** Public rows exclude the private edit identity; non-public rows expose only visibility here. */
 const citizenView = async () =>
@@ -567,15 +551,6 @@ it("exercises every write route as an approver, so a route the probe cannot reac
     "POST /pages/:id/revision/publish",
     "PUT /pages/:id",
   ]);
-  const roles = new Map(
-    writes().map(({ method, url, role }) => [`${method} ${url}`, role]),
-  );
-  expect(
-    changed.filter(
-      (route) =>
-        roles.get(route) !== "approver" && !GATED_IN_PAGE_EDITING.has(route),
-    ),
-  ).toEqual([]);
 });
 
 it("lets no write route change what citizens see for a non-approver", async () => {
@@ -585,23 +560,39 @@ it("lets no write route change what citizens see for a non-approver", async () =
   );
 });
 
-it("needs the approver role to publish or reject a revision (#3199)", () => {
-  const declared = (route: string) =>
-    writes().find(({ method, url }) => `${method} ${url}` === route)?.role;
-  expect(declared("POST /pages/:id/revision/publish")).toBe("approver");
-  expect(declared("POST /pages/:id/revision/reject")).toBe("approver");
+it("refuses publishing or rejecting a revision to someone who can't publish, changing nothing (#3199)", async () => {
+  const revisions = async () =>
+    (
+      await db.execute(
+        sql`select json_agg(r order by r.id) from page_revisions r`,
+      )
+    ).rows;
+  const signedIn = await createTestApp(db, {
+    sessions: { findSession: async () => ok(TEST_EDITOR) },
+  });
+  for (const [n, url] of [
+    "/pages/:id/revision/publish",
+    "/pages/:id/revision/reject",
+  ].entries()) {
+    const request = await pageWrite("POST", url, n);
+    const before = await revisions();
+    const response = await signedIn.inject(request);
+    expect(response.statusCode, url).toBe(403);
+    expect(response.json(), url).toEqual({
+      error: "forbidden",
+      message:
+        "You don't have permission to publish or reject a change. Ask an admin for the approver role.",
+    });
+    expect(await revisions(), url).toEqual(before);
+  }
+  await signedIn.close();
 });
 
-it("needs the approver role for every category write, so landing shows only an approver's changes (#3201)", async () => {
+it("needs categories:manage for every category write, so landing shows only an approver's changes (#3201)", async () => {
   const categoryWrites = writes().filter(({ url }) =>
     url.startsWith("/editor/categories"),
   );
   expect(categoryWrites.length).toBeGreaterThan(0);
-  expect(
-    categoryWrites
-      .filter(({ role }) => role !== "approver")
-      .map(({ method, url }) => `${method} ${url}`),
-  ).toEqual([]);
 
   const snapshot = async () =>
     (
@@ -624,19 +615,15 @@ it("needs the approver role for every category write, so landing shows only an a
     expect(response.statusCode, `${method} ${url}`).toBe(403);
     expect(response.json(), `${method} ${url}`).toEqual({
       error: "forbidden",
-      message: "You need the approver role to do this.",
+      message:
+        "You don't have permission to add, change, move and delete categories. Ask an admin for the approver role.",
     });
     expect(await snapshot(), `${method} ${url}`).toEqual(before);
   }
   await signedIn.close();
 });
 
-it("needs the admin or the approver role to create a collection (#3681)", async () => {
-  const declared = writes().find(
-    ({ method, url }) => method === "POST" && url === "/collections",
-  )?.role;
-  expect(declared).toEqual(["admin", "approver"]);
-
+it("needs collections:manage to create a collection (#3681)", async () => {
   const signedIn = await createTestApp(db, {
     sessions: { findSession: async () => ok(TEST_EDITOR) },
   });
@@ -648,7 +635,8 @@ it("needs the admin or the approver role to create a collection (#3681)", async 
   expect(response.statusCode).toBe(403);
   expect(response.json()).toEqual({
     error: "forbidden",
-    message: "You need the admin or approver role to do this.",
+    message:
+      "You don't have permission to create a collection. Ask an admin for the approver or admin role.",
   });
   expect(
     (await db.execute(sql`select key from data_collections`)).rows,

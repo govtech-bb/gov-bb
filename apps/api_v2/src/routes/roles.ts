@@ -44,10 +44,8 @@ function peopleRefused(
 }
 
 /**
- * Role management: admins only. It inherits the editor scope's employee,
- * Origin and no-store checks, and each route declares the admin role, which
- * the editor scope's hook enforces before it runs. The people service holds
- * the rules.
+ * Role management. It inherits the editor scope's employee, Origin and
+ * no-store checks; the people service decides who may see and change roles.
  */
 export const editorRoleRoutes: FastifyPluginAsyncZod<{
   people: IPeople;
@@ -57,7 +55,6 @@ export const editorRoleRoutes: FastifyPluginAsyncZod<{
     method: "GET",
     url: "/editor/employees",
     schema: SCHEMAS.listEmployees,
-    config: { role: "admin" },
     handler: async (request, reply) => {
       const listed = await people.list(actor(request));
       return listed.ok
@@ -69,7 +66,6 @@ export const editorRoleRoutes: FastifyPluginAsyncZod<{
     method: "PUT",
     url: "/editor/employees/:id/roles/:role",
     schema: SCHEMAS.grantRole,
-    config: { role: "admin" },
     handler: async (request, reply) => {
       const { id, role } = request.params;
       const granted = await people.grant(id, role, actor(request));
@@ -82,7 +78,6 @@ export const editorRoleRoutes: FastifyPluginAsyncZod<{
     method: "DELETE",
     url: "/editor/employees/:id/roles/:role",
     schema: SCHEMAS.revokeRole,
-    config: { role: "admin" },
     handler: async (request, reply) => {
       const { id, role } = request.params;
       const revoked = await people.revoke(id, role, actor(request));

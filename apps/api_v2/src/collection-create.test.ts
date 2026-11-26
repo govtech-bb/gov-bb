@@ -122,7 +122,8 @@ describe("who can create a collection", () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: "forbidden",
-      message: "You need the admin or approver role to do this.",
+      message:
+        "You don't have permission to create a collection. Ask an admin for the approver or admin role.",
     });
     expect(await written()).toEqual(before);
   });
