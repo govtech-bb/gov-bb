@@ -119,6 +119,7 @@ async function mountWorkspace(
     publicIds = [],
     me,
     catalogue = async () => Response.json({ roles: CATALOGUE }),
+    people = async () => Response.json({ employees: [] }),
     serverPages = new Map<string, ApiPage>([
       ...pages,
       ...sitePages.map((page) => [page.id, page] as const),
@@ -130,6 +131,8 @@ async function mountWorkspace(
     me?: () => Promise<Response>;
     /** How /editor/roles answers. */
     catalogue?: () => Promise<Response>;
+    /** How /editor/employees and its role routes answer. */
+    people?: (path: string, init?: RequestInit) => Promise<Response>;
     /** The pages /pages/:id reads and saves, kept across mounts when passed in. */
     serverPages?: Map<string, ApiPage>;
   } = {},
@@ -194,6 +197,8 @@ async function mountWorkspace(
             });
 
       if (path === "/editor/roles") return catalogue();
+
+      if (path.startsWith("/editor/employees")) return people(path, init);
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
@@ -1001,5 +1006,122 @@ describe("Your access", () => {
 
     await until(() => expect(popup()).toBeNull());
     expect(document.activeElement).toBe(trigger());
+  });
+});
+
+describe("People", () => {
+  const PEOPLE_CATALOGUE = [
+    { role: "reader", lets: ["read all the content"], everyone: true },
+    { role: "editor", lets: ["edit pages"], everyone: false },
+    { role: "approver", lets: ["publish a change"], everyone: false },
+  ];
+
+  const EMPLOYEES = [
+    { id: "ann", email: "ann@govtech.bb", name: "Ann", roles: ["reader", "editor"] },
+    { id: "bob", email: "bob@govtech.bb", name: "Bob", roles: ["reader"] },
+  ];
+
+  const meWith = (permissions: readonly string[]) => async () =>
+    Response.json({
+      id: "me",
+      email: "author@govtech.bb",
+      name: "Author",
+      roles: ["reader"],
+      permissions,
+    });
+
+  const catalogue = async () => Response.json({ roles: PEOPLE_CATALOGUE });
+
+  const box = (name: string) => document.querySelector<HTMLElement>(`[aria-label="${name}"]`);
+
+  const ticked = (name: string) => box(name)?.getAttribute("aria-checked");
+
+  const off = (name: string) =>
+    box(name)?.hasAttribute("data-disabled") || box(name)?.getAttribute("aria-disabled") === "true";
+
+  test("is hidden from someone without people:read, and opened directly asks for no staff data", async () => {
+    const h = await mountWorkspace("/people", {
+      me: meWith(["content:read", "pages:edit"]),
+      catalogue,
+    });
+
+    await until(() => expect(document.body.textContent).toContain("You can’t see people"));
+    expect(menuLink("People")).toBeUndefined();
+    expect(h.asked).not.toContain("/editor/employees");
+    expect(document.body.textContent).not.toContain("ann@govtech.bb");
+  });
+
+  test("lists everyone with a box per role from the API, Reader's ticked and off, and gives and takes roles", async () => {
+    const changes: string[] = [];
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: async (path, init) => {
+        if (path === "/editor/employees") return Response.json({ employees: EMPLOYEES });
+
+        changes.push(`${init?.method} ${path}`);
+
+        return new Response(null, { status: 204 });
+      },
+    });
+
+    await until(() => expect(document.body.textContent).toContain("bob@govtech.bb"));
+    expect(menuLink("People")?.getAttribute("aria-current")).toBe("page");
+    expect(document.querySelector("h1")?.textContent).toBe("People");
+    expect(ticked("reader for Ann")).toBe("true");
+    expect(off("reader for Bob")).toBe(true);
+    expect(ticked("editor for Ann")).toBe("true");
+    expect(ticked("approver for Bob")).toBe("false");
+    expect(off("approver for Bob")).toBe(false);
+
+    await act(async () => box("approver for Bob")!.click());
+    await act(async () => box("editor for Ann")!.click());
+
+    await until(() =>
+      expect(changes).toEqual([
+        "PUT /editor/employees/bob/roles/approver",
+        "DELETE /editor/employees/ann/roles/editor",
+      ]),
+    );
+  });
+
+  test("shows the API's reason when a change is refused", async () => {
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: async (path) =>
+        path === "/editor/employees"
+          ? Response.json({ employees: EMPLOYEES })
+          : Response.json(
+              {
+                error: "forbidden",
+                message:
+                  "You can't take away your own admin role, because you'd lose the permission to give and take away roles. Ask someone else who can.",
+              },
+              { status: 403 },
+            ),
+    });
+
+    await until(() => expect(box("editor for Ann")).not.toBeNull());
+    await act(async () => box("editor for Ann")!.click());
+
+    await until(() =>
+      expect(document.body.textContent).toContain("You can't take away your own admin role"),
+    );
+  });
+
+  test("is read-only with people:read alone", async () => {
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read"]),
+      catalogue,
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(box("approver for Bob")).not.toBeNull());
+    expect(off("approver for Bob")).toBe(true);
+    expect(off("editor for Ann")).toBe(true);
+    expect(document.body.textContent).toContain(
+      "You can see everyone’s roles, but not give them or take them away.",
+    );
   });
 });

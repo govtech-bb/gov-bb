@@ -1,4 +1,4 @@
-import { Checks, Database, FileText, Files, Folders } from "@phosphor-icons/react";
+import { Checks, Database, FileText, Files, Folders, Users } from "@phosphor-icons/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { DrawerPanel } from "../ui/drawer";
 import { Sidebar } from "../ui/sidebar";
@@ -9,12 +9,15 @@ export function AppNav({
   sidebar,
   rail,
   servicesSearch,
+  people = false,
 }: {
   /** Whether it shows, beside the page or as a drawer: `useSidebar`. */
   sidebar: DrawerPanel;
   rail: boolean;
   /** The Services list's search, filters and page, kept as the author left them. */
   servicesSearch: ServicesSearch;
+  /** Whether the person may see who has signed in, and so People is offered. */
+  people?: boolean;
 }) {
   const path = useRouterState({ select: (state) => state.location.pathname });
 
@@ -59,6 +62,15 @@ export function AppNav({
           >
             Collections
           </Sidebar.Item>
+          {people && (
+            <Sidebar.Item
+              icon={<Users />}
+              current={path === "/people"}
+              render={<Link to="/people" />}
+            >
+              People
+            </Sidebar.Item>
+          )}
         </Sidebar.Group>
       </Sidebar.Content>
     </Sidebar.Root>
