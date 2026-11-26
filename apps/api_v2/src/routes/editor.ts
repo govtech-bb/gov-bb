@@ -3,7 +3,12 @@ import type { ICategoryEditing } from "../services/category-editing";
 import type { CollectionEditing } from "../services/collection-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee, SelfApproval } from "../modules/auth";
-import type { GrantableRole, PermissionDenied } from "../modules/permissions";
+import {
+  permissionsOf,
+  roleCatalogue,
+  type GrantableRole,
+  type PermissionDenied,
+} from "../modules/permissions";
 import type {
   ContentStoreUnavailable,
   PageConflict,
@@ -291,8 +296,18 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.me,
     handler: async (request) => {
       const { roles: held, ...employee } = actor(request);
-      return { ...employee, roles: [...held] };
+      return {
+        ...employee,
+        roles: [...held],
+        permissions: [...permissionsOf(held)],
+      };
     },
+  });
+  editor.route({
+    method: "GET",
+    url: "/editor/roles",
+    schema: SCHEMAS.roles,
+    handler: async () => ({ roles: [...roleCatalogue()] }),
   });
   editor.route({
     method: "GET",

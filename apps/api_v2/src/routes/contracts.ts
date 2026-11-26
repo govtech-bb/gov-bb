@@ -17,7 +17,11 @@ import {
   SearchDocument,
 } from "../modules/navigation";
 import { EmployeeView } from "../modules/auth";
-import { GrantableRole } from "../modules/permissions";
+import {
+  GrantableRole,
+  Permission,
+  RoleDescription,
+} from "../modules/permissions";
 import {
   EditorPage,
   NewPage,
@@ -788,10 +792,34 @@ export const SCHEMAS = {
   },
 
   me: {
-    summary: "The signed-in employee and their roles",
+    summary: "The signed-in employee, their roles and what those let them do",
     tags: ["auth"],
     security: editorSecurity,
-    response: { 200: EmployeeView, ...authErrors },
+    response: {
+      200: EmployeeView.extend({
+        permissions: z
+          .array(Permission)
+          .describe(
+            "Everything the employee's roles let them do, without repeats. " +
+              "The editor decides what to offer from this list; api_v2 " +
+              "checks each change itself.",
+          ),
+      }),
+      ...authErrors,
+    },
+  },
+
+  roles: {
+    summary: "Every role, with what it lets a person do",
+    description:
+      "Any signed-in employee can read it. The editor shows these words, " +
+      "so it needs no wording of its own for any role.",
+    tags: ["auth"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ roles: z.array(RoleDescription) }),
+      ...authErrors,
+    },
   },
 
   listEmployees: {

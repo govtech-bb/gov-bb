@@ -13,7 +13,12 @@ import type { Database } from "./db";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { SelfApproval, UserId, type Employee } from "./modules/auth";
 import { PageDocument, withDefaults, type PageId } from "./modules/page";
-import { PermissionDenied, type Permission } from "./modules/permissions";
+import {
+  PERMISSIONS,
+  PermissionDenied,
+  ROLES,
+  type Permission,
+} from "./modules/permissions";
 import { Redacted } from "./modules/redacted";
 import { ok } from "./modules/result";
 import { changeEvents } from "./schema";
@@ -398,6 +403,7 @@ describe("GET /editor/me", () => {
       email: TEST_EDITOR.email,
       name: TEST_EDITOR.name,
       roles: ["reader", "editor"],
+      permissions: ["content:read", "pages:edit", "collections:edit"],
     });
   });
 });
@@ -556,6 +562,36 @@ describe("a role store that fails", () => {
     } finally {
       await logged.close();
     }
+  });
+});
+
+describe("GET /editor/roles", () => {
+  it("describes every role in the table, in its words, to any signed-in employee", async () => {
+    const response = await requestAs(app, TEST_EDITOR, {
+      url: "/editor/roles",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const { roles } = response.json();
+    // The route holds no list of its own: a role added to the table appears.
+    expect(roles.map(({ role }: { role: string }) => role)).toEqual(ROLES);
+    expect(roles).toContainEqual({
+      role: "approver",
+      lets: [
+        PERMISSIONS["pages:publish"],
+        PERMISSIONS["categories:manage"],
+        PERMISSIONS["collections:manage"],
+      ],
+    });
+  });
+
+  it("needs a signed-in employee", async () => {
+    const response = await app.inject({
+      url: "/editor/roles",
+      headers: { origin: TEST_HTTP_CONFIG.editorOrigin },
+    });
+
+    expect(response.statusCode).toBe(401);
   });
 });
 
