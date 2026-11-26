@@ -44,7 +44,7 @@ export interface Mailer {
 
 /** Who review emails go to, from the users and roles tables. */
 export interface ReviewRecipients {
-  /** Every user holding the approver role, with their email. */
+  /** Every user whose roles hold `pages:publish`, once each, with their email. */
   approvers(): Promise<
     Result<
       readonly { readonly id: string; readonly email: string }[],
