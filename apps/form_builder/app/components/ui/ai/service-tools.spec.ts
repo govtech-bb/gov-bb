@@ -316,6 +316,43 @@ it("edits an existing form through the recipe save and does not attach a missing
   });
 });
 
+it("refuses a form edit that leaves out existing steps unless they are listed in removeStepIds (#3876)", async () => {
+  const step = (stepId: string) => ({ stepId, title: stepId, elements: [] });
+  const recipe = draftRecipeSchema.parse({
+    formId: "application",
+    title: "Original",
+    steps: [step("one"), step("two")],
+  });
+  await saveServiceDraft({
+    data: {
+      expectedRevision: 1,
+      snapshot: {
+        ...snapshot,
+        manifest: { ...snapshot.manifest, formId: recipe.formId },
+        recipe,
+      },
+    },
+  });
+  const proposal = {
+    summary: "Drop step two",
+    target: { serviceId },
+    recipe: { formId: "application", title: "Original", steps: [step("one")] },
+  };
+  await expect(
+    prepareServiceEdit("apply_form_draft", proposal),
+  ).rejects.toThrow("Resend the full recipe, including unchanged steps: two.");
+  const change = await prepareServiceEdit("apply_form_draft", {
+    ...proposal,
+    removeStepIds: ["two"],
+  });
+  expect(
+    (change.after.steps as { stepId: string }[]).map((item) => item.stepId),
+  ).not.toContain("two");
+  expect(
+    (change.after.steps as { stepId: string }[]).map((item) => item.stepId),
+  ).toContain("one");
+});
+
 it("refreshes the service workspace and rejects a stale setup snapshot after an assistant save", async () => {
   const [service] = mergeServiceRows([], await listServiceDrafts());
   const { result } = renderHook(() => useServiceState(service));

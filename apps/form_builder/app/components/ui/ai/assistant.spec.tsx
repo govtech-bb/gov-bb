@@ -15,7 +15,8 @@ import {
   useGlobalAssistant,
   WorkspaceAssistant,
 } from "../../global-assistant";
-import { prepareFormDraft } from "../../builder/form-assistant";
+import { FormAssistant, prepareFormDraft } from "../../builder/form-assistant";
+import { recipeReducer } from "../../builder/recipe-reducer";
 import { restoreTranscript, historyKey } from "./history";
 import type { PreparedChange } from "./review";
 import { readConversations, writeConversations } from "./history";
@@ -33,6 +34,10 @@ vi.mock("./service-tools", () => ({
   readService: vi.fn(),
   readPage: vi.fn(),
   readForm: vi.fn(),
+}));
+vi.mock("../../../server/registry", async (original) => ({
+  ...(await original<object>()),
+  validateRecipe: vi.fn(async () => ({ ok: true, issues: [] })),
 }));
 vi.mock("../../services/service-state", () => ({
   useServiceIndex: () => ({ entries: [] }),
@@ -102,7 +107,7 @@ const proposal = {
   recipe: { formId: "test", title: "Proposed", steps: [] },
 };
 
-async function propose() {
+async function propose(args: object = proposal) {
   await act(async () => {
     await harness.options.fetcher(
       { messages: [], threadId: "t", runId: "r" },
@@ -117,7 +122,7 @@ async function propose() {
       id: "approval",
       toolCallId: "call",
       toolName: "apply_form_draft",
-      originalArgs: proposal,
+      originalArgs: args,
       canResolve: true,
       status: "pending",
       resolveInterrupt,
@@ -261,6 +266,175 @@ it("keeps DB settings, credentials and opaque metadata while normalizing the rev
   expect(() =>
     prepareFormDraft(draft, { title: "Broken" }, getCatalog(), true),
   ).toThrow();
+});
+
+describe("a proposal that leaves out existing steps (#3876)", () => {
+  const draft = {
+    formId: "fixed",
+    title: "Form",
+    steps: ["one", "two", "three"].map((stepId) => ({
+      stepId,
+      title: stepId,
+      fields: [],
+      behaviours: [],
+    })),
+  } as unknown as RecipeDraft;
+  const step = (stepId: string, title = stepId) => ({
+    stepId,
+    title,
+    elements: [],
+  });
+  // The reducer appends the required tail steps; compare the author's steps.
+  const required = [
+    "check-your-answers",
+    "declaration",
+    "submission-confirmation",
+  ];
+  const stepIds = (result: RecipeDraft) =>
+    result.steps
+      .map((item) => item.stepId)
+      .filter((id) => !required.includes(id));
+
+  it("is refused, naming the missing steps, and leaves the draft alone", () => {
+    const before = JSON.stringify(draft);
+    expect(() =>
+      prepareFormDraft(
+        draft,
+        { formId: "fixed", title: "Form", steps: [step("two", "Changed")] },
+        getCatalog(),
+        true,
+      ),
+    ).toThrow(
+      "Resend the full recipe, including unchanged steps: one, three. To delete a step, list it in removeStepIds.",
+    );
+    expect(JSON.stringify(draft)).toBe(before);
+  });
+
+  it("removes only the steps listed in removeStepIds", () => {
+    const result = prepareFormDraft(
+      draft,
+      { formId: "fixed", title: "Form", steps: [step("one"), step("three")] },
+      getCatalog(),
+      true,
+      ["two"],
+    );
+    expect(stepIds(result)).toEqual(["one", "three"]);
+  });
+
+  it("accepts a proposal that leaves out check-your-answers from a normalised draft", () => {
+    const loaded = recipeReducer(draft, { type: "LOAD_DRAFT", draft });
+    expect(loaded.steps.map((item) => item.stepId)).toContain(
+      "check-your-answers",
+    );
+    const result = prepareFormDraft(
+      loaded,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [
+          step("one"),
+          step("two"),
+          step("three"),
+          step("declaration"),
+          step("submission-confirmation"),
+        ],
+      },
+      getCatalog(),
+      true,
+    );
+    expect(result.steps.map((item) => item.stepId)).toContain(
+      "check-your-answers",
+    );
+  });
+
+  it("keeps a step that is resent even when it is also in removeStepIds", () => {
+    const result = prepareFormDraft(
+      draft,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("two", "Changed"), step("three")],
+      },
+      getCatalog(),
+      true,
+      ["two"],
+    );
+    expect(result.steps.find((item) => item.stepId === "two")?.title).toBe(
+      "Changed",
+    );
+  });
+
+  it("rejects a removeStepIds value that is not a list of ids", () => {
+    const proposal = {
+      formId: "fixed",
+      title: "Form",
+      steps: [step("one"), step("three")],
+    };
+    for (const value of ["one,two", null])
+      expect(() =>
+        prepareFormDraft(
+          draft,
+          proposal,
+          getCatalog(),
+          true,
+          value as unknown as string[],
+        ),
+      ).toThrow();
+  });
+
+  it("removes a listed step through the open form's prepare", async () => {
+    const onApply = vi.fn();
+    const element = () => (
+      <FormAssistant
+        user="alice"
+        documentId="one"
+        draft={draft}
+        catalog={getCatalog()}
+        readOnly={false}
+        onApply={onApply}
+      />
+    );
+    const view = render(element());
+    await waitFor(() => expect(harness.options).toBeTruthy());
+    const args = {
+      summary: "Remove step two",
+      recipe: {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("three")],
+      },
+      removeStepIds: ["two"],
+    };
+    await propose(args);
+    view.rerender(element());
+    const button = await screen.findByRole("button", {
+      name: "Apply to draft",
+    });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+    expect(
+      (await harness.options.tools[0].execute(args, { toolCallId: "call" }))
+        .applied,
+    ).toBe(true);
+    expect(stepIds(onApply.mock.calls[0][0])).toEqual(["one", "three"]);
+  });
+
+  it("still applies a full proposal that changes one step", () => {
+    const result = prepareFormDraft(
+      draft,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("two", "Changed"), step("three")],
+      },
+      getCatalog(),
+      true,
+    );
+    expect(stepIds(result)).toEqual(["one", "two", "three"]);
+    expect(result.steps.find((item) => item.stepId === "two")?.title).toBe(
+      "Changed",
+    );
+  });
 });
 
 it("restores only inert transcript data and separates users and documents", () => {

@@ -20,6 +20,7 @@ export type Proposal = {
   summary: string;
   operation?: "update" | "create";
   recipe?: unknown;
+  removeStepIds?: string[];
   patch?: unknown;
   target?: { serviceId: string; pagePath?: string };
 };
