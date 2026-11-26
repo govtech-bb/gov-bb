@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { authenticatedContext, employeeSession } from "./auth-fixture.mjs";
+import { authenticatedContext, employeeSession, permissionsOf } from "./auth-fixture.mjs";
 import { chromium } from "./playwright.mjs";
 
 const baseURL = process.argv[2];
@@ -129,7 +129,7 @@ async function signedIn(roles, viewport = { width: 1440, height: 1000 }) {
   // Registered after the fixture's own, so it answers first
   await context.route("**/editor/me", (route) =>
     route.fulfill({
-      json: { ...employeeSession().user, roles },
+      json: { ...employeeSession().user, roles, permissions: permissionsOf(roles) },
       headers: {
         "access-control-allow-origin": route.request().headers().origin ?? "*",
         "access-control-allow-credentials": "true",

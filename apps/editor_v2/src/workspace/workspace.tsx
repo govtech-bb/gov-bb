@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
 import {
-  rolesQuery,
+  permissionsQuery,
   serviceQuery,
   servicesQuery,
   estateVersionQuery,
@@ -50,6 +50,8 @@ import type { PageDocument, WorkspaceLocation } from "./model";
 import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
 import { forgetUnsavedWork } from "./unsaved-work";
+import { YourAccess } from "./your-access";
+import { PeopleScreen } from "./people-screen";
 
 type Account = {
   email: string;
@@ -73,7 +75,7 @@ const ReviewScreen = lazyRouteComponent(loadReviews, "ReviewScreen");
 const READ_ONLY =
   "You can read pages, categories and collections but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
 
-/** Why something that needs a role is off, where the roles couldn't be read; the app's banner offers Try again. */
+/** Why something that needs a permission is off, where they couldn't be read; the app's banner offers Try again. */
 const UNCHECKED = "We couldn’t check your permissions.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
@@ -96,6 +98,8 @@ export function ServiceWorkspace({
   const historySearch = useSearch({ from: "/_workspace/history/$pageId", shouldThrow: false });
   const onHistory = !!historySearch;
   const onCollections = !!useMatch({ from: "/_workspace/collections", shouldThrow: false });
+  const peopleSearch = useSearch({ from: "/_workspace/people", shouldThrow: false });
+  const onPeople = !!peopleSearch;
 
   const collectionSearch = useSearch({
     from: "/_workspace/collections/$key",
@@ -217,18 +221,20 @@ export function ServiceWorkspace({
 
   const sitePageRead = useQuery({ ...pageQuery(api, sitePageId ?? ""), enabled: false });
   const sitePage = sitePageRead.data;
-  const rolesRead = useQuery(rolesQuery(api));
-  const roles = rolesRead.data;
+  const permissionsRead = useQuery(permissionsQuery(api));
+  const permissions = permissionsRead.data;
   // They couldn't be read: what needs them says so, rather than that it needs a role this person may well have
-  const unchecked = !roles && rolesRead.errorUpdateCount > 0;
-  // Until the roles load, deleting a public page and changing categories wait rather than offering what the API may
-  // refuse
-  const approver = roles?.includes("approver") ?? false;
-  // Adding a collection sets the fields every record holds, so it's an admin's or an approver's (#3681)
-  const collector = approver || (roles?.includes("admin") ?? false);
-  // Without the editor role everything still reads, but nothing can be changed. Until the roles load everyone is
-  // offered the changes, since nearly everyone is an editor; the API refuses anyone who isn't
-  const readOnly = !!roles && !roles.includes("editor");
+  const unchecked = !permissions && permissionsRead.errorUpdateCount > 0;
+  // Until the permissions load, deleting a public page, changing categories and adding a collection wait rather than
+  // offering what the API may refuse
+  const publisher = permissions?.includes("pages:publish") ?? false;
+  const categorizer = permissions?.includes("categories:manage") ?? false;
+  // Adding a collection sets the fields every record holds, so not every editor may (#3681)
+  const collector = permissions?.includes("collections:manage") ?? false;
+  // Without them pages and records still read, but can't be changed. Until the permissions load everyone is offered
+  // the changes, since nearly everyone edits; the API refuses anyone who doesn't
+  const readOnly = !!permissions && !permissions.includes("pages:edit");
+  const recordsReadOnly = !!permissions && !permissions.includes("collections:edit");
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
@@ -297,6 +303,13 @@ export function ServiceWorkspace({
     [collectionKey, routerNavigate],
   );
 
+  // A person's panel lives in the People address too, so a refresh keeps it open
+  const openPerson = useCallback(
+    (person: string | undefined) =>
+      void routerNavigate({ to: "/people", search: person ? { person } : {}, replace: true }),
+    [routerNavigate],
+  );
+
   const navigate = (next: WorkspaceLocation) =>
     routerNavigate(next ? workspaceLink(next) : { to: "/services", search: servicesSearch });
 
@@ -321,7 +334,9 @@ export function ServiceWorkspace({
           ? { label: "Review queue", render: <Link to="/reviews" /> }
           : onCollections
             ? { label: "Collections", render: <Link to="/collections" /> }
-            : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
+            : onPeople
+              ? { label: "People", render: <Link to="/people" /> }
+              : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
   ];
 
   const workspaceName = sitePageId ? sitePage?.title : serviceName;
@@ -352,7 +367,15 @@ export function ServiceWorkspace({
                     : ["Review queue"]
                   : onHistory
                     ? ["Page history"]
-                    : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
+                    : [
+                        onCategories
+                          ? "Categories"
+                          : onCollections
+                            ? "Collections"
+                            : onPeople
+                              ? "People"
+                              : "Services",
+                      ]
         }
       />
       <a
@@ -375,9 +398,7 @@ export function ServiceWorkspace({
           <GovbbLogo fit="height" className="h-6 shrink-0" />
           <Bar.Crumbs crumbs={crumbs} />
           <Bar.Actions>
-            <Bar.Status className="max-w-64 truncate font-normal max-lg:hidden" title={email}>
-              {email}
-            </Bar.Status>
+            <YourAccess api={api} email={email} />
             <Button
               variant="inverse"
               pending={signingOut}
@@ -399,7 +420,7 @@ export function ServiceWorkspace({
           {error}
         </Banner>
       )}
-      {readOnly && (
+      {readOnly && recordsReadOnly && (
         <Banner tone="info" layout="strip">
           {READ_ONLY}
         </Banner>
@@ -411,12 +432,12 @@ export function ServiceWorkspace({
           actions={
             <Button
               variant="secondary"
-              pending={rolesRead.isFetching}
+              pending={permissionsRead.isFetching}
               pendingLabel="Checking permissions…"
               onClick={(event) => {
                 const button = event.currentTarget;
 
-                void rolesRead.refetch().then(({ data }) => {
+                void permissionsRead.refetch().then(({ data }) => {
                   // Read, its notice goes, and this button with it: the content takes the focus
                   if (data && document.activeElement === button) content.current?.focus();
                 });
@@ -430,7 +451,12 @@ export function ServiceWorkspace({
         </Banner>
       )}
       <div className="flex flex-1">
-        <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
+        <AppNav
+          sidebar={appNav}
+          rail={!!location}
+          servicesSearch={servicesSearch}
+          people={permissions?.includes("people:read") ?? false}
+        />
         {servicePages && (
           <ServiceNav
             sidebar={sidebar}
@@ -445,7 +471,7 @@ export function ServiceWorkspace({
             deleteBlocked={
               selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
                 ? "Delete or move the pages under this page first."
-                : !approver &&
+                : !publisher &&
                     remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
                       "public"
                   ? unchecked
@@ -520,15 +546,20 @@ export function ServiceWorkspace({
             <section>
               <CategoriesScreen
                 api={api}
-                readOnly={!approver}
+                readOnly={!categorizer}
                 why={
                   unchecked
                     ? UNCHECKED
-                    : roles && !approver
+                    : permissions && !categorizer
                       ? "Only approvers can add, change, move or delete categories."
                       : undefined
                 }
               />
+            </section>
+          )}
+          {!location && onPeople && (
+            <section>
+              <PeopleScreen api={api} person={peopleSearch?.person} onPerson={openPerson} />
             </section>
           )}
           {!location && onCollections && (
@@ -540,7 +571,7 @@ export function ServiceWorkspace({
                   collectionKey={collectionKey}
                   record={collectionSearch?.record}
                   onRecord={openRecord}
-                  readOnly={readOnly}
+                  readOnly={recordsReadOnly}
                 />
               ) : (
                 <CollectionsScreen
@@ -549,7 +580,7 @@ export function ServiceWorkspace({
                   why={
                     unchecked
                       ? UNCHECKED
-                      : roles && !collector
+                      : permissions && !collector
                         ? "Only admins and approvers can add collections."
                         : undefined
                   }
@@ -593,6 +624,7 @@ export function ServiceWorkspace({
             !onSitePages &&
             !onCategories &&
             !onCollections &&
+            !onPeople &&
             !onReviews &&
             !onHistory && (
               <section>

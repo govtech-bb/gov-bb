@@ -21,7 +21,7 @@ import {
   collectionRecordsQuery,
   PRELOAD_FRESH,
   categoriesQuery,
-  rolesQuery,
+  permissionsQuery,
   pageQuery,
   serviceQuery,
   servicesQuery,
@@ -198,14 +198,14 @@ function RemotePageEditor({
   const [discardingKeptWork, setDiscardingKeptWork] = useState(false);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
-  const rolesRead = useQuery(rolesQuery(api));
-  const roles = rolesRead.data;
-  // Until the roles load, the visibility control waits rather than offering what the API may refuse
-  const approver = roles?.includes("approver") ?? false;
+  const permissionsRead = useQuery(permissionsQuery(api));
+  const permissions = permissionsRead.data;
+  // Until the permissions load, the visibility control waits rather than offering what the API may refuse
+  const approver = permissions?.includes("pages:publish") ?? false;
   // They couldn't be read: the control says so, rather than that it's only for approvers
-  const unchecked = !roles && rolesRead.errorUpdateCount > 0;
-  // Someone without the editor role can't save; the workspace says why
-  const readOnly = !!roles && !roles.includes("editor");
+  const unchecked = !permissions && permissionsRead.errorUpdateCount > 0;
+  // Someone who can't edit pages can't save; the workspace says why
+  const readOnly = !!permissions && !permissions.includes("pages:edit");
 
   const service = services?.find(
     (item) => server.id === item.id || server.url.startsWith(`${item.url}/`),
@@ -803,7 +803,7 @@ function RemotePageEditor({
       }
     >
       Waiting for review. Citizens will see these changes once an approver publishes them.
-      {roles?.includes("editor") &&
+      {permissions?.includes("pages:edit") &&
         (approver
           ? " You can keep editing, but if you save changes you can’t approve or reject this review."
           : " You can keep editing: changes you save are added to this review.")}

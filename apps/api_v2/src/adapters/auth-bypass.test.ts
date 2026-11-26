@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { creationOf, withDefaults } from "../modules/page";
 import { authUser } from "../schema";
-import { aPage, createTestDb, expectOk } from "../test-db";
+import { aPage, createTestDb, expectOk, grantFor } from "../test-db";
 import { BYPASS_EMPLOYEE, registerBypassEmployee } from "./auth-bypass";
 import { PostgresPages } from "./postgres-pages";
 
@@ -13,7 +13,7 @@ describe("registerBypassEmployee", () => {
       expectOk(await registerBypassEmployee(db));
 
       const created = await new PostgresPages(db).atomically(
-        BYPASS_EMPLOYEE.id,
+        grantFor(BYPASS_EMPLOYEE, "pages:edit"),
         (records) =>
           records.insert(
             creationOf(undefined, withDefaults(aPage()), new Date()),

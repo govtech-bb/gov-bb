@@ -2,13 +2,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { act, type ReactNode } from "react";
-import { afterEach, beforeAll, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
 import { AuthFailure, type EditorAuth } from "../../src/auth/session";
 import { routeTree } from "../../src/routeTree.gen";
 import { loadPageEditor } from "../../src/workspace/preload";
 import { renderInPage } from "../helpers/page-editor";
 import { shownText } from "../helpers/shown-text";
+import { permissionsOf } from "../helpers/employee";
 
 // The page editor loads apart from the workspace: import it once up front, not within the first test to open a page
 beforeAll(() => loadPageEditor());
@@ -91,12 +92,34 @@ afterEach(() => {
   localStorage.clear();
 });
 
+/** The roles as the API describes them. */
+const CATALOGUE = [
+  { role: "reader", lets: ["read all the content"] },
+  {
+    role: "editor",
+    lets: [
+      "create, change and delete pages, restore an earlier version, and submit a change for review",
+      "add, change and delete collection records",
+    ],
+  },
+  {
+    role: "approver",
+    lets: [
+      "publish or reject a change",
+      "add, change, move and delete categories",
+      "create a collection",
+    ],
+  },
+];
+
 async function mountWorkspace(
   path = "/services/service/fees",
   {
     roles = ["editor", "approver"],
     publicIds = [],
     me,
+    catalogue = async () => Response.json({ roles: CATALOGUE }),
+    people = async () => Response.json({ employees: [] }),
     serverPages = new Map<string, ApiPage>([
       ...pages,
       ...sitePages.map((page) => [page.id, page] as const),
@@ -106,6 +129,10 @@ async function mountWorkspace(
     publicIds?: readonly string[];
     /** How /editor/me answers, when not at once with `roles`. */
     me?: () => Promise<Response>;
+    /** How /editor/roles answers. */
+    catalogue?: () => Promise<Response>;
+    /** How /editor/employees and its role routes answer. */
+    people?: (path: string, init?: RequestInit) => Promise<Response>;
     /** The pages /pages/:id reads and saves, kept across mounts when passed in. */
     serverPages?: Map<string, ApiPage>;
   } = {},
@@ -161,7 +188,17 @@ async function mountWorkspace(
       if (path === "/editor/me")
         return me
           ? me()
-          : Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
+          : Response.json({
+              id: "me",
+              email: "author@govtech.bb",
+              name: "Author",
+              roles,
+              permissions: permissionsOf(roles),
+            });
+
+      if (path === "/editor/roles") return catalogue();
+
+      if (path.startsWith("/editor/employees")) return people(path, init);
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
@@ -305,6 +342,58 @@ test.each([
   },
 );
 
+test.each([
+  { permissions: ["content:read", "collections:edit"], records: true, pages: false },
+  { permissions: ["content:read", "pages:edit"], records: false, pages: true },
+])(
+  "records follow collections:edit and pages follow pages:edit, with no read-only notice for $permissions",
+  async ({ permissions, records, pages }) => {
+    const h = await mountWorkspace("/collections/contacts", {
+      me: async () =>
+        Response.json({
+          id: "me",
+          email: "author@govtech.bb",
+          name: "Author",
+          roles: ["reader", "made-up"],
+          permissions,
+        }),
+    });
+
+    const button = (text: string) =>
+      [...document.querySelectorAll("button")].find((item) => item.textContent === text);
+
+    await until(() => expect(button("Add record")?.disabled).toBe(!records));
+    expect(document.body.textContent).not.toContain("but not change them");
+
+    await act(async () => h.router.navigate({ to: "/services" }));
+    await until(() => expect(button("Create service")?.disabled).toBe(!pages));
+    expect(document.body.textContent).not.toContain("but not change them");
+  },
+);
+
+test("a role the editor has never heard of gets what its permissions allow, with no change to the editor", async () => {
+  await mountWorkspace("/services/service/fees", {
+    publicIds: ["fees"],
+    me: async () =>
+      Response.json({
+        id: "me",
+        email: "author@govtech.bb",
+        name: "Author",
+        roles: ["reader", "publisher"],
+        permissions: ["content:read", "pages:edit", "pages:publish"],
+      }),
+  });
+
+  const deleteButton = () =>
+    [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === "Delete page",
+    )!;
+
+  // Deleting a public page is offered, as it is to an approver
+  await until(() => expect(deleteButton().disabled).toBe(false));
+  expect(deleteButton().getAttribute("aria-describedby")).toBeNull();
+});
+
 test("the workspace opens with the roles read, so a read-only notice is there from the start", async () => {
   const answer = Promise.withResolvers<void>();
 
@@ -313,7 +402,13 @@ test("the workspace opens with the roles read, so a read-only notice is there fr
     me: async () => {
       await answer.promise;
 
-      return Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles: [] });
+      return Response.json({
+        id: "me",
+        email: "author@govtech.bb",
+        name: "Author",
+        roles: [],
+        permissions: permissionsOf([]),
+      });
     },
   });
 
@@ -338,6 +433,7 @@ test("roles that can't be read are said to be unchecked, with Try again, never t
             email: "a@govtech.bb",
             name: "A",
             roles: ["editor", "approver"],
+            permissions: permissionsOf(["editor", "approver"]),
           })
         : Response.json({}, { status: 503 }),
   });
@@ -800,4 +896,402 @@ test("menu and bar links keep the focus as the screen changes and the menu folds
   await until(() => expect(document.querySelector("h1")?.textContent).toBe("Services"));
   expect(crumb.isConnected).toBe(true);
   expect(crumb.textContent).toBe("Services");
+});
+
+describe("Your access", () => {
+  const meWith = (roles: readonly string[]) => async () =>
+    Response.json({
+      id: "me",
+      email: "author@govtech.bb",
+      name: "Author",
+      roles,
+      permissions: permissionsOf(roles),
+    });
+
+  const trigger = () =>
+    [...document.querySelectorAll<HTMLButtonElement>("header button")].find((button) =>
+      button.textContent?.includes("author@govtech.bb"),
+    )!;
+
+  const popup = () => document.querySelector('[role="dialog"]');
+
+  const open = async () => {
+    await until(() => expect(trigger()).toBeDefined());
+    await act(async () => trigger().click());
+    await until(() => expect(popup()?.textContent).not.toContain("Checking your access"));
+  };
+
+  test("opens from the email, named, with each role and what it lets you do in the API's words", async () => {
+    await mountWorkspace("/services/service/fees", {
+      me: meWith(["reader", "editor", "approver"]),
+    });
+
+    // The email stays in its name, so speech input can say what's on screen
+    await until(() =>
+      expect(trigger()?.getAttribute("aria-label")).toBe("author@govtech.bb, your access"),
+    );
+    expect(trigger().getAttribute("aria-haspopup")).toBe("dialog");
+    await open();
+
+    const dialog = popup()!;
+    expect(document.getElementById(dialog.getAttribute("aria-labelledby")!)?.textContent).toBe(
+      "Your access",
+    );
+    expect([...dialog.querySelectorAll("dt")].map((term) => term.textContent)).toEqual([
+      "reader",
+      "editor",
+      "approver",
+    ]);
+    expect(dialog.textContent).toContain(
+      "You can publish or reject a change; add, change, move and delete categories; and create a collection.",
+    );
+    expect(dialog.textContent).not.toContain("Ask an admin");
+  });
+
+  test("tells someone with only the Reader role who to ask", async () => {
+    await mountWorkspace("/services/service/fees", { me: meWith(["reader"]) });
+    await open();
+
+    expect(popup()!.textContent).toBe(
+      "Your accessreaderYou can read all the content.Ask an admin if you need to make changes.",
+    );
+  });
+
+  test("shows a role the editor has never heard of, in the API's words", async () => {
+    await mountWorkspace("/services/service/fees", {
+      me: meWith(["reader", "publisher"]),
+      catalogue: async () =>
+        Response.json({
+          roles: [...CATALOGUE, { role: "publisher", lets: ["publish a change straight away"] }],
+        }),
+    });
+    await open();
+
+    expect(popup()!.textContent).toContain("publisherYou can publish a change straight away.");
+  });
+
+  test("shows a role whose description it can't read by name, with no words", async () => {
+    await mountWorkspace("/services/service/fees", {
+      me: meWith(["reader", "publisher"]),
+      catalogue: async () =>
+        Response.json({ roles: [...CATALOGUE, { role: "publisher", lets: [1] }] }),
+    });
+    await open();
+
+    const dialog = popup()!;
+    expect([...dialog.querySelectorAll("dt")].map((term) => term.textContent)).toEqual([
+      "reader",
+      "publisher",
+    ]);
+    expect(dialog.querySelectorAll("dd")).toHaveLength(1);
+  });
+
+  test("says it couldn't check when the roles' words can't be read", async () => {
+    await mountWorkspace("/services/service/fees", {
+      me: meWith(["reader", "editor"]),
+      catalogue: async () => Response.json({}, { status: 500 }),
+    });
+    await open();
+
+    expect(popup()!.textContent).toBe("Your accessWe couldn’t check your access.");
+  });
+
+  test("closes with Escape, giving the focus back to the email", async () => {
+    await mountWorkspace("/services/service/fees", { me: meWith(["reader", "editor"]) });
+    await open();
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+
+    await until(() => expect(popup()).toBeNull());
+    expect(document.activeElement).toBe(trigger());
+  });
+});
+
+describe("People", () => {
+  const PEOPLE_CATALOGUE = [
+    { role: "reader", lets: ["read all the content"], everyone: true },
+    { role: "editor", lets: ["edit pages"], everyone: false },
+    { role: "approver", lets: ["publish a change"], everyone: false },
+  ];
+
+  const EMPLOYEES = [
+    { id: "ann", email: "ann@govtech.bb", name: "Ann", roles: ["reader", "editor"] },
+    { id: "bob", email: "bob@govtech.bb", name: "Bob", roles: ["reader"] },
+  ];
+
+  const REFUSAL =
+    "You can't take away your own admin role, because you'd lose the permission to give and take away roles. Ask someone else who can.";
+
+  const meWith = (permissions: readonly string[]) => async () =>
+    Response.json({
+      id: "me",
+      email: "author@govtech.bb",
+      name: "Author",
+      roles: ["reader"],
+      permissions,
+    });
+
+  const catalogue = async () => Response.json({ roles: PEOPLE_CATALOGUE });
+
+  /** Answers the list at once, and holds each role change until the test answers it. */
+  function heldChanges() {
+    const changes: string[] = [];
+    const answers: ((response: Response) => void)[] = [];
+
+    return {
+      changes,
+      answer: (response: Response) => act(async () => answers.shift()!(response)),
+      people: async (path: string, init?: RequestInit) => {
+        if (path === "/editor/employees") return Response.json({ employees: EMPLOYEES });
+
+        changes.push(`${init?.method} ${path}`);
+
+        return new Promise<Response>((resolve) => answers.push(resolve));
+      },
+    };
+  }
+
+  const done = () => new Response(null, { status: 204 });
+
+  const refusal = () => Response.json({ error: "forbidden", message: REFUSAL }, { status: 403 });
+
+  const box = (name: string) => document.querySelector<HTMLElement>(`[aria-label="${name}"]`);
+
+  const ticked = (name: string) => box(name)?.getAttribute("aria-checked");
+
+  const off = (name: string) =>
+    box(name)?.hasAttribute("data-disabled") || box(name)?.getAttribute("aria-disabled") === "true";
+
+  const listed = () =>
+    [...document.querySelectorAll<HTMLAnchorElement>("tbody a")].map((link) => link.textContent);
+
+  const nameLink = (name: string) =>
+    [...document.querySelectorAll<HTMLAnchorElement>("tbody a")].find(
+      (link) => link.textContent === name,
+    )!;
+
+  const row = (name: string) => nameLink(name).closest("tr")!;
+
+  const panel = () => document.querySelector<HTMLElement>('[role="dialog"]');
+
+  const openPanel = async (name: string) => {
+    await act(async () => nameLink(name).click());
+    await until(() => expect(panel()?.textContent).toContain(`${name.toLowerCase()}@govtech.bb`));
+  };
+
+  const closePanel = async () => {
+    await act(async () =>
+      panel()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click(),
+    );
+    await until(() => expect(panel()).toBeNull());
+  };
+
+  test("is hidden from someone without people:read, and opened directly asks for no staff data", async () => {
+    const h = await mountWorkspace("/people", {
+      me: meWith(["content:read", "pages:edit"]),
+      catalogue,
+    });
+
+    await until(() => expect(document.body.textContent).toContain("You can’t see people"));
+    expect(menuLink("People")).toBeUndefined();
+    expect(h.asked).not.toContain("/editor/employees");
+    expect(document.body.textContent).not.toContain("ann@govtech.bb");
+  });
+
+  test("lists everyone with the roles they hold beyond Reader's, and a person's panel gives and takes them, one at a time", async () => {
+    const held = heldChanges();
+    let asked = 0;
+    const me = meWith(["content:read", "people:read", "people:manage"]);
+    await mountWorkspace("/people", {
+      me: () => {
+        asked += 1;
+
+        return me();
+      },
+      catalogue,
+      people: held.people,
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    expect(menuLink("People")?.getAttribute("aria-current")).toBe("page");
+    expect(document.querySelector("h1")?.textContent).toBe("People");
+    expect(row("Ann").textContent).toContain("Editor");
+    expect(row("Bob").textContent).toContain("Reader only");
+    expect(panel()).toBeNull();
+
+    await openPanel("Bob");
+    expect(panel()!.textContent).toContain("Lets them publish a change.");
+    expect(ticked("reader for Bob")).toBe("true");
+    expect(off("reader for Bob")).toBe(true);
+    expect(ticked("approver for Bob")).toBe("false");
+    expect(off("approver for Bob")).toBe(false);
+
+    // While a change is on its way, no other can start, so a refusal can't be lost to a second change
+    await act(async () => box("approver for Bob")!.click());
+    await until(() => expect(ticked("approver for Bob")).toBe("true"));
+    expect(held.changes).toEqual(["PUT /editor/employees/bob/roles/approver"]);
+    expect(off("approver for Bob")).toBe(true);
+    expect(off("editor for Bob")).toBe(true);
+    const askedBefore = asked;
+    await held.answer(done());
+    await until(() => expect(off("editor for Bob")).toBe(false));
+    // The admin's own roles may have changed, so "Your access" asks again
+    await until(() => expect(asked).toBeGreaterThan(askedBefore));
+
+    await openPanel("Ann");
+    expect(ticked("editor for Ann")).toBe("true");
+    await act(async () => box("editor for Ann")!.click());
+    await held.answer(done());
+
+    await until(() =>
+      expect(held.changes).toEqual([
+        "PUT /editor/employees/bob/roles/approver",
+        "DELETE /editor/employees/ann/roles/editor",
+      ]),
+    );
+  });
+
+  test("opens a person's panel from the address, and shows there the API's reason when a change is refused", async () => {
+    const held = heldChanges();
+    await mountWorkspace("/people?person=ann", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: held.people,
+    });
+
+    await until(() => expect(box("editor for Ann")).not.toBeNull());
+    await act(async () => box("editor for Ann")!.click());
+    await held.answer(refusal());
+
+    await until(() => expect(panel()?.textContent).toContain(REFUSAL));
+    expect(ticked("editor for Ann")).toBe("true");
+  });
+
+  test("keeps a refusal that lands after its panel closed for that person's panel, and no one else's", async () => {
+    const held = heldChanges();
+    await mountWorkspace("/people?person=ann", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: held.people,
+    });
+
+    await until(() => expect(box("editor for Ann")).not.toBeNull());
+    await act(async () => box("editor for Ann")!.click());
+    await closePanel();
+    await held.answer(refusal());
+
+    await openPanel("Bob");
+    expect(panel()!.textContent).not.toContain(REFUSAL);
+    await closePanel();
+
+    await openPanel("Ann");
+    expect(panel()!.textContent).toContain(REFUSAL);
+    expect(ticked("editor for Ann")).toBe("true");
+  });
+
+  test("gives focus back to the person's name when their panel closes", async () => {
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    nameLink("Bob").focus();
+    await openPanel("Bob");
+    await until(() => expect(panel()!.contains(document.activeElement)).toBe(true));
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+
+    await until(() => expect(panel()).toBeNull());
+    await until(() => expect(document.activeElement).toBe(nameLink("Bob")));
+  });
+
+  test("says the roles couldn't load, with a retry, rather than list people without them", async () => {
+    let fails = true;
+    await mountWorkspace("/people?person=ann", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue: async () =>
+        fails ? Response.json({}, { status: 500 }) : Response.json({ roles: PEOPLE_CATALOGUE }),
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(document.body.textContent).toContain("We could not load roles"));
+    expect(listed()).toEqual([]);
+    expect(panel()).toBeNull();
+
+    fails = false;
+    await click("Try again");
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    await until(() => expect(ticked("editor for Ann")).toBe("true"));
+  });
+
+  test("leaves Reader's switch changeable for a catalogue that doesn't say everyone holds it", async () => {
+    await mountWorkspace("/people?person=bob", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue: async () =>
+        Response.json({ roles: PEOPLE_CATALOGUE.map(({ role, lets }) => ({ role, lets })) }),
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(box("reader for Bob")).not.toBeNull());
+    expect(ticked("reader for Bob")).toBe("true");
+    expect(off("reader for Bob")).toBe(false);
+    expect(panel()!.textContent).not.toContain("Everyone has this role.");
+  });
+
+  test("finds people by name or email, and by a role they hold", async () => {
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read"]),
+      catalogue,
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    const search = document.querySelector<HTMLInputElement>('[aria-label="Search name or email"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        search,
+        "bob@",
+      );
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(listed()).toEqual(["Bob"]);
+
+    await click("Clear filters");
+    expect(listed()).toEqual(["Ann", "Bob"]);
+
+    const role = document.querySelector<HTMLElement>('[role="combobox"][aria-label="Role"]')!;
+    await act(async () => {
+      role.focus();
+      role.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    });
+    await act(async () =>
+      [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+        .find((option) => option.textContent === "Editor")!
+        .click(),
+    );
+    expect(listed()).toEqual(["Ann"]);
+  });
+
+  test("is read-only with people:read alone", async () => {
+    await mountWorkspace("/people?person=bob", {
+      me: meWith(["content:read", "people:read"]),
+      catalogue,
+      people: async () => Response.json({ employees: EMPLOYEES }),
+    });
+
+    await until(() => expect(box("approver for Bob")).not.toBeNull());
+    expect(off("approver for Bob")).toBe(true);
+    expect(off("editor for Bob")).toBe(true);
+    expect(panel()!.textContent).toContain("You can see their roles, but not change them.");
+    expect(document.body.textContent).toContain(
+      "You can see everyone’s roles, but not give them or take them away.",
+    );
+  });
 });

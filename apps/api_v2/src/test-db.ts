@@ -26,8 +26,16 @@ import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
 import { ping, type Database } from "./db";
-import { ROLES, UserId, type Employee } from "./modules/auth";
+import { UserId, type Employee } from "./modules/auth";
+import {
+  authorize,
+  DEFAULT_ROLE,
+  ROLES,
+  type Grant,
+  type Permission,
+} from "./modules/permissions";
 import { ok, type Result } from "./modules/result";
+import { People } from "./services/people";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
@@ -143,6 +151,14 @@ export function createTestServices(
   };
 }
 
+/** The grant `authorize` gives `employee` for `permission`, for a test that opens a store's write transaction itself. */
+export function grantFor<P extends Permission>(
+  employee: Employee,
+  permission: P,
+): Grant<P> {
+  return expectOk(authorize(employee, permission));
+}
+
 /** The value of a result a test expects to have succeeded. */
 export function expectOk<T>(result: Result<T, Error>): T {
   if (!result.ok) throw result.error;
@@ -175,11 +191,14 @@ export async function registerEmployees(
           values (${employee.id}, ${employee.name}, ${employee.email}, true)
           on conflict do nothing`,
     );
-    for (const role of employee.roles)
+    for (const role of employee.roles) {
+      // Everyone holds the default role without a row.
+      if (role === DEFAULT_ROLE) continue;
       await db.execute(
         sql`insert into user_roles (user_id, role) values (${employee.id}, ${role})
             on conflict do nothing`,
       );
+    }
   }
 }
 /** Explicit origins used by HTTP integration tests. */
@@ -236,7 +255,7 @@ export async function createTestApp(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
       roles,
     ),
-    roles,
+    people: new People(roles, ["govtech.bb"]),
     auth: options.auth ?? {
       handle: async () =>
         Response.json({ error: "test_auth_not_configured" }, { status: 404 }),

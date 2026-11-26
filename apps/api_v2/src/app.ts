@@ -19,7 +19,8 @@ import type { Redacted } from "./modules/redacted";
 import { authRoutes, type AuthHandler } from "./routes/auth";
 import { editorRoutes } from "./routes/editor";
 import { siteRoutes } from "./routes/site";
-import type { EmployeeGate, RoleRecords } from "./services/editor-access";
+import type { EmployeeGate } from "./services/editor-access";
+import type { IPeople } from "./services/people";
 import type { ICategoryEditing } from "./services/category-editing";
 import type { CollectionEditing } from "./services/collection-editing";
 import type { EditorIndex } from "./services/editor-index";
@@ -58,8 +59,8 @@ export interface AppOptions {
   readonly categories: ICategoryEditing;
   readonly collections: CollectionEditing;
   readonly access: EmployeeGate;
-  /** Who holds which role, for the admin routes. */
-  readonly roles: RoleRecords;
+  /** Who has signed in and which roles they hold, for the admin routes. */
+  readonly people: IPeople;
   readonly auth: AuthHandler;
   readonly config: {
     readonly apiOrigin: string;
@@ -186,7 +187,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         categories: options.categories,
         collections: options.collections,
         access: options.access,
-        roles: options.roles,
+        people: options.people,
         editorOrigin: config.editorOrigin,
       });
       await api.register(authRoutes, {
