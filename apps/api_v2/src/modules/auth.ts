@@ -1,14 +1,6 @@
 import { z } from "zod";
+import { Role } from "./permissions";
 import { err, ok, type Result } from "./result";
-
-/** What an employee may do, as `user_roles` stores it. */
-export const ROLES = ["editor", "approver", "admin"] as const;
-
-/** Parses a role. */
-export const Role = z.enum(ROLES);
-
-/** A role: `editor` writes content, `approver` changes what citizens see, `admin` grants and revokes roles. */
-export type Role = z.infer<typeof Role>;
 
 /**
  * An `auth_user` id: what the history records as a change's actor. Not

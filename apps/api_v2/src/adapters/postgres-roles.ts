@@ -7,7 +7,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Database } from "../db";
-import { EmployeeView, UserNotFound, type Role } from "../modules/auth";
+import { EmployeeView, UserNotFound } from "../modules/auth";
+import { Role } from "../modules/permissions";
 import { ContentStoreUnavailable } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import { userRoles } from "../schema";
@@ -32,7 +33,7 @@ export class PostgresRoles implements RoleRecords {
   /** The process's database handle. */
   constructor(private readonly db: Database) {}
 
-  /** The user's roles. */
+  /** The user's roles, leaving out a stored name this build doesn't know. */
   async rolesOf(
     userId: string,
   ): Promise<Result<Role[], ContentStoreUnavailable>> {
@@ -43,7 +44,14 @@ export class PostgresRoles implements RoleRecords {
         .where(eq(userRoles.userId, userId))
         .orderBy(userRoles.role),
     );
-    return rows.ok ? ok(rows.value.map((row) => row.role)) : rows;
+    return rows.ok
+      ? ok(
+          rows.value.flatMap((row) => {
+            const role = Role.safeParse(row.role);
+            return role.success ? [role.data] : [];
+          }),
+        )
+      : rows;
   }
 
   /** Grant a role; one already held keeps its first grantor. */

@@ -16,7 +16,8 @@ import {
   CategoryNode,
   SearchDocument,
 } from "../modules/navigation";
-import { EmployeeView, Role } from "../modules/auth";
+import { EmployeeView } from "../modules/auth";
+import { Role } from "../modules/permissions";
 import {
   EditorPage,
   NewPage,

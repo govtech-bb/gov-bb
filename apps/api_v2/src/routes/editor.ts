@@ -2,12 +2,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
 import type { CollectionEditing } from "../services/collection-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import type {
-  Employee,
-  NotApprover,
-  Role,
-  SelfApproval,
-} from "../modules/auth";
+import type { Employee, NotApprover, SelfApproval } from "../modules/auth";
+import type { Role } from "../modules/permissions";
 import type {
   ContentStoreUnavailable,
   PageConflict,
