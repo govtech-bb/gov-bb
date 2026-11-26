@@ -1,5 +1,5 @@
 import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
-import { SelfApproval, type Employee, type UserId } from "../modules/auth";
+import { SelfApproval, type Employee } from "../modules/auth";
 import {
   changesOf,
   creationOf,
@@ -29,7 +29,11 @@ import {
   type SaveFields,
   segmentsOf,
 } from "../modules/page";
-import { authorize, type PermissionDenied } from "../modules/permissions";
+import {
+  authorize,
+  type Grant,
+  type PermissionDenied,
+} from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 import type { LastEditedBy } from "../modules/content-attribution";
 import type { EditVersion } from "../modules/edit-concurrency";
@@ -101,12 +105,13 @@ export interface PageEditorSnapshot {
 /** The persistence the editor's page operations need. */
 export interface PageRecords {
   /**
-   * Run `work` as one transaction on behalf of `actorId`, whom storage
-   * records against every change it makes, after taking the shared content
-   * advisory lock; an error result rolls back everything it wrote.
+   * Run `work` as one transaction on behalf of the grant's actor, whom
+   * storage records against every change it makes, after taking the shared
+   * content advisory lock; an error result rolls back everything it wrote.
+   * Only a page permission check opens one.
    */
   atomically<R extends Result<unknown, Error>>(
-    actorId: UserId,
+    grant: Grant<"pages:edit" | "pages:publish">,
     work: (records: PageRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** One coherent editor snapshot, or null when the page is missing. */
@@ -250,7 +255,7 @@ export class PageEditing {
       });
       if (!publishing.ok) return publishing;
     }
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       // Its author wrote all of it, so another approver makes it public.
       if (page.visibility === "public" && !this.review.allowSelfApproval)
         return err(new SelfApproval(CREATED_PUBLIC));
@@ -315,7 +320,7 @@ export class PageEditing {
   > {
     const grant = authorize(actor, "pages:edit");
     if (!grant.ok) return grant;
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       const checked = await versionedPage(records, id, expectedVersion);
       if (!checked.ok) return checked;
       return this.saveWith(records, id, checked.value, fields, actor);
@@ -352,7 +357,7 @@ export class PageEditing {
   > {
     const grant = authorize(actor, "pages:edit");
     if (!grant.ok) return grant;
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       const checked = await versionedPage(records, id, expectedVersion);
       if (!checked.ok) return checked;
       const event = await records.pageEvent(id, versionNo);
@@ -520,7 +525,7 @@ export class PageEditing {
     const grant = authorize(actor, "pages:edit");
     if (!grant.ok) return grant;
     const submitted = await this.records.atomically(
-      actor.id,
+      grant.value,
       async (records) => {
         const reviewing = await underReview(
           records,
@@ -589,7 +594,7 @@ export class PageEditing {
     const grant = authorize(actor, "pages:publish");
     if (!grant.ok) return grant;
     const rejected = await this.records.atomically(
-      actor.id,
+      grant.value,
       async (records) => {
         const reviewing = await underReview(
           records,
@@ -654,7 +659,7 @@ export class PageEditing {
     const grant = authorize(actor, "pages:publish");
     if (!grant.ok) return grant;
     const published = await this.records.atomically(
-      actor.id,
+      grant.value,
       async (records) => {
         const reviewing = await underReview(
           records,
@@ -741,7 +746,7 @@ export class PageEditing {
   > {
     const grant = authorize(actor, "pages:edit");
     if (!grant.ok) return grant;
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       const checked = await versionedPage(records, id, expectedVersion);
       if (!checked.ok) return checked;
       if (checked.value.live.visibility === "public") {

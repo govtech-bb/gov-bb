@@ -13,6 +13,7 @@ import {
   createTestServices,
   expectOk,
   TEST_EMPLOYEE,
+  grantFor,
 } from "../test-db";
 import { PostgresPages } from "./postgres-pages";
 import { CategoryId, parseCategoryFields } from "../modules/category";
@@ -31,12 +32,14 @@ describe("PostgresPages category constraints", () => {
         }),
       );
       const id = expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
-          tx.insertCategory(fields, 0),
+        await records.atomically(
+          grantFor(TEST_EMPLOYEE, "categories:manage"),
+          (tx) => tx.insertCategory(fields, 0),
         ),
       );
-      const duplicate = await records.atomically(TEST_EMPLOYEE.id, (tx) =>
-        tx.insertCategory(fields, 1),
+      const duplicate = await records.atomically(
+        grantFor(TEST_EMPLOYEE, "categories:manage"),
+        (tx) => tx.insertCategory(fields, 1),
       );
       expect(duplicate).toMatchObject({
         ok: false,
@@ -45,8 +48,10 @@ describe("PostgresPages category constraints", () => {
       const missingParent = CategoryId.parse(
         "00000000-0000-4000-8000-000000000000",
       );
-      const invalidParent = await records.atomically(TEST_EMPLOYEE.id, (tx) =>
-        tx.replaceCategory(id, { ...fields, parent_id: missingParent }, 0),
+      const invalidParent = await records.atomically(
+        grantFor(TEST_EMPLOYEE, "categories:manage"),
+        (tx) =>
+          tx.replaceCategory(id, { ...fields, parent_id: missingParent }, 0),
       );
       expect(invalidParent).toMatchObject({
         ok: false,
@@ -86,7 +91,7 @@ describe("PostgresPages page redirects", () => {
       expect(found.page.frontmatter).toEqual(page.frontmatter);
 
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/source", "/absent"),
         ),
       );
@@ -114,8 +119,9 @@ describe("PostgresPages page redirects", () => {
         ["/register-birth", "/birth-registration"],
       ] as const) {
         expectOk(
-          await records.atomically(TEST_EMPLOYEE.id, (tx) =>
-            tx.recordPageRedirectMove(source, destination),
+          await records.atomically(
+            grantFor(TEST_EMPLOYEE, "pages:edit"),
+            (tx) => tx.recordPageRedirectMove(source, destination),
           ),
         );
       }
@@ -130,7 +136,7 @@ describe("PostgresPages page redirects", () => {
       ]);
 
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/birth-registration", "/register-a-birth"),
         ),
       );
@@ -155,7 +161,7 @@ describe("PostgresPages page redirects", () => {
       const { navigation } = createTestServices(db);
       const initialVersion = expectOk(await navigation.version());
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/old", "/current"),
         ),
       );
@@ -165,7 +171,7 @@ describe("PostgresPages page redirects", () => {
       expect(insertedVersion).not.toBe(initialVersion);
 
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/old", "/new"),
         ),
       );
@@ -176,14 +182,14 @@ describe("PostgresPages page redirects", () => {
       expect(updatedVersion).not.toBe(insertedVersion);
 
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/new", "/final"),
         ),
       );
       const flattenedVersion = expectOk(await navigation.version());
       expect(flattenedVersion).not.toBe(updatedVersion);
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.removePageRedirectAt("/old"),
         ),
       );
@@ -237,24 +243,24 @@ describe("PostgresPages page redirects", () => {
     try {
       const records = new PostgresPages(db);
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/old", "/current"),
         ),
       );
       const rules = await db.select().from(pageRedirects);
       const history = await db.select().from(changeEvents);
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/old", "/old"),
         ),
       );
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/old", "/current"),
         ),
       );
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.removePageRedirectAt("/missing"),
         ),
       );
@@ -275,22 +281,26 @@ describe("PostgresPages page redirects", () => {
         new Date(),
       );
       const original = expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) => tx.insert(page)),
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
+          tx.insert(page),
+        ),
       );
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.recordPageRedirectMove("/old", "/current"),
         ),
       );
       const rules = await db.select().from(pageRedirects);
       expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
           tx.remove(original.id),
         ),
       );
       expect(await db.select().from(pageRedirects)).toEqual(rules);
       const recreated = expectOk(
-        await records.atomically(TEST_EMPLOYEE.id, (tx) => tx.insert(page)),
+        await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
+          tx.insert(page),
+        ),
       );
       expect(recreated.id).not.toBe(original.id);
       expect(await db.select().from(pageRedirects)).toEqual(rules);
@@ -310,8 +320,9 @@ describe("PostgresPages page redirects", () => {
           ["/c", "/d"],
         ] as const) {
           expectOk(
-            await records.atomically(TEST_EMPLOYEE.id, (tx) =>
-              tx.recordPageRedirectMove(source, destination),
+            await records.atomically(
+              grantFor(TEST_EMPLOYEE, "pages:edit"),
+              (tx) => tx.recordPageRedirectMove(source, destination),
             ),
           );
         }
@@ -336,7 +347,7 @@ describe("PostgresPages page redirects", () => {
         }
         const refusal = new PageRejected([{ field: "title", message: "No." }]);
         const outcome = await records.atomically(
-          TEST_EMPLOYEE.id,
+          grantFor(TEST_EMPLOYEE, "pages:edit"),
           async (tx) => {
             const page = await tx.insert(
               creationOf(undefined, withDefaults(aPage()), new Date()),
@@ -386,7 +397,7 @@ describe("PostgresPages.atomically", () => {
     try {
       const refusal = new PageRejected([{ field: "title", message: "No." }]);
       const outcome = await new PostgresPages(db).atomically(
-        TEST_EMPLOYEE.id,
+        grantFor(TEST_EMPLOYEE, "pages:edit"),
         async (records) => {
           const inserted = await records.insert(
             creationOf(undefined, withDefaults(aPage()), new Date()),

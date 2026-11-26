@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import type { Employee, UserId } from "../modules/auth";
+import type { Employee } from "../modules/auth";
 import type { EditVersion } from "../modules/edit-concurrency";
 import {
   CollectionExists,
@@ -21,17 +21,22 @@ import {
   type RecordRejected,
 } from "../modules/collection";
 import type { ContentStoreUnavailable } from "../modules/page";
-import { authorize, type PermissionDenied } from "../modules/permissions";
+import {
+  authorize,
+  type Grant,
+  type PermissionDenied,
+} from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 
 /** Collection storage. */
 export interface CollectionStore {
   /**
-   * Run `work` as one transaction on behalf of `actorId`, whom storage
-   * records against every change it makes; a failed Result rolls it back.
+   * Run `work` as one transaction on behalf of the grant's actor, whom
+   * storage records against every change it makes; a failed Result rolls it
+   * back. Only a collection permission check opens one.
    */
   atomically<R extends Result<unknown, Error>>(
-    actorId: UserId,
+    grant: Grant<"collections:edit" | "collections:manage">,
     work: (store: CollectionStore) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** Every collection, by key, with its record count. */
@@ -144,7 +149,7 @@ export class CollectionEditing {
   ): Promise<Result<EditorCollectionRecord, RecordWriteFailure>> {
     const grant = authorize(actor, "collections:edit");
     if (!grant.ok) return grant;
-    return this.store.atomically(actor.id, async (store) => {
+    return this.store.atomically(grant.value, async (store) => {
       const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
       const parsed = parseRecord(collection.value, recordKey, data);
@@ -167,7 +172,7 @@ export class CollectionEditing {
   ): Promise<Result<RecordEnvelope, RecordWriteFailure>> {
     const grant = authorize(actor, "collections:edit");
     if (!grant.ok) return grant;
-    return this.store.atomically(actor.id, async (store) => {
+    return this.store.atomically(grant.value, async (store) => {
       const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
       // Check existence and the original version before field validation.
@@ -196,7 +201,7 @@ export class CollectionEditing {
   ): Promise<Result<void, RecordWriteFailure>> {
     const grant = authorize(actor, "collections:edit");
     if (!grant.ok) return grant;
-    return this.store.atomically(actor.id, async (store) => {
+    return this.store.atomically(grant.value, async (store) => {
       const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
       const current = await unchanged(store, key, recordKey, expectedVersion);
@@ -217,7 +222,7 @@ export class CollectionEditing {
     if (!grant.ok) return grant;
     const parsed = parseNewCollection(input);
     if (!parsed.ok) return parsed;
-    return this.store.atomically(actor.id, async (store) => {
+    return this.store.atomically(grant.value, async (store) => {
       const inserted = await store.insertCollection(parsed.value);
       if (!inserted.ok) return inserted;
       return inserted.value === null
