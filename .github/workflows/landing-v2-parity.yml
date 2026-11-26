@@ -1,75 +1,156 @@
 name: Landing v2 Parity
 
 # Proves landing pages served from api_v2 render like the static markdown
-# (#3304): after each Amplify build of v2-rewrite on the sandbox landing app,
-#  - crawl: every sitemap URL is compared with staging.alpha.gov.bb, which
-#    still serves static markdown (#3141; allowlist in
+# (#3304, #3853): after each Deploy Sandbox run that deployed landing or
+# api_v2, sandbox landing (sandbox.alpha.gov.bb, deployed from main) is
+# compared with the static baseline:
+#  - crawl: every sitemap URL is compared (#3141; allowlist in
 #    apps/landing/e2e/parity/allowlist.json);
 #  - visual: one page per template is screenshotted on both at 390px and
 #    1280px and compared (#3142); diffs are uploaded on failure.
-# Both are gates: a red run on v2-rewrite's head blocks the merge to main
-# (#3131). After that merge, #3311 retargets them to landing.sandbox: that
-# means V2_BASE_URL below and the wait step's app-id/branch, plus the
-# defaults in crawl.ts and templates.visual.ts.
+# Deploy Sandbox already waits for the sandbox Amplify build, so this
+# workflow does not.
 #
-# The role trusts gov-bb v2-rewrite and main only. Its ARN is not a secret.
-# No `environment:` on any job: it would change the OIDC subject.
+# The gate job decides whether the checks run. On a Deploy Sandbox
+# completion it skips green, with a notice, when that run did not succeed,
+# when it deployed neither landing nor api_v2, or when a newer Deploy Sandbox
+# run on main is queued or in progress: the checks would crawl a sandbox that
+# is mid-deploy, and the newer run's completion re-runs them. Caveat: if that
+# newer run deploys neither landing nor api_v2, its gate skips too, so the
+# check waits for the next landing or api_v2 deploy.
+#
+# On any trigger, the gate then asks sandbox landing for up to 5 public
+# catalog pages (landing's feature routes, src/routes/**/-meta.ts, are left
+# out: landing renders them itself with no x-content-source). It skips green
+# only when a page answers `x-content-source: static` and none answers from
+# api_v2 (before #3311). An api_v2 answer runs the checks; so do
+# `api_v2-stale` and `static-fallback` (landing reads api_v2 but api_v2
+# failed). Every other case (no header, 5xx, timeout, landing unreachable, no
+# public pages) also runs them, with a warning naming the case, so a broken
+# landing goes red instead of skipping. A catalog that can't be read fails
+# the gate.
+#
+# Static baseline (decided on #3853): staging.alpha.gov.bb, static until the
+# staging switch (#3227). At #3227, STATIC_BASE_URL moves to prod
+# (alpha.gov.bb, static until the prod switch on 2 Dec). At the prod switch
+# no static baseline is left, and this workflow is retired.
 
 on:
-  push:
-    branches: [v2-rewrite]
+  # Deploy Sandbox runs only on a push to main or by hand, and this workflow
+  # checks out main, never the triggering run's code, and reads no artifacts.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: [Deploy Sandbox]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: landing-v2-parity-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
-  AWS_REGION: ca-central-1
-  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
-  V2_BASE_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
+  V2_BASE_URL: https://sandbox.alpha.gov.bb
   STATIC_BASE_URL: https://staging.alpha.gov.bb
+  CATALOG_URL: https://api.sandbox.alpha.gov.bb/v2/catalog
 
 jobs:
-  wait:
-    name: Wait for Amplify build
-    # Only v2-rewrite: from another ref, the shared action would start a
-    # v2-rewrite build of that ref's commit and test the wrong build.
-    if: github.ref == 'refs/heads/v2-rewrite'
+  gate:
+    name: Check sandbox landing serves api_v2
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     permissions:
-      id-token: write # assume the role via OIDC to read Amplify jobs
+      actions: read # read Deploy Sandbox runs and their jobs
       contents: read
     outputs:
-      superseded: ${{ steps.build.outputs.superseded }}
+      run: ${{ steps.gate.outputs.run }}
     steps:
-      - name: Checkout
+      - name: Checkout landing routes
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Wait for the v2-rewrite build
-        id: build
-        uses: ./.github/actions/wait-for-amplify-build
-        with:
-          app-id: d3kbl8o0ovutw4
-          branch: v2-rewrite
-          sha: ${{ github.sha }}
-          url: ${{ env.V2_BASE_URL }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sparse-checkout: apps/landing/src/routes
+      - name: Decide whether to run
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          skip() {
+            echo "::notice::$1"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          run_checks() {
+            [ -z "${1:-}" ] || echo "::warning::$1"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ "$EVENT" = workflow_run ]; then
+            [ "$CONCLUSION" = success ] ||
+              skip "Skipped: Deploy Sandbox run $RUN_ID concluded '$CONCLUSION', not success."
+            # A reusable workflow's jobs are named "Deploy api_v2 / <job>".
+            deployed="$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" \
+              --jq '.jobs[] | select(.conclusion == "success") | select(.name == "Amplify build (landing)" or (.name | startswith("Deploy api_v2"))) | .name')"
+            [ -n "$deployed" ] ||
+              skip "Skipped: Deploy Sandbox run $RUN_ID deployed neither landing nor api_v2."
+            newer="$(gh api "repos/$REPO/actions/workflows/deploy-sandbox.yml/runs?branch=main&per_page=20" \
+              --jq "[.workflow_runs[] | select(.id > $RUN_ID and .status != \"completed\")] | length")"
+            [ "$newer" = 0 ] ||
+              skip "Skipped: a newer Deploy Sandbox run is deploying; its completion re-runs this check."
+          fi
+          # Feature routes carry no x-content-source, so they prove nothing.
+          features="$(find apps/landing/src/routes -name '-meta.ts' |
+            sed -e 's#^apps/landing/src/routes##' -e 's#/-meta\.ts$##' | jq -R . | jq -s .)"
+          paths="$(curl -fsS --max-time 30 "$CATALOG_URL" |
+            jq -r --argjson features "$features" \
+              '[.pages[] | select(.visibility == "public") | .url | select(IN($features[]) | not)][:5][]')" || {
+            echo "::error::Could not list public pages from $CATALOG_URL."
+            exit 1
+          }
+          [ -n "$paths" ] ||
+            run_checks "$CATALOG_URL lists no public pages besides feature routes; running the checks."
+          headers="$(mktemp)"
+          api_v2=false
+          static=false
+          for path in $paths; do
+            rc=0
+            status="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' --max-time 30 \
+              "$V2_BASE_URL$path?parity-gate=$GITHUB_RUN_ID-$RANDOM")" || rc=$?
+            if [ "$rc" = 28 ]; then
+              echo "::warning::$path: sandbox landing timed out."
+              continue
+            elif [ "$rc" != 0 ]; then
+              echo "::warning::$path: sandbox landing unreachable (curl exit $rc)."
+              continue
+            fi
+            source="$(tr -d '\r' < "$headers" | awk -F': ' 'tolower($1) == "x-content-source" { print $2 }')"
+            echo "$path: HTTP $status, x-content-source ${source:-(none)}"
+            if [[ "$source" =~ ^(api_v2|api_v2-stale|static-fallback)$ ]]; then
+              api_v2=true
+            elif [ "$source" = static ]; then
+              static=true
+            elif [ "$status" -ge 500 ]; then
+              echo "::warning::$path: sandbox landing answered HTTP $status."
+            else
+              echo "::warning::$path: sandbox landing answered HTTP $status with no x-content-source."
+            fi
+          done
+          [ "$api_v2" = true ] && run_checks
+          [ "$static" = true ] &&
+            skip "Skipped: sandbox landing serves static content, not api_v2 yet (#3311)."
+          run_checks "No sampled page answered static or api_v2; running the checks."
 
   crawl:
     name: Crawl and compare with static
-    needs: wait
-    if: needs.wait.outputs.superseded != 'true'
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    # Job-level, so only a run that passed the gate cancels an older check: a
+    # skipped run must not cancel a real one (every workflow_run is on main).
+    concurrency:
+      group: landing-v2-parity-crawl-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -88,8 +169,11 @@ jobs:
 
   visual:
     name: Visual regression per template
-    needs: wait
-    if: needs.wait.outputs.superseded != 'true'
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    concurrency:
+      group: landing-v2-parity-visual-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

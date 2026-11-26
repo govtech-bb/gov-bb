@@ -110,6 +110,32 @@ const AUTO_APPLY_TOOLS = new Set([
   "apply_content_patch",
   "update_service_details",
 ]);
+const EDIT_TOOL_TIMEOUT_MS = 60_000;
+const READ_TOOL_TIMEOUT_MS = 30_000;
+const TIMED_OUT = Symbol("timed out");
+// Ends a stalled client tool call with onTimeout's result. The handler's work
+// is not cancelled, so a late save can still land.
+function withTimeout<A extends unknown[], R>(
+  handler: (...args: A) => Promise<R>,
+  ms: number,
+  onTimeout: (...args: A) => R,
+): (...args: A) => Promise<R> {
+  return async (...args) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<typeof TIMED_OUT>((resolve) => {
+      timer = setTimeout(resolve, ms, TIMED_OUT);
+    });
+    try {
+      const result = await Promise.race([handler(...args), timedOut]);
+      return result === TIMED_OUT ? onTimeout(...args) : result;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+}
+const readTimedOut = () => {
+  throw new Error("Reading the service took too long. Try again.");
+};
 type Approval = {
   kind: "tool-approval";
   id: string;
@@ -659,6 +685,17 @@ function ChatSession({
     },
     [current, finishEdit],
   );
+  const editTimedOut = useCallback(
+    (_input: Proposal, toolContext?: { toolCallId?: string }) => {
+      finishEdit(toolContext?.toolCallId ?? "");
+      return {
+        applied: false,
+        message:
+          "The change did not finish in time. It may still be saved — check the draft before you try again.",
+      };
+    },
+    [finishEdit],
+  );
   const externalTarget = useCallback(
     (toolName: string, proposal: Proposal) => {
       if (toolName === "update_service_details") return true;
@@ -691,9 +728,16 @@ function ChatSession({
         );
       setActivity({ id, validating: true });
       try {
-        const change = external
-          ? await prepareServiceEdit(toolName, proposal)
-          : await current.current.prepare(proposal);
+        const change = await withTimeout(
+          async () =>
+            external
+              ? prepareServiceEdit(toolName, proposal)
+              : current.current.prepare(proposal),
+          EDIT_TOOL_TIMEOUT_MS,
+          () => {
+            throw new Error("Checking the change took too long. Try again.");
+          },
+        )();
         if (
           !active.current ||
           !current.current.open ||
@@ -776,15 +820,27 @@ function ChatSession({
   const tools = useMemo(
     () =>
       [
-        toolDefinition(proposeFormTool).client(execute),
-        toolDefinition(proposeContentTool).client(execute),
+        toolDefinition(proposeFormTool).client(
+          withTimeout(execute, EDIT_TOOL_TIMEOUT_MS, editTimedOut),
+        ),
+        toolDefinition(proposeContentTool).client(
+          withTimeout(execute, EDIT_TOOL_TIMEOUT_MS, editTimedOut),
+        ),
         toolDefinition(askQuestionsTool).client(),
-        toolDefinition(updateServiceDetailsTool).client(execute),
-        toolDefinition(readServiceTool).client(readService),
-        toolDefinition(readPageTool).client(readPage),
-        toolDefinition(readFormTool).client(readForm),
+        toolDefinition(updateServiceDetailsTool).client(
+          withTimeout(execute, EDIT_TOOL_TIMEOUT_MS, editTimedOut),
+        ),
+        toolDefinition(readServiceTool).client(
+          withTimeout(readService, READ_TOOL_TIMEOUT_MS, readTimedOut),
+        ),
+        toolDefinition(readPageTool).client(
+          withTimeout(readPage, READ_TOOL_TIMEOUT_MS, readTimedOut),
+        ),
+        toolDefinition(readFormTool).client(
+          withTimeout(readForm, READ_TOOL_TIMEOUT_MS, readTimedOut),
+        ),
       ] as const,
-    [execute],
+    [execute, editTimedOut],
   );
   const chat = useChat<typeof tools>({
     threadId: thread,

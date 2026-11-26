@@ -78,29 +78,35 @@ export const categoriesQuery = (api: EditorApi) =>
   });
 
 /**
+ * The signed-in employee, in the one read their roles and their id share. An answer without a list of roles holds
+ * none, and one without an id gives null.
+ */
+export const meQuery = (api: Pick<EditorApi, "me">) =>
+  queryOptions({
+    queryKey: ["me"],
+    queryFn: async (): Promise<{
+      readonly roles: readonly string[];
+      readonly id: string | null;
+    }> => {
+      const me: unknown = await api.me();
+
+      return {
+        roles: me instanceof Object && "roles" in me && Array.isArray(me.roles) ? me.roles : [],
+        id: me instanceof Object && "id" in me && isText(me.id) ? me.id : null,
+      };
+    },
+  });
+
+/**
  * The signed-in employee's roles, which decide what the editor offers them. An answer without a list of roles holds
  * none, so the editor offers less rather than more; the API enforces roles either way.
  */
 export const rolesQuery = (api: Pick<EditorApi, "me">) =>
-  queryOptions({
-    queryKey: ["me"],
-    queryFn: async (): Promise<readonly string[]> => {
-      const me: unknown = await api.me();
-
-      return me instanceof Object && "roles" in me && Array.isArray(me.roles) ? me.roles : [];
-    },
-  });
+  queryOptions({ ...meQuery(api), select: (me) => me.roles });
 
 /** The signed-in employee's user id, which tells a change they worked on from anyone else's; null if not given. */
 export const employeeIdQuery = (api: Pick<EditorApi, "me">) =>
-  queryOptions({
-    queryKey: ["me", "id"],
-    queryFn: async (): Promise<string | null> => {
-      const me: unknown = await api.me();
-
-      return me instanceof Object && "id" in me && isText(me.id) ? me.id : null;
-    },
-  });
+  queryOptions({ ...meQuery(api), select: (me) => me.id });
 
 const VERSION_KEY = ["version"];
 
