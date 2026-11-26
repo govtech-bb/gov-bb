@@ -37,6 +37,10 @@ function recordRefused(
       return reply
         .status(409)
         .send({ error: "record_exists", message: error.message });
+    case "PermissionDenied":
+      return reply
+        .status(403)
+        .send({ error: "forbidden", message: error.message });
     case "ContentStoreUnavailable":
       return reply.status(500).send(storageFailed(request.log, error));
     default: {
@@ -65,6 +69,10 @@ function collectionRefused(
         message: error.message,
         errors: [{ field: "key", message: error.message }],
       });
+    case "PermissionDenied":
+      return reply
+        .status(403)
+        .send({ error: "forbidden", message: error.message });
     case "ContentStoreUnavailable":
       return reply.status(500).send(storageFailed(request.log, error));
     default: {

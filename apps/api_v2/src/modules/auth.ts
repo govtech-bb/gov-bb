@@ -55,16 +55,6 @@ export class Forbidden extends Error {
   }
 }
 
-/** A change to what citizens see, by an employee without the approver role. */
-export class NotApprover extends Error {
-  /** Stable protocol-projection discriminator. */
-  readonly _tag = "NotApprover";
-  /** Say who can make the change, and why when it isn't a visibility change. */
-  constructor(message = "Only approvers can change who can see a page.") {
-    super(message);
-  }
-}
-
 /**
  * An approver deciding on a revision they changed or submitted, or making
  * public content they changed since the page was last public (ADR 0134).

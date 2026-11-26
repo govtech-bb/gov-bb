@@ -5,15 +5,15 @@ import {
   Unauthenticated,
   UserId,
 } from "../modules/auth";
-import type { Role } from "../modules/permissions";
+import type { GrantableRole } from "../modules/permissions";
 import { ContentStoreUnavailable } from "../modules/page";
 import { Redacted } from "../modules/redacted";
 import { err, ok } from "../modules/result";
 import { EditorAccess, type RoleRecords } from "./editor-access";
 
 /** Role storage holding `held`, recording what is granted. */
-function rolesHolding(held: Role[] = []) {
-  const granted: { role: Role; grantedBy: string | null }[] = [];
+function rolesHolding(held: GrantableRole[] = []) {
+  const granted: { role: GrantableRole; grantedBy: string | null }[] = [];
   const records: RoleRecords = {
     rolesOf: async () => ok([...held]),
     grant: async (_userId, role, grantedBy) => {
@@ -79,7 +79,7 @@ describe("editor access", () => {
         signedIn,
         rolesHolding(["approver"]).records,
       ).requireEmployee(new Redacted("cookie")),
-    ).toEqual(ok({ ...employee, roles: ["approver"] }));
+    ).toEqual(ok({ ...employee, roles: ["reader", "approver"] }));
   });
   it("keeps access closed when the roles cannot be read", async () => {
     const roles = rolesHolding().records;
@@ -94,14 +94,14 @@ describe("editor access", () => {
     );
   });
   it("makes a listed email an admin and an editor, granted by nobody, once", async () => {
-    // A new user has no role, and editor_v2 has no roles screen yet, so a
+    // A new user has only Reader, and editor_v2 has no roles screen yet, so a
     // listed admin must be able to write without granting themselves editor.
     const none = rolesHolding();
     expect(
       await new EditorAccess(signedIn, none.records, [
         employee.email,
       ]).requireEmployee(new Redacted("cookie")),
-    ).toEqual(ok({ ...employee, roles: ["admin", "editor"] }));
+    ).toEqual(ok({ ...employee, roles: ["reader", "admin", "editor"] }));
     expect(none.granted).toEqual([
       { role: "admin", grantedBy: null },
       { role: "editor", grantedBy: null },
@@ -112,7 +112,7 @@ describe("editor access", () => {
       await new EditorAccess(signedIn, editor.records, [
         employee.email,
       ]).requireEmployee(new Redacted("cookie")),
-    ).toEqual(ok({ ...employee, roles: ["editor", "admin"] }));
+    ).toEqual(ok({ ...employee, roles: ["reader", "editor", "admin"] }));
     expect(editor.granted).toEqual([{ role: "admin", grantedBy: null }]);
 
     const both = rolesHolding(["admin", "editor"]);

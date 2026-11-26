@@ -4196,7 +4196,7 @@ export interface paths {
                                 id: string;
                                 email: string;
                                 name: string;
-                                roles: ("editor" | "approver" | "admin")[];
+                                roles: ("reader" | "editor" | "approver" | "admin")[];
                             }[];
                         };
                     };
@@ -4512,9 +4512,9 @@ export interface paths {
                             id: string;
                             email: string;
                             name: string;
-                            roles: ("editor" | "approver" | "admin")[];
+                            roles: ("reader" | "editor" | "approver" | "admin")[];
                             /** @description Everything the employee's roles let them do, without repeats. The editor decides what to offer from this list; api_v2 checks each change itself. */
-                            permissions: ("pages:edit" | "pages:publish" | "collections:edit" | "collections:manage" | "categories:manage" | "people:read" | "people:manage")[];
+                            permissions: ("content:read" | "pages:edit" | "pages:publish" | "collections:edit" | "collections:manage" | "categories:manage" | "people:read" | "people:manage")[];
                         };
                     };
                 };
@@ -4599,7 +4599,7 @@ export interface paths {
                         "application/json": {
                             roles: {
                                 /** @enum {string} */
-                                role: "editor" | "approver" | "admin";
+                                role: "reader" | "editor" | "approver" | "admin";
                                 /** @description One phrase for each permission the role holds, in table order. Each completes "This role lets you …". */
                                 lets: string[];
                             }[];

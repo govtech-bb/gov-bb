@@ -5,7 +5,9 @@
 and a new user gets no role, see the amendments under Decision;
 [#3412](https://github.com/govtech-bb/gov-bb/issues/3412). Amended 2026-11-16:
 a hidden `start` sub-page of a public page is an approver's;
-[#3618](https://github.com/govtech-bb/gov-bb/pull/3618))
+[#3618](https://github.com/govtech-bb/gov-bb/pull/3618). Amended 2026-11-26:
+every signed-in user holds a Reader role, implied and not stored;
+[#3697](https://github.com/govtech-bb/gov-bb/issues/3697))
 
 ## Context
 
@@ -73,6 +75,18 @@ user with no role can read the editor but can't write anything.
 > listed admin can write without first granting themselves a role. As with
 > `admin`, a listed admin's `editor` comes back on their next request if
 > revoked; take them off the list first.
+
+> **Amended 2026-11-26 ([#3697](https://github.com/govtech-bb/gov-bb/issues/3697)).**
+> Every signed-in user holds a fourth role, `reader`. It lets them read all
+> the content in the editor and change nothing, which is what a user with
+> no role could already do. Reader is implied, not stored: api_v2 adds it to
+> every admitted user's roles on each request, `user_roles` never holds a
+> `reader` row, and the table's check refuses one. So a new user holds
+> Reader and nothing else until an admin grants a role, every user who
+> already exists holds it without a migration, and nobody can grant or
+> revoke it: the role routes refuse `reader`. `modules/permissions.ts` lists
+> what each role lets a person do. Under `AUTH_BYPASS` the local user holds
+> Reader too.
 
 **Admins manage roles through admin-only api_v2 routes.** There is no admin
 screen in editor_v2 yet; that is a follow-up. The first admins come from an

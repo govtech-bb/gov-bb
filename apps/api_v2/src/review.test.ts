@@ -1608,8 +1608,12 @@ describe("making a page public (#3201)", () => {
   });
 
   it("counts only changes since the page was last public", async () => {
+    // As this block's beforeEach stores them: an approver who edits too.
     const page = expectOk(
-      await services.editing.create(aPage({ visibility: "draft" }), APPROVER),
+      await services.editing.create(aPage({ visibility: "draft" }), {
+        ...APPROVER,
+        roles: ["editor", "approver"],
+      }),
     );
     // They wrote it, and it has never been public.
     expect(
