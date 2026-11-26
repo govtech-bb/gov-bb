@@ -37,6 +37,10 @@ function categoryFailed(
         message: error.message,
         blockers: error.blockers,
       });
+    case "PermissionDenied":
+      return reply
+        .status(403)
+        .send({ error: "forbidden", message: error.message });
     case "ContentStoreUnavailable":
       return reply.status(500).send(storageFailed(request.log, error));
     default: {

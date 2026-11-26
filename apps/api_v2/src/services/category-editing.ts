@@ -15,6 +15,7 @@ import {
   type EditorCategory,
 } from "../modules/category";
 import type { ContentStoreUnavailable } from "../modules/page";
+import { authorize, type PermissionDenied } from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 
 /** Content persistence; every write transaction takes the shared content lock before any other locks. */
@@ -61,6 +62,7 @@ export interface CategoryRecords {
 
 /** Expected failures of a versioned category update. */
 export type CategoryUpdateFailure =
+  | PermissionDenied
   | CategoryRejected
   | CategoryNotFound
   | CategoryConflict
@@ -68,6 +70,7 @@ export type CategoryUpdateFailure =
 
 /** Expected failures of category deletion, including all occupancy blockers. */
 export type CategoryDeleteFailure =
+  | PermissionDenied
   | CategoryNotFound
   | CategoryConflict
   | CategoryInUse
@@ -82,7 +85,10 @@ export interface ICategoryEditing {
     fields: CategoryFields,
     actor: Employee,
   ): Promise<
-    Result<EditorCategory, CategoryRejected | ContentStoreUnavailable>
+    Result<
+      EditorCategory,
+      PermissionDenied | CategoryRejected | ContentStoreUnavailable
+    >
   >;
   /** Save only if the opened version still matches; occupied addresses cannot move. */
   update(
@@ -98,7 +104,10 @@ export interface ICategoryEditing {
   ): Promise<
     Result<
       EditorCategory[],
-      CategoryRejected | CategoryConflict | ContentStoreUnavailable
+      | PermissionDenied
+      | CategoryRejected
+      | CategoryConflict
+      | ContentStoreUnavailable
     >
   >;
   /** Refuse stale or occupied deletion without moving any content. */
@@ -109,7 +118,7 @@ export interface ICategoryEditing {
   ): Promise<Result<void, CategoryDeleteFailure>>;
 }
 
-/** Category workflow owner; every write is recorded against the acting employee. */
+/** Category workflow owner; every write needs `categories:manage` and is recorded against the acting employee. */
 export class CategoryEditing implements ICategoryEditing {
   constructor(private readonly records: CategoryRecords) {}
 
@@ -133,8 +142,13 @@ export class CategoryEditing implements ICategoryEditing {
     fields: CategoryFields,
     actor: Employee,
   ): Promise<
-    Result<EditorCategory, CategoryRejected | ContentStoreUnavailable>
+    Result<
+      EditorCategory,
+      PermissionDenied | CategoryRejected | ContentStoreUnavailable
+    >
   > {
+    const grant = authorize(actor, "categories:manage");
+    if (!grant.ok) return grant;
     const parsed = parseCategoryFields(fields);
     if (!parsed.ok) return parsed;
     return this.records.atomically(actor.id, async (records) => {
@@ -163,6 +177,8 @@ export class CategoryEditing implements ICategoryEditing {
     expected: EditVersion,
     actor: Employee,
   ): Promise<Result<EditorCategory, CategoryUpdateFailure>> {
+    const grant = authorize(actor, "categories:manage");
+    if (!grant.ok) return grant;
     return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
@@ -220,9 +236,14 @@ export class CategoryEditing implements ICategoryEditing {
   ): Promise<
     Result<
       EditorCategory[],
-      CategoryRejected | CategoryConflict | ContentStoreUnavailable
+      | PermissionDenied
+      | CategoryRejected
+      | CategoryConflict
+      | ContentStoreUnavailable
     >
   > {
+    const grant = authorize(actor, "categories:manage");
+    if (!grant.ok) return grant;
     return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
@@ -275,6 +296,8 @@ export class CategoryEditing implements ICategoryEditing {
     expected: EditVersion,
     actor: Employee,
   ): Promise<Result<void, CategoryDeleteFailure>> {
+    const grant = authorize(actor, "categories:manage");
+    if (!grant.ok) return grant;
     return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
