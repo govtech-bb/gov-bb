@@ -874,11 +874,12 @@ function ChatSession({
           setActivity({ id: chunk.toolCallId, validating: true });
       }
     },
-    // A run that stopped (server RUN_ERROR or a dropped stream) will not finish its tool call.
+    // A run that stopped (server RUN_ERROR or a dropped stream) will not finish its tool calls.
     onError() {
       setActivity((value) =>
         value?.validating ? { ...value, validating: false } : value,
       );
+      setQuestionsStopped(true);
     },
     onInterruptStateChange(state, { source }) {
       if (source !== "live") return;
@@ -1253,7 +1254,8 @@ function ChatSession({
                     part.state === "approval-requested" ||
                     (part.name === "ask_questions" &&
                       part.state === "input-complete" &&
-                      part.output === undefined);
+                      part.output === undefined &&
+                      !questionsStopped);
                   const running =
                     messageIndex === chat.messages.length - 1 && busy;
                   const status = failed

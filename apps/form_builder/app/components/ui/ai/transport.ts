@@ -52,6 +52,24 @@ export function boundedMessages(messages: UIMessage[]): UIMessage[] {
   return messages.slice(starts.at(-20) ?? 0);
 }
 
+// A stopped or failed run leaves tool calls with no result. Sending them makes the
+// server resume the old call (or reject partial arguments) instead of the new prompt.
+function unfinishedToolCall(
+  part: UIMessage["parts"][number],
+  parts: UIMessage["parts"],
+): boolean {
+  return (
+    part.type === "tool-call" &&
+    ["awaiting-input", "input-streaming", "input-complete"].includes(
+      part.state,
+    ) &&
+    part.output === undefined &&
+    !parts.some(
+      (other) => other.type === "tool-result" && other.toolCallId === part.id,
+    )
+  );
+}
+
 export function streamChat(
   input: ChatFetcherInput,
   context: AiContext,
@@ -63,16 +81,20 @@ export function streamChat(
       ...input,
       // Originals stay in S3. Preserve attachment metadata for UI snapshots; Bedrock uses the owned Textract output.
       messages: uiMessagesToWire(
-        boundedMessages(input.messages).map((message) => ({
-          ...message,
-          parts: message.parts.filter(
-            (part) =>
-              !(
-                (part.type === "image" || part.type === "document") &&
-                attachmentMetadata(part)
-              ),
+        boundedMessages(input.messages)
+          .map((message) => ({
+            ...message,
+            parts: message.parts.filter(
+              (part) =>
+                !(
+                  (part.type === "image" || part.type === "document") &&
+                  attachmentMetadata(part)
+                ) && !unfinishedToolCall(part, message.parts),
+            ),
+          }))
+          .filter(
+            (message) => message.role !== "assistant" || message.parts.length,
           ),
-        })),
       ),
       tools: [],
       context: [],

@@ -16,8 +16,14 @@ import { aiUploadSchema, aiRecipeSchema } from "@govtech-bb/form-builder";
 vi.mock("../ai/build-system-prompt.js", () => ({
   buildSystemPrompt: async () => "Build forms.",
 }));
+const catalog = vi.hoisted(() => ({
+  hold: undefined as (() => Promise<void>) | undefined,
+}));
 vi.mock("../catalog.js", () => ({
-  getFullCatalog: async () => ({ components: [], blocks: [], custom: [] }),
+  getFullCatalog: async () => {
+    await catalog.hold?.();
+    return { components: [], blocks: [], custom: [] };
+  },
 }));
 vi.mock("./validate-recipe.js", () => ({
   validateRecipeFully: async () => ({ ok: true }),
@@ -520,58 +526,35 @@ it("hides provider and document failures from the browser", async () => {
   expect(document.text).not.toContain("private-document-details");
 });
 
-it("ends the run with RUN_ERROR when the server times out during a tool call", async () => {
-  const { ChatClient } = await import("@tanstack/ai-client");
-  const { toolDefinition, uiMessagesToWire } = await import("@tanstack/ai");
-  const { proposeFormTool } = await import("@govtech-bb/form-builder");
+// Captures the route's 180-second time-out so a test can fire it at a chosen moment.
+function captureTimeout() {
   const realSetTimeout = globalThis.setTimeout;
-  let timeOut: (() => void) | undefined;
+  const timer: { fire?: () => void } = {};
   vi.spyOn(globalThis, "setTimeout").mockImplementation(((
     callback: () => void,
     ms?: number,
   ) => {
     if (ms !== 180000) return realSetTimeout(callback, ms);
-    timeOut = callback;
+    timer.fire = callback;
     return realSetTimeout(() => {}, 0);
   }) as typeof setTimeout);
-  vi.spyOn(BedrockRuntimeClient.prototype, "send").mockImplementation(
-    (_command: unknown, options: unknown) => {
-      const signal = (options as { abortSignal: AbortSignal }).abortSignal;
-      return Promise.resolve({
-        stream: (async function* () {
-          yield { messageStart: { role: "assistant" } };
-          yield {
-            contentBlockStart: {
-              contentBlockIndex: 0,
-              start: {
-                toolUse: { toolUseId: "slow-call", name: "apply_form_draft" },
-              },
-            },
-          };
-          yield {
-            contentBlockDelta: {
-              contentBlockIndex: 0,
-              delta: { toolUse: { input: '{"summary":"Ren' } },
-            },
-          };
-          if (!timeOut) throw new Error("The route's time-out was not set");
-          timeOut();
-          await new Promise<void>((resolve) => {
-            if (signal.aborted) resolve();
-            else signal.addEventListener("abort", () => resolve());
-          });
-          throw new DOMException("Request aborted", "AbortError");
-        })(),
-      });
-    },
-  );
+  return () => {
+    if (!timer.fire) throw new Error("The route's time-out was not set");
+    timer.fire();
+  };
+}
+
+async function startClient() {
+  const { ChatClient } = await import("@tanstack/ai-client");
+  const { toolDefinition, uiMessagesToWire } = await import("@tanstack/ai");
+  const { proposeFormTool } = await import("@govtech-bb/form-builder");
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const port = (server.address() as { port: number }).port;
   const chunks: string[] = [];
   const onError = vi.fn();
   const client = new ChatClient({
-    threadId: "timeout-test",
+    threadId: crypto.randomUUID(),
     onError,
     tools: [toolDefinition(proposeFormTool).client(() => ({ applied: true }))],
     onChunk: (chunk) => chunks.push(chunk.type),
@@ -594,6 +577,47 @@ it("ends the run with RUN_ERROR when the server times out during a tool call", a
         }),
       }),
   });
+  const close = async () => {
+    client.stop();
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  };
+  return { client, chunks, onError, close };
+}
+
+it("ends the run with RUN_ERROR when the server times out during a tool call", async () => {
+  const timeOut = captureTimeout();
+  vi.spyOn(BedrockRuntimeClient.prototype, "send").mockImplementation(
+    (_command: unknown, options: unknown) => {
+      const signal = (options as { abortSignal: AbortSignal }).abortSignal;
+      return Promise.resolve({
+        stream: (async function* () {
+          yield { messageStart: { role: "assistant" } };
+          yield {
+            contentBlockStart: {
+              contentBlockIndex: 0,
+              start: {
+                toolUse: { toolUseId: "slow-call", name: "apply_form_draft" },
+              },
+            },
+          };
+          yield {
+            contentBlockDelta: {
+              contentBlockIndex: 0,
+              delta: { toolUse: { input: '{"summary":"Ren' } },
+            },
+          };
+          timeOut();
+          await new Promise<void>((resolve) => {
+            if (signal.aborted) resolve();
+            else signal.addEventListener("abort", () => resolve());
+          });
+          throw new DOMException("Request aborted", "AbortError");
+        })(),
+      });
+    },
+  );
+  const { client, chunks, onError, close } = await startClient();
   try {
     await client.sendMessage("Rename this form");
     // Before the fix the stream closed with no terminal event, so the client
@@ -610,8 +634,55 @@ it("ends the run with RUN_ERROR when the server times out during a tool call", a
     expect(onError).toHaveBeenCalledTimes(1);
     expect(client.getInterrupts()).toEqual([]);
   } finally {
-    client.stop();
-    server.closeAllConnections();
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await close();
+  }
+});
+
+it("ends the run at the time-out while a server tool is still running, and drops its late events", async () => {
+  const timeOut = captureTimeout();
+  let release!: () => void;
+  catalog.hold = () => {
+    timeOut();
+    return new Promise<void>((resolve) => (release = resolve));
+  };
+  vi.spyOn(BedrockRuntimeClient.prototype, "send").mockImplementation(() =>
+    Promise.resolve({
+      stream: (async function* () {
+        yield { messageStart: { role: "assistant" } };
+        yield {
+          contentBlockStart: {
+            contentBlockIndex: 0,
+            start: {
+              toolUse: { toolUseId: "lookup", name: "lookup_component" },
+            },
+          },
+        };
+        yield {
+          contentBlockDelta: {
+            contentBlockIndex: 0,
+            delta: { toolUse: { input: JSON.stringify({ ref: "address" }) } },
+          },
+        };
+        yield { contentBlockStop: { contentBlockIndex: 0 } };
+        yield { messageStop: { stopReason: "tool_use" } };
+      })(),
+    }),
+  );
+  const { client, chunks, close } = await startClient();
+  try {
+    // Resolves only if the run ends while the tool is still held open.
+    await client.sendMessage("Look up the address component");
+    expect(chunks.at(-1)).toBe("RUN_ERROR");
+    expect(chunks).not.toContain("TOOL_CALL_RESULT");
+    expect(chunks).not.toContain("RUN_FINISHED");
+    expect(client.getError()?.message).toBe("This step didn't finish. Retry?");
+    const seen = chunks.length;
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(chunks).toHaveLength(seen);
+  } finally {
+    catalog.hold = undefined;
+    release?.();
+    await close();
   }
 });

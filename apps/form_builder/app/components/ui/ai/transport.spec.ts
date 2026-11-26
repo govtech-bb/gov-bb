@@ -150,3 +150,122 @@ it("sends document names and OCR references, never private attachment URLs, to t
   expect(JSON.stringify(payload.messages)).toContain("form.pdf");
   expect(payload.forwardedProps.attachments[0].reference).toBe("owned-job");
 });
+
+const chatContext = {
+  kind: "form" as const,
+  documentId: "d",
+  revision: "r",
+  mode: "edit" as const,
+  services: [],
+  document: {},
+  attachments: [],
+};
+
+it("leaves unfinished tool calls out of the request but keeps finished results", async () => {
+  const fetcher = vi.fn().mockResolvedValue(new Response());
+  vi.stubGlobal("fetch", fetcher);
+  const call = (id: string, state: string, extra = {}) => ({
+    type: "tool-call",
+    id,
+    name: "read_form",
+    arguments: "{}",
+    state,
+    ...extra,
+  });
+  await streamChat(
+    {
+      messages: [
+        { id: "u1", role: "user", parts: [{ type: "text", content: "One" }] },
+        {
+          id: "a1",
+          role: "assistant",
+          parts: [
+            call("answered", "input-complete", { output: { ok: true } }),
+            call("resulted", "input-complete"),
+            {
+              type: "tool-result",
+              toolCallId: "resulted",
+              content: "{}",
+              state: "complete",
+            },
+            call("approved", "approval-responded", {
+              approval: { id: "a", needsApproval: true, approved: true },
+            }),
+            call("starting", "awaiting-input"),
+            call("partial", "input-streaming", { arguments: '{"ref":"x' }),
+            call("unanswered", "input-complete"),
+          ],
+        },
+        {
+          id: "a2",
+          role: "assistant",
+          parts: [call("cut-off", "input-streaming")],
+        },
+        { id: "u2", role: "user", parts: [{ type: "text", content: "Two" }] },
+      ] as never,
+      threadId: "t",
+      runId: "r",
+    },
+    chatContext,
+    new AbortController().signal,
+  );
+  const { messages } = JSON.parse(fetcher.mock.calls[0][1].body);
+  const sent = JSON.stringify(messages);
+  for (const id of ["answered", "resulted", "approved"])
+    expect(sent).toContain(`"id":"${id}"`);
+  for (const id of ["starting", "partial", "unanswered", "cut-off"])
+    expect(sent).not.toContain(`"${id}"`);
+  expect(messages.map((message: { id: string }) => message.id)).not.toContain(
+    "a2",
+  );
+});
+
+it("sends a new prompt after a run that timed out during an edit without the old call", async () => {
+  vi.useRealTimers();
+  const { ChatClient } = await import("@tanstack/ai-client");
+  const sse = (...events: object[]) =>
+    new Response(
+      events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(""),
+      { headers: { "Content-Type": "text/event-stream" } },
+    );
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(
+      sse(
+        { type: "RUN_STARTED", threadId: "t", runId: "one" },
+        {
+          type: "TOOL_CALL_START",
+          toolCallId: "old-edit",
+          toolCallName: "apply_form_draft",
+        },
+        {
+          type: "TOOL_CALL_ARGS",
+          toolCallId: "old-edit",
+          delta:
+            '{"summary":"Rename","recipe":{"formId":"t","title":"Old","steps":[]}}',
+        },
+        { type: "TOOL_CALL_END", toolCallId: "old-edit" },
+        { type: "RUN_ERROR", message: "This step didn't finish. Retry?" },
+      ),
+    )
+    .mockResolvedValueOnce(
+      sse(
+        { type: "RUN_STARTED", threadId: "t", runId: "two" },
+        { type: "RUN_FINISHED", threadId: "t", runId: "two" },
+      ),
+    );
+  vi.stubGlobal("fetch", fetcher);
+  const client = new ChatClient({
+    threadId: "t",
+    fetcher: (input, { signal }) => streamChat(input, chatContext, signal),
+  });
+  await client.sendMessage("Rename this form");
+  expect(client.getError()?.message).toBe("This step didn't finish. Retry?");
+  await client.sendMessage("What is a form?");
+  const { messages } = JSON.parse(fetcher.mock.calls[1][1].body);
+  expect(JSON.stringify(messages)).not.toContain("old-edit");
+  expect(messages.at(-1)).toMatchObject({
+    role: "user",
+    content: "What is a form?",
+  });
+});

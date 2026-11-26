@@ -1123,7 +1123,8 @@ it("opens changes for a new proposal, respects closing through validation, and r
 });
 
 it("ends a pending tool call and offers a retry when the server run stops", async () => {
-  const view = render(<Assistant {...props} harness />);
+  const prepare = vi.fn();
+  const view = render(<Assistant {...props} harness prepare={prepare} />);
   await waitFor(() => expect(harness.options).toBeTruthy());
   await act(async () => {
     await harness.options.fetcher(
@@ -1158,7 +1159,7 @@ it("ends a pending tool call and offers a retry when the server run stops", asyn
     },
   ];
   harness.error = new Error("This step didn't finish. Retry?");
-  view.rerender(<Assistant {...props} harness />);
+  view.rerender(<Assistant {...props} harness prepare={prepare} />);
   expect(
     screen.queryByText("Changes will appear here after the draft check."),
   ).not.toBeInTheDocument();
@@ -1169,5 +1170,57 @@ it("ends a pending tool call and offers a retry when the server run stops", asyn
   expect(screen.getByRole("alert")).toHaveTextContent(
     "This step didn't finish. Retry?",
   );
+  expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+});
+
+it("treats a question from a stopped run as interrupted and frees the composer", async () => {
+  const prepare = vi.fn();
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  await act(async () => {
+    await harness.options.fetcher(
+      { messages: [], threadId: "t", runId: "r" },
+      { signal: new AbortController().signal },
+    );
+  });
+  harness.messages = [
+    { id: "u", role: "user", parts: [{ type: "text", content: "Help" }] },
+    {
+      id: "m",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-call",
+          id: "question",
+          name: "ask_questions",
+          state: "input-complete",
+          input: {
+            questions: [
+              {
+                question: "Who is this for?",
+                type: "radio",
+                options: ["Residents", "Businesses"],
+              },
+            ],
+          },
+        },
+      ],
+    },
+  ];
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  expect(screen.getByText("Send answers")).toBeInTheDocument();
+  expect(
+    screen.getByRole("textbox", { name: "Message the assistant" }),
+  ).toBeDisabled();
+  act(() => {
+    harness.options.onError(new Error("This step didn't finish. Retry?"));
+  });
+  harness.error = new Error("This step didn't finish. Retry?");
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  expect(screen.queryByText("Send answers")).not.toBeInTheDocument();
+  expect(screen.queryByText("Waiting for your input")).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("textbox", { name: "Message the assistant" }),
+  ).toBeEnabled();
   expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
 });
