@@ -42,6 +42,7 @@ const harness = vi.hoisted(() => ({
   options: null as any,
   interrupts: [] as any[],
   messages: [] as any[],
+  error: undefined as Error | undefined,
   addToolResult: vi.fn(async () => {}),
   stop: vi.fn(),
   calls: 0,
@@ -52,6 +53,7 @@ vi.mock("@tanstack/ai-react", () => ({
     return {
       messages: harness.messages,
       interrupts: harness.interrupts,
+      error: harness.error,
       addToolResult: harness.addToolResult,
       isLoading: false,
       resuming: false,
@@ -74,6 +76,7 @@ afterEach(() => {
 beforeEach(() => {
   harness.interrupts = [];
   harness.messages = [];
+  harness.error = undefined;
   harness.addToolResult.mockClear();
   harness.options = null;
   harness.stop.mockClear();
@@ -1117,4 +1120,57 @@ it("opens changes for a new proposal, respects closing through validation, and r
   expect(screen.getByRole("textbox", { name: "Message the assistant" })).toBe(
     input,
   );
+});
+
+it("ends a pending tool call and offers a retry when the server run stops", async () => {
+  const view = render(<Assistant {...props} harness />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  await act(async () => {
+    await harness.options.fetcher(
+      { messages: [], threadId: "t", runId: "r" },
+      { signal: new AbortController().signal },
+    );
+    harness.options.onChunk({
+      type: "TOOL_CALL_START",
+      toolCallId: "call",
+      toolName: "apply_form_draft",
+    });
+  });
+  expect(
+    await screen.findByText("Changes will appear here after the draft check."),
+  ).toBeInTheDocument();
+  act(() => {
+    harness.options.onChunk({
+      type: "RUN_ERROR",
+      message: "This step didn't finish. Retry?",
+    });
+  });
+  harness.messages = [
+    {
+      id: "reply",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-call",
+          id: "call",
+          name: "apply_form_draft",
+          arguments: '{"summary":"Ren',
+          state: "input-streaming",
+        },
+      ],
+    },
+  ];
+  harness.error = new Error("This step didn't finish. Retry?");
+  view.rerender(<Assistant {...props} harness />);
+  expect(
+    screen.queryByText("Changes will appear here after the draft check."),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText("Working on your draft")).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: /1 tool call/ }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "This step didn't finish. Retry?",
+  );
+  expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
 });

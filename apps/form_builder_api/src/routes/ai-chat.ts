@@ -88,7 +88,11 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
   const controller = new AbortController();
   const abort = () => controller.abort();
   res.on("close", abort);
-  const timeout = setTimeout(abort, 180000);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    abort();
+  }, 180000);
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   try {
     const documents = await Promise.all(
@@ -209,6 +213,13 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
             message: "The AI response was interrupted. Retry to continue.",
           };
       }
+      // The client is still listening after a time-out; end its run so no tool call stays pending.
+      if (timedOut)
+        yield {
+          type: EventType.RUN_ERROR,
+          timestamp: Date.now(),
+          message: "This step didn't finish. Retry?",
+        };
     }
     res.status(200).set({
       "Content-Type": "text/event-stream",
@@ -220,7 +231,8 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
       if (!res.writableNeedDrain) res.write(": heartbeat\n\n");
     }, 15000);
     await pipeline(
-      Readable.fromWeb(toServerSentEventsStream(safeStream(), controller)),
+      // No controller here: it would drop the time-out RUN_ERROR. A disconnect still aborts via "close".
+      Readable.fromWeb(toServerSentEventsStream(safeStream())),
       res,
     );
   } catch (error) {

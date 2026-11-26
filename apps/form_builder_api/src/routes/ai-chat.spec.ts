@@ -519,3 +519,95 @@ it("hides provider and document failures from the browser", async () => {
   expect(document.body.error).toContain("Retry");
   expect(document.text).not.toContain("private-document-details");
 });
+
+it("ends the run with RUN_ERROR when the server times out during a tool call", async () => {
+  const { ChatClient } = await import("@tanstack/ai-client");
+  const { toolDefinition, uiMessagesToWire } = await import("@tanstack/ai");
+  const { proposeFormTool } = await import("@govtech-bb/form-builder");
+  const realSetTimeout = globalThis.setTimeout;
+  let timeOut: (() => void) | undefined;
+  vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+    callback: () => void,
+    ms?: number,
+  ) => {
+    if (ms !== 180000) return realSetTimeout(callback, ms);
+    timeOut = callback;
+    return realSetTimeout(() => {}, 0);
+  }) as typeof setTimeout);
+  vi.spyOn(BedrockRuntimeClient.prototype, "send").mockImplementation(
+    (_command: unknown, options: unknown) => {
+      const signal = (options as { abortSignal: AbortSignal }).abortSignal;
+      return Promise.resolve({
+        stream: (async function* () {
+          yield { messageStart: { role: "assistant" } };
+          yield {
+            contentBlockStart: {
+              contentBlockIndex: 0,
+              start: {
+                toolUse: { toolUseId: "slow-call", name: "apply_form_draft" },
+              },
+            },
+          };
+          yield {
+            contentBlockDelta: {
+              contentBlockIndex: 0,
+              delta: { toolUse: { input: '{"summary":"Ren' } },
+            },
+          };
+          timeOut?.();
+          await new Promise<void>((resolve) => {
+            if (signal.aborted) resolve();
+            else signal.addEventListener("abort", () => resolve());
+          });
+          throw new DOMException("Request aborted", "AbortError");
+        })(),
+      });
+    },
+  );
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const port = (server.address() as { port: number }).port;
+  const chunks: string[] = [];
+  const client = new ChatClient({
+    threadId: "timeout-test",
+    tools: [toolDefinition(proposeFormTool).client(() => ({ applied: true }))],
+    onChunk: (chunk) => chunks.push(chunk.type),
+    fetcher: (input, { signal }) =>
+      fetch("http://127.0.0.1:" + port + "/chat", {
+        method: "POST",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          Origin: origin,
+          Authorization: "Bearer " + token(),
+        },
+        body: JSON.stringify({
+          ...input,
+          messages: uiMessagesToWire(input.messages),
+          context: [],
+          state: {},
+          tools: [],
+          forwardedProps: context,
+        }),
+      }),
+  });
+  try {
+    await client.sendMessage("Rename this form");
+    // Before the fix the stream closed with no terminal event, so the client
+    // made up a successful RUN_FINISHED and the tool call was left pending.
+    expect(chunks).toEqual([
+      "RUN_STARTED",
+      "TOOL_CALL_START",
+      "TOOL_CALL_ARGS",
+      "RUN_ERROR",
+    ]);
+    expect(client.getIsLoading()).toBe(false);
+    expect(client.getStatus()).toBe("error");
+    expect(client.getError()?.message).toBe("This step didn't finish. Retry?");
+    expect(client.getInterrupts()).toEqual([]);
+  } finally {
+    client.stop();
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
