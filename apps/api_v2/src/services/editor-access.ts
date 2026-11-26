@@ -5,9 +5,9 @@ import {
   type EmployeeView,
   type Forbidden,
   type Identity,
-  type Role,
   type UserNotFound,
 } from "../modules/auth";
+import type { Role } from "../modules/permissions";
 import type { ContentStoreUnavailable } from "../modules/page";
 import type { Redacted } from "../modules/redacted";
 import { err, ok, type Result } from "../modules/result";

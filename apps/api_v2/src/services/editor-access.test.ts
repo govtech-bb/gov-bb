@@ -4,8 +4,8 @@ import {
   Forbidden,
   Unauthenticated,
   UserId,
-  type Role,
 } from "../modules/auth";
+import type { Role } from "../modules/permissions";
 import { ContentStoreUnavailable } from "../modules/page";
 import { Redacted } from "../modules/redacted";
 import { err, ok } from "../modules/result";
