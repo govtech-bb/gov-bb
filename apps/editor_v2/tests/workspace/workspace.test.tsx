@@ -895,7 +895,13 @@ test("menu and bar links keep the focus as the screen changes and the menu folds
 
 describe("Your access", () => {
   const meWith = (roles: readonly string[]) => async () =>
-    Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
+    Response.json({
+      id: "me",
+      email: "author@govtech.bb",
+      name: "Author",
+      roles,
+      permissions: permissionsOf(roles),
+    });
 
   const trigger = () =>
     [...document.querySelectorAll<HTMLButtonElement>("header button")].find((button) =>

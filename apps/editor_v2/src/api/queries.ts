@@ -78,19 +78,21 @@ export const categoriesQuery = (api: EditorApi) =>
   });
 
 /**
- * The signed-in employee, in the one read their permissions and their id share. An answer without a list of
+ * The signed-in employee, in the one read their roles, permissions and id share. An answer without a list of roles or
  * permissions holds none, and one without an id gives null.
  */
 export const meQuery = (api: Pick<EditorApi, "me">) =>
   queryOptions({
     queryKey: ["me"],
     queryFn: async (): Promise<{
+      readonly roles: readonly string[];
       readonly permissions: readonly string[];
       readonly id: string | null;
     }> => {
       const me: unknown = await api.me();
 
       return {
+        roles: me instanceof Object && "roles" in me && Array.isArray(me.roles) ? me.roles : [],
         permissions:
           me instanceof Object && "permissions" in me && Array.isArray(me.permissions)
             ? me.permissions
@@ -106,6 +108,10 @@ export const meQuery = (api: Pick<EditorApi, "me">) =>
  */
 export const permissionsQuery = (api: Pick<EditorApi, "me">) =>
   queryOptions({ ...meQuery(api), select: (me) => me.permissions });
+
+/** The signed-in employee's roles, which "Your access" names; what the editor offers turns on permissions, never on these. */
+export const rolesQuery = (api: Pick<EditorApi, "me">) =>
+  queryOptions({ ...meQuery(api), select: (me) => me.roles });
 
 /** A role and what it lets a person do, worded by the API. */
 export interface RoleDescription {
