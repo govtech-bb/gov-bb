@@ -25,7 +25,7 @@ const ALLOWED = {
 } as const satisfies Record<Permission, readonly Role[]>;
 
 const EVERY_PERMISSION = Object.keys(ALLOWED).filter(
-  (name): name is Permission => name in ALLOWED,
+  (name): name is Permission => Object.hasOwn(ALLOWED, name),
 );
 
 /** Every set of roles, from none to all. */
@@ -150,5 +150,21 @@ describe("authorize", () => {
       actor: employee.id,
       permission: "pages:edit",
     } as const).not.toExtend<Grant<"pages:edit">>();
+  });
+
+  it("doesn't compile a copy of a grant with another permission or actor", () => {
+    const grant = expectOk(authorize(actor(["editor"]), "pages:edit"));
+
+    // @ts-expect-error: a copy doesn't carry the grant's private member.
+    const otherPermission: Grant<"pages:publish"> = {
+      ...grant,
+      permission: "pages:publish",
+    };
+    // @ts-expect-error: a copy doesn't carry the grant's private member.
+    const otherActor: Grant<"pages:edit"> = {
+      ...grant,
+      actor: UserId.parse("someone-else"),
+    };
+    expect([otherPermission, otherActor]).toHaveLength(2);
   });
 });

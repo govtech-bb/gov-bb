@@ -17,6 +17,19 @@ import type { RoleRecords } from "../services/editor-access";
 /** Drizzle wraps the driver's error, so the SQLSTATE is on the cause. */
 const missingUser = z.object({ cause: z.object({ code: z.literal("23503") }) });
 
+/** Stored role names this build knows; a role a later release added is left out. */
+function knownRoles(names: readonly string[]): Role[] {
+  return names.flatMap((name) => {
+    const role = Role.safeParse(name);
+    return role.success ? [role.data] : [];
+  });
+}
+
+/** An employee as stored, with only the roles this build knows. */
+const storedEmployee = EmployeeView.extend({
+  roles: z.array(z.string()).transform(knownRoles),
+});
+
 async function attempt<T>(
   operation: string,
   run: () => Promise<T>,
@@ -44,14 +57,7 @@ export class PostgresRoles implements RoleRecords {
         .where(eq(userRoles.userId, userId))
         .orderBy(userRoles.role),
     );
-    return rows.ok
-      ? ok(
-          rows.value.flatMap((row) => {
-            const role = Role.safeParse(row.role);
-            return role.success ? [role.data] : [];
-          }),
-        )
-      : rows;
+    return rows.ok ? ok(knownRoles(rows.value.map((row) => row.role))) : rows;
   }
 
   /** Grant a role; one already held keeps its first grantor. */
@@ -88,7 +94,7 @@ export class PostgresRoles implements RoleRecords {
     return deleted.ok ? ok(undefined) : deleted;
   }
 
-  /** Everyone who has signed in, with their roles, by email. */
+  /** Everyone who has signed in, with the roles this build knows, by email. */
   async employees(): Promise<Result<EmployeeView[], ContentStoreUnavailable>> {
     const rows = await attempt("employees", () =>
       this.db.execute(sql`
@@ -105,6 +111,6 @@ export class PostgresRoles implements RoleRecords {
         -- Byte order, so the list reads the same whatever the database's locale.
         order by u.email collate "C"`),
     );
-    return rows.ok ? ok(z.array(EmployeeView).parse(rows.value.rows)) : rows;
+    return rows.ok ? ok(z.array(storedEmployee).parse(rows.value.rows)) : rows;
   }
 }

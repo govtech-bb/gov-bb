@@ -35,7 +35,8 @@ const ROLE_PERMISSIONS = {
 /** A role, as `user_roles` stores it. */
 export type Role = keyof typeof ROLE_PERMISSIONS;
 
-const isRole = (name: string): name is Role => name in ROLE_PERMISSIONS;
+const isRole = (name: string): name is Role =>
+  Object.hasOwn(ROLE_PERMISSIONS, name);
 
 /**
  * Every role, in table order. The database check and the API's role list
@@ -50,7 +51,8 @@ export const Role = z.enum(ROLES);
 /** A permission that at least one role holds. */
 type HeldPermission = (typeof ROLE_PERMISSIONS)[Role][number];
 
-const isPermission = (name: string): name is Permission => name in PERMISSIONS;
+const isPermission = (name: string): name is Permission =>
+  Object.hasOwn(PERMISSIONS, name);
 
 /**
  * Every permission, in the order PERMISSIONS lists them. Typed as held, so a
@@ -109,18 +111,23 @@ export class PermissionDenied extends Error {
   }
 }
 
-const granted: unique symbol = Symbol("granted");
+// Not exported, so only `authorize` can construct one. The private member
+// stops an object literal, or a spread copy of a real grant with another
+// permission or actor, from passing for one.
+class Granted<P extends Permission> {
+  declare private readonly granted: true;
+
+  constructor(
+    readonly actor: UserId,
+    readonly permission: P,
+  ) {}
+}
 
 /**
  * Proof that `authorize` allowed an employee to use a permission. Only
  * `authorize` can make one.
  */
-export interface Grant<P extends Permission = Permission> {
-  readonly actor: UserId;
-  readonly permission: P;
-  /** Marks a grant `authorize` made; nothing outside this file can set it. */
-  readonly [granted]: true;
-}
+export type Grant<P extends Permission = Permission> = Granted<P>;
 
 /**
  * Decide whether an employee may use a permission. Call it before any write.
@@ -134,6 +141,6 @@ export function authorize<P extends Permission>(
   options: { readonly to?: string } = {},
 ): Result<Grant<P>, PermissionDenied> {
   return permissionsOf(actor.roles).includes(permission)
-    ? ok({ actor: actor.id, permission, [granted]: true })
+    ? ok(new Granted(actor.id, permission))
     : err(new PermissionDenied(permission, options.to));
 }
