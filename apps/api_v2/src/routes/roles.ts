@@ -2,9 +2,11 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type {
   DefaultRoleChange,
+  EmailNotAllowed,
   Employee,
   OwnRoleChange,
   UserNotFound,
+  WaitingRoleNotFound,
 } from "../modules/auth";
 import type { ContentStoreUnavailable } from "../modules/page";
 import type { PermissionDenied } from "../modules/permissions";
@@ -18,7 +20,9 @@ function peopleRefused(
     | PermissionDenied
     | DefaultRoleChange
     | OwnRoleChange
+    | EmailNotAllowed
     | UserNotFound
+    | WaitingRoleNotFound
     | ContentStoreUnavailable,
   request: FastifyRequest,
   reply: FastifyReply,
@@ -30,7 +34,12 @@ function peopleRefused(
       return reply
         .status(403)
         .send({ error: "forbidden", message: error.message });
+    case "EmailNotAllowed":
+      return reply
+        .status(400)
+        .send({ error: "email_not_allowed", message: error.message });
     case "UserNotFound":
+    case "WaitingRoleNotFound":
       return reply
         .status(404)
         .send({ error: "not_found", message: error.message });
@@ -58,7 +67,10 @@ export const editorRoleRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const listed = await people.list(actor(request));
       return listed.ok
-        ? { employees: listed.value }
+        ? {
+            employees: listed.value.employees,
+            waiting: listed.value.waiting,
+          }
         : peopleRefused(listed.error, request, reply);
     },
   });
@@ -84,6 +96,30 @@ export const editorRoleRoutes: FastifyPluginAsyncZod<{
       return revoked.ok
         ? reply.status(204).send()
         : peopleRefused(revoked.error, request, reply);
+    },
+  });
+  // The email in the body, not the address: request lines are logged
+  admin.route({
+    method: "POST",
+    url: "/editor/waiting-roles",
+    schema: SCHEMAS.giveWaitingRole,
+    handler: async (request, reply) => {
+      const { email, role } = request.body;
+      const given = await people.giveByEmail(email, role, actor(request));
+      return given.ok
+        ? reply.status(201).send(given.value)
+        : peopleRefused(given.error, request, reply);
+    },
+  });
+  admin.route({
+    method: "DELETE",
+    url: "/editor/waiting-roles/:id",
+    schema: SCHEMAS.takeWaitingRole,
+    handler: async (request, reply) => {
+      const taken = await people.takeWaiting(request.params.id, actor(request));
+      return taken.ok
+        ? reply.status(204).send()
+        : peopleRefused(taken.error, request, reply);
     },
   });
 };

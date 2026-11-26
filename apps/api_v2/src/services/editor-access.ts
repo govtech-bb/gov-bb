@@ -25,6 +25,11 @@ export interface RoleRecords {
   rolesOf(
     userId: string,
   ): Promise<Result<GrantableRole[], ContentStoreUnavailable>>;
+  /** Move the roles given to this email before its first sign-in to the user; none waiting is not an error. */
+  claimWaiting(
+    userId: string,
+    email: string,
+  ): Promise<Result<void, ContentStoreUnavailable>>;
   /** Grant a role, recording who granted it (null for api_v2 itself); holding it already is not an error. */
   grant(
     userId: string,
@@ -67,6 +72,12 @@ export class EditorAccess implements EmployeeGate {
     if (!session.ok) return session;
     const identity = session.value;
     if (identity === null) return err(new Unauthenticated());
+    // Roles an admin gave this address before its first sign-in become theirs
+    const claimed = await this.roles.claimWaiting(identity.id, identity.email);
+    if (!claimed.ok)
+      return err(
+        new AuthUnavailable({ lookup: "roles", operation: "claimWaiting" }),
+      );
     const roles = await this.roles.rolesOf(identity.id);
     if (!roles.ok)
       return err(

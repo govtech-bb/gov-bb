@@ -7,11 +7,11 @@
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Database } from "../db";
-import { EmployeeView, UserNotFound } from "../modules/auth";
+import { EmployeeView, UserNotFound, WaitingRoleView } from "../modules/auth";
 import { GrantableRole, type Grant } from "../modules/permissions";
 import { ContentStoreUnavailable } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
-import { userRoles } from "../schema";
+import { userRoles, waitingRoles } from "../schema";
 import type { RoleRecords } from "../services/editor-access";
 import type { PeopleRecords } from "../services/people";
 import { transactAs } from "./postgres-transaction";
@@ -26,6 +26,13 @@ function knownRoles(names: readonly string[]): GrantableRole[] {
     return role.success ? [role.data] : [];
   });
 }
+
+/** A waiting role's columns, as WaitingRoleView reads them. */
+const waitingRole = {
+  id: waitingRoles.id,
+  email: waitingRoles.email,
+  role: waitingRoles.role,
+};
 
 /** An employee as stored, with only the roles this build knows. */
 const storedEmployee = EmployeeView.extend({
@@ -109,6 +116,78 @@ export class PostgresRoles implements RoleRecords, PeopleRecords {
         .where(and(eq(userRoles.userId, userId), eq(userRoles.role, role))),
     );
     return deleted.ok ? ok(undefined) : deleted;
+  }
+
+  /**
+   * Move the roles waiting for this email to the user, in one statement: the
+   * delete hands each waiting row to one request only, and user_roles' key
+   * keeps a role the user holds already from being granted twice.
+   */
+  async claimWaiting(
+    userId: string,
+    email: string,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    const claimed = await attempt("claimWaiting", () =>
+      this.db.execute(sql`
+        with claimed as (
+          delete from waiting_roles where email = ${email}
+          returning role, granted_by, granted_at
+        )
+        insert into user_roles (user_id, role, granted_by, granted_at)
+        select ${userId}, role, granted_by, granted_at from claimed
+        on conflict do nothing`),
+    );
+    return claimed.ok ? ok(undefined) : claimed;
+  }
+
+  /** Roles given by email to people who haven't signed in yet, by email, leaving out a role this build doesn't know. */
+  async waiting(): Promise<Result<WaitingRoleView[], ContentStoreUnavailable>> {
+    const rows = await attempt("waiting", () =>
+      this.db
+        .select(waitingRole)
+        .from(waitingRoles)
+        .orderBy(sql`${waitingRoles.email} collate "C"`, waitingRoles.role),
+    );
+    return rows.ok
+      ? ok(
+          rows.value.flatMap((row) => {
+            const known = WaitingRoleView.safeParse(row);
+            return known.success ? [known.data] : [];
+          }),
+        )
+      : rows;
+  }
+
+  /** Keep a role for an email until its first sign-in; one already waiting keeps its first giver. */
+  async addWaiting(
+    email: string,
+    role: GrantableRole,
+    grantedBy: string,
+  ): Promise<Result<WaitingRoleView, ContentStoreUnavailable>> {
+    const rows = await attempt("addWaiting", async () => {
+      await this.db
+        .insert(waitingRoles)
+        .values({ email, role, grantedBy })
+        .onConflictDoNothing();
+      return this.db
+        .select(waitingRole)
+        .from(waitingRoles)
+        .where(and(eq(waitingRoles.email, email), eq(waitingRoles.role, role)));
+    });
+    return rows.ok ? ok(WaitingRoleView.parse(rows.value[0])) : rows;
+  }
+
+  /** Take a waiting role away; false when it wasn't there. */
+  async removeWaiting(
+    id: string,
+  ): Promise<Result<boolean, ContentStoreUnavailable>> {
+    const removed = await attempt("removeWaiting", () =>
+      this.db
+        .delete(waitingRoles)
+        .where(eq(waitingRoles.id, id))
+        .returning({ id: waitingRoles.id }),
+    );
+    return removed.ok ? ok(removed.value.length > 0) : removed;
   }
 
   /** Everyone who has signed in, with the roles this build knows, by email. */

@@ -72,7 +72,7 @@ Signing in decides who is an employee; roles decide what they can do (ADR 0134).
 - `reader` reads all the content. Every signed-in employee holds it without a row in `user_roles`, and nobody can grant or revoke it (ADR 0134, amended for #3697).
 - `editor` writes: creating, saving and deleting pages. A new user holds only `reader` at their first sign-in: they can read the editor but not write until an admin grants `editor` (ADR 0134, amended for #3412). Under GitHub sign-in api_v2 granted it by default, and migration `009_default_editor_role` granted it once to everyone who had signed in before; those grants stay.
 - `approver` changes what citizens see: changing a page's `visibility`, deleting a `public` page, adding, moving, renaming or deleting a hidden `start` sub-page of a `public` page (it decides whether that page's Start link shows), rejecting or publishing a pending revision, and creating, editing, reordering and deleting categories, so landing shows only category changes an approver made (#3201). These are direct actions, with no request waiting for a second approver, except that an approver can't make public content they changed (see Making a page public). An editor who isn't an approver can make every other edit, and submit a revision for review.
-- `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. An admin or an approver creates data collections (`POST /collections`, #3681). A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin` and `editor`, with no grantor, if they lack them, so a listed admin can write as well as grant roles; an admin cannot revoke a listed admin's roles for good.
+- `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. An admin can also give a role by email to someone who hasn't signed in yet (`/editor/waiting-roles…`, body `{ email, role }`, on an allowed sign-in domain): it waits in `waiting_roles` and becomes theirs with their first request, when the session check moves it to `user_roles`. An admin or an approver creates data collections (`POST /collections`, #3681). A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin` and `editor`, with no grantor, if they lack them, so a listed admin can write as well as grant roles; an admin cannot revoke a listed admin's roles for good.
 
 What each role lets a person do is one table, `ROLE_PERMISSIONS` in `src/modules/permissions.ts`, the only place that ties a role to a permission. The editor scope's `onRequest` hook only says who is asking. Each service decides what they may do: it calls `authorize(actor, permission)` before it reads or writes, and a store opens a write transaction only with the grant that check returns, so a write that skips its check doesn't compile. A refusal is a 403 `{error: "forbidden", message}`, whose message names what was refused and the roles that allow it, and the database is unchanged. Reads stay open to every signed-in employee, except the list of people, which needs `people:read`. `src/route-auth.test.ts` sends a valid request to every write route as an employee who holds only `reader`, and fails if any of them writes. Fastify checks a request's shape before the service runs, so someone without the permission who sends a malformed request gets a 400, not a 403; nothing is read or written either way.
 
@@ -296,6 +296,13 @@ erDiagram
     text user_id PK, FK
     text role PK
     text granted_by "nullable"
+    timestamptz(3) granted_at
+  }
+  waiting_roles {
+    uuid id PK
+    text email "unique (email, role)"
+    text role
+    text granted_by
     timestamptz(3) granted_at
   }
   auth_user ||--o{ auth_account : "userId -> id"

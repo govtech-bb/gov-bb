@@ -172,7 +172,7 @@ async function main(): Promise<void> {
       categories: new CategoryEditing(pages),
       collections: new CollectionEditing(new PostgresCollections(db)),
       access,
-      people: new People(roles),
+      people: new People(roles, config.auth.allowedDomains),
       auth,
       config: {
         apiOrigin: config.auth.apiOrigin,

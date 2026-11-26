@@ -255,7 +255,7 @@ export async function createTestApp(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
       roles,
     ),
-    people: new People(roles),
+    people: new People(roles, ["govtech.bb"]),
     auth: options.auth ?? {
       handle: async () =>
         Response.json({ error: "test_auth_not_configured" }, { status: 404 }),

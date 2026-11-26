@@ -16,7 +16,7 @@ import {
   CategoryNode,
   SearchDocument,
 } from "../modules/navigation";
-import { EmployeeView } from "../modules/auth";
+import { EmployeeView, WaitingRoleView } from "../modules/auth";
 import { Permission, Role, RoleDescription } from "../modules/permissions";
 import {
   EditorPage,
@@ -820,11 +820,16 @@ export const SCHEMAS = {
 
   listEmployees: {
     summary: "Everyone who has signed in, with their roles",
-    description: "Needs the admin role (403 otherwise).",
+    description:
+      "Needs the admin role (403 otherwise). `waiting` lists the roles " +
+      "given by email to people who haven't signed in yet.",
     tags: ["admin"],
     security: editorSecurity,
     response: {
-      200: z.object({ employees: z.array(EmployeeView) }),
+      200: z.object({
+        employees: z.array(EmployeeView),
+        waiting: z.array(WaitingRoleView),
+      }),
       500: error,
       ...authErrors,
     },
@@ -858,6 +863,29 @@ export const SCHEMAS = {
     security: editorSecurity,
     params: roleParams,
     response: { 204: z.undefined(), 400: error, 500: error, ...authErrors },
+  },
+  giveWaitingRole: {
+    summary: "Give a role by email, to someone who may not have signed in yet",
+    description:
+      "Needs the admin role (403 otherwise). The role becomes theirs with " +
+      "their next request, or their first once they sign in. A role already waiting for " +
+      "that address is left as it was. 403, with the reason, for `reader`; " +
+      "400, with the reason, for an address on a domain that can't sign in.",
+    tags: ["admin"],
+    security: editorSecurity,
+    body: z.object({ email: z.email(), role: Role }),
+    response: { 201: WaitingRoleView, 400: error, 500: error, ...authErrors },
+  },
+  takeWaitingRole: {
+    summary:
+      "Take away a role given by email that hasn't reached its person yet",
+    description:
+      "Needs the admin role (403 otherwise). 404 when it isn't waiting any " +
+      "more: taken away already, or moved by its person's first sign-in.",
+    tags: ["admin"],
+    security: editorSecurity,
+    params: z.object({ id: z.guid() }),
+    response: { 204: z.undefined(), 404: error, 500: error, ...authErrors },
   },
 
   version: {

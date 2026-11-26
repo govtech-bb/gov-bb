@@ -436,6 +436,7 @@ describe("role management", () => {
           roles: ["reader", "admin", "approver", "editor"],
         },
       ],
+      waiting: [],
     });
   });
 
@@ -573,7 +574,7 @@ describe("a role store that fails", () => {
         .find((line) => line.msg === "session lookup failed");
       expect(failure).toMatchObject({
         failure: "role_store_unavailable",
-        operation: "rolesOf",
+        operation: "claimWaiting",
       });
       // The driver's message names the table; it never reaches the log.
       expect(logs.join("\n")).not.toContain("user_roles");
@@ -787,5 +788,56 @@ describe("the pages:edit and pages:publish checks", () => {
     assert(!asBoth.ok);
     expect(asBoth.error).toBeInstanceOf(SelfApproval);
     expect(expectOk(await services.index.version()).count).toBe(0);
+  });
+});
+
+describe("a role given by email", () => {
+  it("waits in the list until taken away, refuses an address that can't sign in, and logs no address", async () => {
+    const logs: string[] = [];
+    const logged = await createTestApp(db, {
+      logger: pino({ level: "info" }, { write: (line) => logs.push(line) }),
+    });
+    try {
+      const as = (options: Parameters<typeof requestAs>[2]) =>
+        requestAs(logged, TEST_EMPLOYEE, options);
+
+      const given = await as({
+        method: "POST",
+        url: "/editor/waiting-roles",
+        payload: { email: "newcomer@govtech.bb", role: "editor" },
+      });
+      const elsewhere = await as({
+        method: "POST",
+        url: "/editor/waiting-roles",
+        payload: { email: "someone@example.com", role: "editor" },
+      });
+      const listed = await as({ url: "/editor/employees" });
+
+      expect(given.statusCode).toBe(201);
+      expect(given.json()).toEqual({
+        id: expect.any(String),
+        email: "newcomer@govtech.bb",
+        role: "editor",
+      });
+      expect(elsewhere.statusCode).toBe(400);
+      expect(elsewhere.json()).toEqual({
+        error: "email_not_allowed",
+        message:
+          "Give a role only to an address on govtech.bb, which can sign in.",
+      });
+      expect(listed.json().waiting).toEqual([given.json()]);
+
+      const url = `/editor/waiting-roles/${given.json().id}`;
+      expect((await as({ method: "DELETE", url })).statusCode).toBe(204);
+      expect((await as({ method: "DELETE", url })).statusCode).toBe(404);
+      expect((await as({ url: "/editor/employees" })).json().waiting).toEqual(
+        [],
+      );
+      // Personal data: request lines carry no body, and no message repeats it
+      expect(logs.join("\n")).not.toContain("newcomer@govtech.bb");
+      expect(logs.join("\n")).not.toContain("someone@example.com");
+    } finally {
+      await logged.close();
+    }
   });
 });
