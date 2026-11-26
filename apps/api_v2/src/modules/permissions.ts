@@ -111,6 +111,12 @@ export const RoleDescription = z.object({
       "One phrase for each permission the role holds, in table order. " +
         'Each completes "This role lets you …".',
     ),
+  everyone: z
+    .boolean()
+    .describe(
+      "Every signed-in employee holds it, without being given it, and " +
+        "nobody can give it or take it away.",
+    ),
 });
 
 /** A role and what it lets a person do, worded for the person. */
@@ -121,6 +127,7 @@ export function roleCatalogue(): readonly RoleDescription[] {
   return ROLES.map((role) => ({
     role,
     lets: ROLE_PERMISSIONS[role].map((permission) => PERMISSIONS[permission]),
+    everyone: role === DEFAULT_ROLE,
   }));
 }
 

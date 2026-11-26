@@ -91,13 +91,14 @@ describe("the permissions table", () => {
 
   it("describes each role in words", () => {
     expect(roleCatalogue()).toEqual([
-      { role: "reader", lets: ["read all the content"] },
+      { role: "reader", lets: ["read all the content"], everyone: true },
       {
         role: "editor",
         lets: [
           "create, change and delete pages, restore an earlier version, and submit a change for review",
           "add, change and delete collection records",
         ],
+        everyone: false,
       },
       {
         role: "approver",
@@ -106,6 +107,7 @@ describe("the permissions table", () => {
           "add, change, move and delete categories",
           "create a collection",
         ],
+        everyone: false,
       },
       {
         role: "admin",
@@ -114,6 +116,7 @@ describe("the permissions table", () => {
           "give and take away roles",
           "create a collection",
         ],
+        everyone: false,
       },
     ]);
   });
