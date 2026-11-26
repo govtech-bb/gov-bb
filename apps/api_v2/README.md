@@ -69,11 +69,12 @@ BetterAuth has four core tables: `auth_user`, `auth_session`, `auth_account`, an
 
 Signing in decides who is an employee; roles decide what they can do (ADR 0134). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
 
-- `editor` writes: creating, saving and deleting pages. A new user has no role at their first sign-in: they can read the editor but not write until an admin grants `editor` (ADR 0134, amended for #3412). Under GitHub sign-in api_v2 granted it by default, and migration `009_default_editor_role` granted it once to everyone who had signed in before; those grants stay.
+- `reader` reads all the content. Every signed-in employee holds it without a row in `user_roles`, and nobody can grant or revoke it (ADR 0134, amended for #3697).
+- `editor` writes: creating, saving and deleting pages. A new user holds only `reader` at their first sign-in: they can read the editor but not write until an admin grants `editor` (ADR 0134, amended for #3412). Under GitHub sign-in api_v2 granted it by default, and migration `009_default_editor_role` granted it once to everyone who had signed in before; those grants stay.
 - `approver` changes what citizens see: changing a page's `visibility`, deleting a `public` page, adding, moving, renaming or deleting a hidden `start` sub-page of a `public` page (it decides whether that page's Start link shows), rejecting or publishing a pending revision, and creating, editing, reordering and deleting categories, so landing shows only category changes an approver made (#3201). These are direct actions, with no request waiting for a second approver, except that an approver can't make public content they changed (see Making a page public). An editor who isn't an approver can make every other edit, and submit a revision for review.
 - `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. An admin or an approver creates data collections (`POST /collections`, #3681). A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin` and `editor`, with no grantor, if they lack them, so a listed admin can write as well as grant roles; an admin cannot revoke a listed admin's roles for good.
 
-A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`, or `"approver"` for publishing and rejecting revisions and for every category write), or several roles any one of which will do (`["admin", "approver"]` for creating a collection, whose 403 names both), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one. That test also fails when a route that changes what citizens see names neither `approver` nor is one of the page writes (`POST`, `PUT` and `DELETE /pages…`) whose approver check sits in `PageEditing`, because only some of their writes need one.
+What each role lets a person do is one table, `ROLE_PERMISSIONS` in `src/modules/permissions.ts`, the only place that ties a role to a permission. The editor scope's `onRequest` hook only says who is asking. Each service decides what they may do: it calls `authorize(actor, permission)` before it reads or writes, and a store opens a write transaction only with the grant that check returns, so a write that skips its check doesn't compile. A refusal is a 403 `{error: "forbidden", message}`, whose message names what was refused and the roles that allow it, and the database is unchanged. Reads stay open to every signed-in employee, except the list of people, which needs `people:read`. `src/route-auth.test.ts` sends a valid request to every write route as an employee who holds only `reader`, and fails if any of them writes. Fastify checks a request's shape before the service runs, so someone without the permission who sends a malformed request gets a 400, not a 403; nothing is read or written either way.
 
 ### Making a page public
 
@@ -81,7 +82,7 @@ Making a page public approves its content, so the self-approval rule (ADR 0134) 
 
 Unpublishing a page and deleting a `public` page stay direct approver actions: they take content away from citizens rather than show them unreviewed content. Deleting a Preview or Draft page needs only the editor role (#3187), unless it is a `start` sub-page of a `public` page: that is an approver's, because removing it can show the page's Start link.
 
-Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
+Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee, their roles and their permissions; the editor decides what to offer from the permissions. `GET /editor/roles` describes every role in words.
 
 ### Write preconditions and cutover
 
@@ -92,7 +93,7 @@ review commands send `expected_version` in JSON. Page/category/record DELETEs
 send it as a canonical decimal query value. Category reorder and record writes
 use the additional baselines documented below.
 
-Authentication, Origin and role checks still run first. Missing or malformed
+Authentication and Origin checks still run first. Missing or malformed
 versions return 400, without looking up the target. With valid input, missing targets return 404 and stale versions return
 409 `version_conflict`, including stale no-ops. Business conflicts such as
 `under_review`, `not_submitted`, `record_exists` and `category_in_use` retain

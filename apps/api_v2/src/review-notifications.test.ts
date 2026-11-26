@@ -290,10 +290,13 @@ describe("who hears of a review step", () => {
     sent = [];
 
     // The submitter can't decide on their own change.
+    const version = (
+      await as(TEST_EDITOR, { url: `/pages/${page.id}/revision` })
+    ).json().version;
     const own = await as(TEST_EDITOR, {
       method: "POST",
       url: `/pages/${page.id}/revision/reject`,
-      payload: { comment: "No" },
+      payload: { comment: "No", expected_version: version },
     });
 
     expect(own.statusCode).toBe(403);

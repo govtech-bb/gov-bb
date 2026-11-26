@@ -273,7 +273,8 @@ describe("an editor", () => {
       expect(response.statusCode, step).toBe(403);
       expect(response.json(), step).toEqual({
         error: "forbidden",
-        message: "You need the approver role to do this.",
+        message:
+          "You don't have permission to publish or reject a change. Ask an admin for the approver role.",
       });
     }
     expect(await publicResponses()).toEqual(before);

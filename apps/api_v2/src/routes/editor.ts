@@ -6,7 +6,6 @@ import type { Employee, SelfApproval } from "../modules/auth";
 import {
   permissionsOf,
   roleCatalogue,
-  type GrantableRole,
   type PermissionDenied,
 } from "../modules/permissions";
 import type {
@@ -27,25 +26,6 @@ import { editorCollectionRoutes } from "./collections";
 import { SCHEMAS } from "./contracts";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
 import { editorRoleRoutes } from "./roles";
-
-declare module "fastify" {
-  interface FastifyContextConfig {
-    /**
-     * The role a route needs (ADR 0134), or the roles any one of which will
-     * do (#3681). Every write route names at least one, and a read may; the
-     * editor scope refuses a write that names none, so a new route fails
-     * closed rather than open.
-     */
-    role?: GrantableRole | readonly [GrantableRole, ...GrantableRole[]];
-  }
-}
-
-/** Why an employee without the role a route needs is refused. */
-const NEEDS_ROLE: Readonly<Record<GrantableRole, string>> = {
-  editor: "You need the editor role to make changes. Ask an admin to grant it.",
-  approver: "You need the approver role to do this.",
-  admin: "Only admins can see or change who has which role.",
-};
 
 /** Why a page write or review step was refused, as its response. */
 function pageRefused(
@@ -143,27 +123,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     ) {
       return reply.status(403).send({ error: "forbidden" });
     }
-    const { role } = request.routeOptions.config;
-    const needed: readonly GrantableRole[] =
-      role === undefined ? [] : [role].flat();
-    // Fail closed: a write route that names no role is a bug, which
-    // route-auth.test.ts catches before it ships.
-    if (needed.length === 0 && !["GET", "HEAD"].includes(request.method))
-      return reply.status(403).send({
-        error: "forbidden",
-        message: "Nobody can make this change: its route names no role.",
-      });
-    if (
-      needed.length > 0 &&
-      !needed.some((one) => employee.value.roles.includes(one))
-    )
-      return reply.status(403).send({
-        error: "forbidden",
-        message:
-          needed.length === 1 && needed[0]
-            ? NEEDS_ROLE[needed[0]]
-            : `You need the ${needed.join(" or ")} role to do this.`,
-      });
+    // Who is asking, and nothing more: each service decides what they may do.
     request.setDecorator("employee", employee.value);
   });
 
@@ -325,7 +285,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages",
     schema: SCHEMAS.createPage,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const created = await editing.create(request.body, actor(request));
       if (created.ok) return reply.status(201).send(created.value);
@@ -336,7 +295,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "PUT",
     url: "/pages/:id",
     schema: SCHEMAS.savePage,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const { expected_version: expected, ...fields } = request.body;
       const saved = await editing.save(
@@ -353,7 +311,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages/:id/history/:version/restore",
     schema: SCHEMAS.restorePageVersion,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const restored = await editing.restore(
         request.params.id,
@@ -381,7 +338,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages/:id/revision/submit",
     schema: SCHEMAS.submitRevision,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const expected = request.body.expected_version;
       const submitted = await editing.submit(
@@ -398,7 +354,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages/:id/revision/reject",
     schema: SCHEMAS.rejectRevision,
-    config: { role: "approver" },
     handler: async (request, reply) => {
       const expected = request.body.expected_version;
       const decided = await editing.reject(
@@ -416,7 +371,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages/:id/revision/publish",
     schema: SCHEMAS.publishRevision,
-    config: { role: "approver" },
     handler: async (request, reply) => {
       const expected = request.body.expected_version;
       const published = await editing.publish(
@@ -433,7 +387,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "DELETE",
     url: "/pages/:id",
     schema: SCHEMAS.deletePage,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const expected = request.query.expected_version;
       const deleted = await editing.delete(
