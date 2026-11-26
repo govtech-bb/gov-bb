@@ -834,7 +834,8 @@ export const SCHEMAS = {
     description:
       "Needs the admin role (403 otherwise). Records the admin as the " +
       "grantor; a role already held is left as it was. 404 for someone " +
-      "who has never signed in.",
+      "who has never signed in. 403, with the reason, for `reader`, which " +
+      "everyone holds without a grant.",
     tags: ["admin"],
     security: editorSecurity,
     params: roleParams,
@@ -850,7 +851,9 @@ export const SCHEMAS = {
     summary: "Revoke an employee's role",
     description:
       "Needs the admin role (403 otherwise). It applies to their next " +
-      "request. A role they do not hold is not an error.",
+      "request. A role they do not hold is not an error. 403, with the " +
+      "reason, for `reader`, which nobody can lose, and for revoking your " +
+      "own role when it is the one that lets you manage roles.",
     tags: ["admin"],
     security: editorSecurity,
     params: roleParams,
