@@ -452,7 +452,7 @@ describe("private collection and category versions", () => {
             description: "  ",
           },
           category.version,
-          TEST_EDITOR,
+          TEST_EMPLOYEE,
         ),
       );
       expect(savedCategory).toEqual(category);
@@ -463,7 +463,7 @@ describe("private collection and category versions", () => {
             ordered_ids: [category.id],
             expected: [{ id: category.id, version: category.version }],
           },
-          TEST_EDITOR,
+          TEST_EMPLOYEE,
         ),
       );
       const savedRecord = expectOk(
