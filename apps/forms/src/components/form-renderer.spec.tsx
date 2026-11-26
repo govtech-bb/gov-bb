@@ -1501,10 +1501,16 @@ describe("FormRenderer", () => {
 
       // The real form.handleSubmit validates the fields, and runs onSubmit
       // when they pass. So the state that Submit reads exists only after it.
-      // isSubmitted is true only when the attempt reached the API.
-      const nextSubmitLeaves = (state: Record<string, unknown>) =>
+      // isSubmitted is true only when the attempt reached the API. In
+      // form-core 1.33.0, isSubmitSuccessful is reset and set at the same
+      // points, so it has the same value when handleSubmit returns.
+      const nextSubmitLeaves = (state: { isSubmitted: boolean } & object) =>
         mockForm.handleSubmit.mockImplementationOnce(async () => {
-          mockForm.state = { isSubmitting: false, ...state };
+          mockForm.state = {
+            isSubmitting: false,
+            isSubmitSuccessful: state.isSubmitted,
+            ...state,
+          };
         });
 
       // Field meta as TanStack Form keeps it: errors lists each errorMap entry.
