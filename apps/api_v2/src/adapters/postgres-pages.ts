@@ -39,7 +39,7 @@ import {
   isCategoryAnchor,
   type CategoryValues,
 } from "../modules/category";
-import type { UserId } from "../modules/auth";
+import type { Grant } from "../modules/permissions";
 import type { LastEditedBy } from "../modules/content-attribution";
 import { EditVersion } from "../modules/edit-concurrency";
 import type { CategoryRecords } from "../services/category-editing";
@@ -269,16 +269,17 @@ export class PostgresPages
   constructor(private readonly db: Database) {}
 
   /**
-   * Run `work` in one transaction as `actorId`, whom the change-log trigger
-   * records, after taking the shared content lock; an error result rolls back
-   * everything it wrote. The setting is transaction-local, so a pooled
-   * connection never carries it into another request.
+   * Run `work` in one transaction as the grant's actor, whom the change-log
+   * trigger records, after taking the shared content lock; an error result
+   * rolls back everything it wrote. The setting is transaction-local, so a
+   * pooled connection never carries it into another request. It serves both
+   * the page and the category port, so it takes either's grant.
    */
   async atomically<R extends Result<unknown, Error>>(
-    actorId: UserId,
+    grant: Grant<"pages:edit" | "pages:publish" | "categories:manage">,
     work: (records: PostgresPages) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
-    return transactAs(this.db, actorId, { contentLock: true }, (tx) =>
+    return transactAs(this.db, grant.actor, { contentLock: true }, (tx) =>
       work(new PostgresPages(tx)),
     );
   }

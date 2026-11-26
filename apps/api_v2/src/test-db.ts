@@ -27,7 +27,13 @@ import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
 import { ping, type Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
-import { DEFAULT_ROLE, ROLES } from "./modules/permissions";
+import {
+  authorize,
+  DEFAULT_ROLE,
+  ROLES,
+  type Grant,
+  type Permission,
+} from "./modules/permissions";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
@@ -142,6 +148,14 @@ export function createTestServices(
     categories: new CategoryEditing(pages),
     collections: new CollectionEditing(new PostgresCollections(db)),
   };
+}
+
+/** The grant `authorize` gives `employee` for `permission`, for a test that opens a store's write transaction itself. */
+export function grantFor<P extends Permission>(
+  employee: Employee,
+  permission: P,
+): Grant<P> {
+  return expectOk(authorize(employee, permission));
 }
 
 /** The value of a result a test expects to have succeeded. */

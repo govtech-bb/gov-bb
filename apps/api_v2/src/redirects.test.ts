@@ -29,6 +29,7 @@ import {
   SELF_APPROVAL,
   TEST_EMPLOYEE,
   type TestDb,
+  grantFor,
 } from "./test-db";
 
 let test: TestDb;
@@ -78,7 +79,7 @@ const rules = () =>
     .orderBy(pageRedirects.sourceUrl);
 const recordRule = async (source: string, destination: string) =>
   expectOk(
-    await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+    await records.atomically(grantFor(TEST_EMPLOYEE, "pages:edit"), (tx) =>
       tx.recordPageRedirectMove(source, destination),
     ),
   );
