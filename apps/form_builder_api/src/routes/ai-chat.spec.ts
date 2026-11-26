@@ -554,7 +554,8 @@ it("ends the run with RUN_ERROR when the server times out during a tool call", a
               delta: { toolUse: { input: '{"summary":"Ren' } },
             },
           };
-          timeOut?.();
+          if (!timeOut) throw new Error("The route's time-out was not set");
+          timeOut();
           await new Promise<void>((resolve) => {
             if (signal.aborted) resolve();
             else signal.addEventListener("abort", () => resolve());
@@ -568,8 +569,10 @@ it("ends the run with RUN_ERROR when the server times out during a tool call", a
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const port = (server.address() as { port: number }).port;
   const chunks: string[] = [];
+  const onError = vi.fn();
   const client = new ChatClient({
     threadId: "timeout-test",
+    onError,
     tools: [toolDefinition(proposeFormTool).client(() => ({ applied: true }))],
     onChunk: (chunk) => chunks.push(chunk.type),
     fetcher: (input, { signal }) =>
@@ -604,6 +607,7 @@ it("ends the run with RUN_ERROR when the server times out during a tool call", a
     expect(client.getIsLoading()).toBe(false);
     expect(client.getStatus()).toBe("error");
     expect(client.getError()?.message).toBe("This step didn't finish. Retry?");
+    expect(onError).toHaveBeenCalledTimes(1);
     expect(client.getInterrupts()).toEqual([]);
   } finally {
     client.stop();

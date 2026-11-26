@@ -1140,10 +1140,7 @@ it("ends a pending tool call and offers a retry when the server run stops", asyn
     await screen.findByText("Changes will appear here after the draft check."),
   ).toBeInTheDocument();
   act(() => {
-    harness.options.onChunk({
-      type: "RUN_ERROR",
-      message: "This step didn't finish. Retry?",
-    });
+    harness.options.onError(new Error("This step didn't finish. Retry?"));
   });
   harness.messages = [
     {

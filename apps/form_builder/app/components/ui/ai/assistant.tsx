@@ -873,11 +873,12 @@ function ChatSession({
         if (chunk.toolName && AUTO_APPLY_TOOLS.has(chunk.toolName))
           setActivity({ id: chunk.toolCallId, validating: true });
       }
-      // A run that stopped will not finish its tool call, so stop waiting for its draft check.
-      if (chunk.type === "RUN_ERROR")
-        setActivity((value) =>
-          value?.validating ? { ...value, validating: false } : value,
-        );
+    },
+    // A run that stopped (server RUN_ERROR or a dropped stream) will not finish its tool call.
+    onError() {
+      setActivity((value) =>
+        value?.validating ? { ...value, validating: false } : value,
+      );
     },
     onInterruptStateChange(state, { source }) {
       if (source !== "live") return;
