@@ -88,6 +88,19 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
   const controller = new AbortController();
   const abort = () => controller.abort();
   res.on("close", abort);
+  // Work that takes no signal (a stalled tool or prompt lookup) races this instead.
+  const stopped = new Promise<"stopped">((resolve) =>
+    controller.signal.addEventListener("abort", () => resolve("stopped"), {
+      once: true,
+    }),
+  );
+  const loadFormPrompt = () =>
+    Promise.race([
+      buildSystemPrompt(),
+      stopped.then(() => {
+        throw controller.signal.reason;
+      }),
+    ]);
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
@@ -156,12 +169,12 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
     const instructions =
       context.kind === "workspace"
         ? [
-            await buildSystemPrompt(),
+            await loadFormPrompt(),
             getContentSystemPrompt(),
             workspacePrompt,
           ].join("\n\n")
         : context.kind === "form"
-          ? await buildSystemPrompt()
+          ? await loadFormPrompt()
           : getContentSystemPrompt();
     const stream = chat({
       adapter: bedrockText(
@@ -195,11 +208,6 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
     async function* safeStream(): AsyncGenerator<StreamChunk> {
       const iterator = stream[Symbol.asyncIterator]();
       // A stalled server tool can ignore the abort, so stop waiting for it and drop its late events.
-      const stopped = new Promise<"stopped">((resolve) =>
-        controller.signal.addEventListener("abort", () => resolve("stopped"), {
-          once: true,
-        }),
-      );
       try {
         while (!controller.signal.aborted) {
           const next = iterator.next();

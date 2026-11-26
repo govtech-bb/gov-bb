@@ -43,8 +43,12 @@ const harness = vi.hoisted(() => ({
   interrupts: [] as any[],
   messages: [] as any[],
   error: undefined as Error | undefined,
+  interruptErrors: [] as any[],
   addToolResult: vi.fn(async () => {}),
   stop: vi.fn(),
+  sendMessage: vi.fn(async () => {}),
+  reload: vi.fn(async () => {}),
+  retryInterrupts: vi.fn(),
   calls: 0,
 }));
 vi.mock("@tanstack/ai-react", () => ({
@@ -54,12 +58,14 @@ vi.mock("@tanstack/ai-react", () => ({
       messages: harness.messages,
       interrupts: harness.interrupts,
       error: harness.error,
+      interruptErrors: harness.interruptErrors,
       addToolResult: harness.addToolResult,
       isLoading: false,
       resuming: false,
       stop: harness.stop,
-      sendMessage: vi.fn(),
-      reload: vi.fn(),
+      sendMessage: harness.sendMessage,
+      reload: harness.reload,
+      retryInterrupts: harness.retryInterrupts,
     };
   },
 }));
@@ -77,6 +83,10 @@ beforeEach(() => {
   harness.interrupts = [];
   harness.messages = [];
   harness.error = undefined;
+  harness.interruptErrors = [];
+  harness.sendMessage.mockClear();
+  harness.reload.mockClear();
+  harness.retryInterrupts.mockClear();
   harness.addToolResult.mockClear();
   harness.options = null;
   harness.stop.mockClear();
@@ -1223,4 +1233,76 @@ it("treats a question from a stopped run as interrupted and frees the composer",
     screen.getByRole("textbox", { name: "Message the assistant" }),
   ).toBeEnabled();
   expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+});
+
+const failedContinuation = {
+  scope: "batch",
+  code: "transport",
+  message: "Interrupt continuation could not be started.",
+  retryable: true,
+};
+
+it("retries a failed continuation with its tool result instead of re-sending the prompt", async () => {
+  const prepare = vi.fn();
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  harness.error = new Error("This step didn't finish. Retry?");
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(harness.reload).toHaveBeenCalledTimes(1);
+  expect(harness.retryInterrupts).not.toHaveBeenCalled();
+  harness.interruptErrors = [failedContinuation];
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(harness.retryInterrupts).toHaveBeenCalledTimes(1);
+  expect(harness.reload).toHaveBeenCalledTimes(1);
+});
+
+it("drops a failed continuation before sending a new prompt", async () => {
+  const prepare = vi.fn();
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  harness.error = new Error("This step didn't finish. Retry?");
+  harness.interruptErrors = [failedContinuation];
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  const input = screen.getByRole("textbox", { name: "Message the assistant" });
+  fireEvent.change(input, { target: { value: "Something new" } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  await waitFor(() =>
+    expect(harness.sendMessage).toHaveBeenCalledWith("Something new"),
+  );
+  expect(harness.stop.mock.invocationCallOrder[0]).toBeLessThan(
+    harness.sendMessage.mock.invocationCallOrder[0],
+  );
+});
+
+it("does not show an old question as waiting once the next prompt starts", async () => {
+  const prepare = vi.fn();
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  harness.messages = [
+    { id: "u1", role: "user", parts: [{ type: "text", content: "Help" }] },
+    {
+      id: "m",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-call",
+          id: "question",
+          name: "ask_questions",
+          state: "input-complete",
+          input: { questions: [] },
+        },
+      ],
+    },
+    { id: "u2", role: "user", parts: [{ type: "text", content: "Next" }] },
+  ];
+  await act(async () => {
+    await harness.options.fetcher(
+      { messages: [], threadId: "t", runId: "r" },
+      { signal: new AbortController().signal },
+    );
+  });
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  expect(screen.queryByText("Waiting for your input")).not.toBeInTheDocument();
 });

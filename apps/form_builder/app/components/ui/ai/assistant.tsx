@@ -1016,6 +1016,10 @@ function ChatSession({
     }
   };
   const responding = chat.isLoading || chat.resuming || uploading;
+  // A failed continuation after a tool result: Retry resends it, a new prompt drops it.
+  const retryableResume = chat.interruptErrors.some(
+    ({ code, retryable }) => code === "transport" && retryable,
+  );
   const busy = responding || pendingEdits.size > 0;
   const lastUserIndex = chat.messages
     .map((message) => message.role)
@@ -1068,6 +1072,7 @@ function ChatSession({
       (attachment && attachment.status !== "ready")
     )
       return;
+    if (retryableResume) chat.stop();
     setInput("");
     setNotice("");
     follow.current = true;
@@ -1255,7 +1260,8 @@ function ChatSession({
                     (part.name === "ask_questions" &&
                       part.state === "input-complete" &&
                       part.output === undefined &&
-                      !questionsStopped);
+                      !questionsStopped &&
+                      messageIndex > lastUserIndex);
                   const running =
                     messageIndex === chat.messages.length - 1 && busy;
                   const status = failed
@@ -1588,6 +1594,7 @@ function ChatSession({
                           void extract(pendingFile.current);
                         else if (attachment && attachment.status !== "ready")
                           void extract();
+                        else if (retryableResume) chat.retryInterrupts();
                         else void chat.reload();
                       }}
                       variant="ghost"

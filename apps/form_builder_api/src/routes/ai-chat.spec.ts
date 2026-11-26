@@ -13,15 +13,20 @@ import { errorHandler } from "../middleware/error-handler";
 import { hasDocumentSignature } from "../storage/s3-uploads";
 import { aiUploadSchema, aiRecipeSchema } from "@govtech-bb/form-builder";
 
-vi.mock("../ai/build-system-prompt.js", () => ({
-  buildSystemPrompt: async () => "Build forms.",
+// Lets a test hold the prompt or catalog read open, as a stalled database read would.
+const held = vi.hoisted(() => ({
+  prompt: undefined as (() => Promise<void>) | undefined,
+  catalog: undefined as (() => Promise<void>) | undefined,
 }));
-const catalog = vi.hoisted(() => ({
-  hold: undefined as (() => Promise<void>) | undefined,
+vi.mock("../ai/build-system-prompt.js", () => ({
+  buildSystemPrompt: async () => {
+    await held.prompt?.();
+    return "Build forms.";
+  },
 }));
 vi.mock("../catalog.js", () => ({
   getFullCatalog: async () => {
-    await catalog.hold?.();
+    await held.catalog?.();
     return { components: [], blocks: [], custom: [] };
   },
 }));
@@ -641,7 +646,7 @@ it("ends the run with RUN_ERROR when the server times out during a tool call", a
 it("ends the run at the time-out while a server tool is still running, and drops its late events", async () => {
   const timeOut = captureTimeout();
   let release!: () => void;
-  catalog.hold = () => {
+  held.catalog = () => {
     timeOut();
     return new Promise<void>((resolve) => (release = resolve));
   };
@@ -681,8 +686,31 @@ it("ends the run at the time-out while a server tool is still running, and drops
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(chunks).toHaveLength(seen);
   } finally {
-    catalog.hold = undefined;
+    held.catalog = undefined;
     release?.();
     await close();
+  }
+});
+
+it("returns 504 at the time-out while the prompt lookup is still running", async () => {
+  const timeOut = captureTimeout();
+  let release!: () => void;
+  held.prompt = () => {
+    timeOut();
+    return new Promise<void>((resolve) => (release = resolve));
+  };
+  const send = vi.spyOn(BedrockRuntimeClient.prototype, "send");
+  try {
+    // Answers only if the route stops waiting while the lookup is still held.
+    const response = await request(app)
+      .post("/chat")
+      .set({ Authorization: "Bearer " + token(), Origin: origin })
+      .send(body())
+      .expect(504);
+    expect(response.body.error).toContain("timed out");
+    expect(send).not.toHaveBeenCalled();
+  } finally {
+    held.prompt = undefined;
+    release?.();
   }
 });
