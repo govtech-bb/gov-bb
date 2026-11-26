@@ -4842,6 +4842,8 @@ export interface paths {
                                 role: "reader" | "editor" | "approver" | "admin";
                                 /** @description One phrase for each permission the role holds, in table order. Each completes "This role lets you …". */
                                 lets: string[];
+                                /** @description Every signed-in employee holds it, without being given it, and nobody can give it or take it away. */
+                                everyone: boolean;
                             }[];
                         };
                     };

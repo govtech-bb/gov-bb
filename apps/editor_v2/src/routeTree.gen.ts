@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as WorkspaceIndexRouteImport } from './routes/_workspace.index'
 import { Route as WorkspaceCategoriesRouteImport } from './routes/_workspace.categories'
 import { Route as WorkspaceCollectionsRouteImport } from './routes/_workspace.collections'
+import { Route as WorkspacePeopleRouteImport } from './routes/_workspace.people'
 import { Route as WorkspaceReviewsRouteImport } from './routes/_workspace.reviews'
 import { Route as WorkspaceServicesRouteImport } from './routes/_workspace.services'
 import { Route as WorkspaceSitePagesRouteImport } from './routes/_workspace.site-pages'
@@ -47,6 +48,11 @@ const WorkspaceCategoriesRoute = WorkspaceCategoriesRouteImport.update({
 const WorkspaceCollectionsRoute = WorkspaceCollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspacePeopleRoute = WorkspacePeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
   getParentRoute: () => WorkspaceRoute,
 } as any)
 const WorkspaceReviewsRoute = WorkspaceReviewsRouteImport.update({
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/categories': typeof WorkspaceCategoriesRoute
   '/collections': typeof WorkspaceCollectionsRouteWithChildren
+  '/people': typeof WorkspacePeopleRoute
   '/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/services': typeof WorkspaceServicesRouteWithChildren
   '/site-pages': typeof WorkspaceSitePagesRouteWithChildren
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/categories': typeof WorkspaceCategoriesRoute
   '/collections': typeof WorkspaceCollectionsRouteWithChildren
+  '/people': typeof WorkspacePeopleRoute
   '/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/services': typeof WorkspaceServicesRouteWithChildren
   '/site-pages': typeof WorkspaceSitePagesRouteWithChildren
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_workspace/categories': typeof WorkspaceCategoriesRoute
   '/_workspace/collections': typeof WorkspaceCollectionsRouteWithChildren
+  '/_workspace/people': typeof WorkspacePeopleRoute
   '/_workspace/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/_workspace/services': typeof WorkspaceServicesRouteWithChildren
   '/_workspace/site-pages': typeof WorkspaceSitePagesRouteWithChildren
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/categories'
     | '/collections'
+    | '/people'
     | '/reviews'
     | '/services'
     | '/site-pages'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/categories'
     | '/collections'
+    | '/people'
     | '/reviews'
     | '/services'
     | '/site-pages'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_workspace/categories'
     | '/_workspace/collections'
+    | '/_workspace/people'
     | '/_workspace/reviews'
     | '/_workspace/services'
     | '/_workspace/site-pages'
@@ -246,6 +258,13 @@ declare module '@tanstack/react-router' {
       path: '/collections'
       fullPath: '/collections'
       preLoaderRoute: typeof WorkspaceCollectionsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/people': {
+      id: '/_workspace/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof WorkspacePeopleRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/_workspace/reviews': {
@@ -398,6 +417,7 @@ const WorkspaceSitePagesRouteWithChildren =
 interface WorkspaceRouteChildren {
   WorkspaceCategoriesRoute: typeof WorkspaceCategoriesRoute
   WorkspaceCollectionsRoute: typeof WorkspaceCollectionsRouteWithChildren
+  WorkspacePeopleRoute: typeof WorkspacePeopleRoute
   WorkspaceReviewsRoute: typeof WorkspaceReviewsRouteWithChildren
   WorkspaceServicesRoute: typeof WorkspaceServicesRouteWithChildren
   WorkspaceSitePagesRoute: typeof WorkspaceSitePagesRouteWithChildren
@@ -408,6 +428,7 @@ interface WorkspaceRouteChildren {
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceCategoriesRoute: WorkspaceCategoriesRoute,
   WorkspaceCollectionsRoute: WorkspaceCollectionsRouteWithChildren,
+  WorkspacePeopleRoute: WorkspacePeopleRoute,
   WorkspaceReviewsRoute: WorkspaceReviewsRouteWithChildren,
   WorkspaceServicesRoute: WorkspaceServicesRouteWithChildren,
   WorkspaceSitePagesRoute: WorkspaceSitePagesRouteWithChildren,
