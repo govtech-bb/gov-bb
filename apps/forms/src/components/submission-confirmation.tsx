@@ -36,6 +36,21 @@ const formatDate = (value?: string) => {
     : parsed.toLocaleDateString("en-GB");
 };
 
+// A full page load, not a router navigation, so the browser gets the new form
+// definition. The answers and the completed steps are in sessionStorage, so the
+// applicant goes back to `stepId` with their answers. Keep the search params
+// that select the definition (`preview`, `draft`) and the feedback form's
+// `source`. Remove the others, such as `payment`.
+function reloadFormAtStep(stepId: string) {
+  const current = new URLSearchParams(window.location.search);
+  const next = new URLSearchParams({ step: stepId });
+  for (const name of ["preview", "draft", "source"]) {
+    const value = current.get(name);
+    if (value !== null) next.set(name, value);
+  }
+  window.location.assign(`${window.location.pathname}?${next}`);
+}
+
 export default function SubmissionConfirmation({
   serviceTitle,
   stepTitle,
@@ -75,6 +90,7 @@ export default function SubmissionConfirmation({
     polyclinic,
     polyclinicContact,
     sections,
+    staleDefinitionStepId,
   } = submissionState;
 
   // Substitute the resolved polyclinic name into the recipe's `{polyclinic}`
@@ -275,6 +291,32 @@ export default function SubmissionConfirmation({
           </div>
         )}
       </>
+    );
+  }
+
+  // The API refused answers for a step or a field that this copy of the form
+  // does not have: the form changed after the applicant opened it (#3901).
+  // Try again would fail the same way, so offer a reload that gets the new
+  // form instead.
+  if (staleDefinitionStepId) {
+    return (
+      <div className="govbb-width-container govbb-main-wrapper govbb-grid-row">
+        <div className="govbb-grid-column-two-thirds-from-desktop">
+          <Payment
+            outcome="failed"
+            title="This form has changed"
+            description="We changed this form after you opened it, so we could not send your application. You do not need to enter your answers again. Reload the form to see the new questions."
+          >
+            <Button
+              variant="secondary"
+              className="no-print"
+              onClick={() => reloadFormAtStep(staleDefinitionStepId)}
+            >
+              Reload the form
+            </Button>
+          </Payment>
+        </div>
+      </div>
     );
   }
 

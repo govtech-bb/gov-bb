@@ -1,5 +1,8 @@
 import type { ClientFormStep } from "@forms/types";
-import { resolveServerFieldErrors } from "./server-field-errors";
+import {
+  findStaleDefinitionStep,
+  resolveServerFieldErrors,
+} from "./server-field-errors";
 
 function step(stepId: string, fieldIds: string[]): ClientFormStep {
   return {
@@ -105,5 +108,79 @@ describe("resolveServerFieldErrors", () => {
     );
 
     expect(result.byFieldId).toEqual({});
+  });
+});
+
+describe("findStaleDefinitionStep (#3901)", () => {
+  // #3886: the browser's old definition had no `regulations-acknowledged`.
+  it("names the bundle's first step when a field is not in its step", () => {
+    expect(
+      findStaleDefinitionStep(
+        { declaration: { "regulations-acknowledged": ["Confirm this"] } },
+        STEPS,
+      ),
+    ).toBe("declaration");
+  });
+
+  it("names the bundle's first step when a step is not in the form", () => {
+    expect(
+      findStaleDefinitionStep({ "new-step": { name: ["Enter it"] } }, STEPS),
+    ).toBe("new-step");
+  });
+
+  // The applicant cannot correct a field that they cannot see, so one unknown
+  // field makes all of the bundle stale. The reload goes to the first step.
+  it("treats the whole bundle as stale when one field is unknown", () => {
+    expect(
+      findStaleDefinitionStep(
+        {
+          "about-restaurant": { "restaurant-name": ["Enter the name"] },
+          declaration: { "regulations-acknowledged": ["Confirm this"] },
+        },
+        STEPS,
+      ),
+    ).toBe("about-restaurant");
+  });
+
+  it("finds nothing when the form has every step and field in the bundle", () => {
+    expect(
+      findStaleDefinitionStep(
+        {
+          "about-restaurant": { "restaurant-name": ["Enter the name"] },
+          declaration: { "declaration-confirmed": ["Confirm"] },
+        },
+        STEPS,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("does not take a step's own errors (`_step`) for a field", () => {
+    expect(
+      findStaleDefinitionStep(
+        { "about-restaurant": { _step: ["Answer one of these"] } },
+        STEPS,
+      ),
+    ).toBeUndefined();
+  });
+
+  // A repeatable step's bundle keeps the general failure panel.
+  it("does not examine a repeatable step's per-instance bundle", () => {
+    expect(
+      findStaleDefinitionStep(
+        {
+          "about-restaurant": {
+            _step: ["Provide at least 1 entry"],
+            instances: [{ "field-that-moved": ["stale"] }],
+          },
+        },
+        STEPS,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("finds nothing in a body that carries no bundle", () => {
+    for (const bundle of [undefined, null, "boom", [], ["Bad payload"], {}]) {
+      expect(findStaleDefinitionStep(bundle, STEPS)).toBeUndefined();
+    }
   });
 });

@@ -44,7 +44,10 @@ import {
 } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
 import { LANDING_URL } from "../../../config/landing";
-import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
+import {
+  findStaleDefinitionStep,
+  resolveServerFieldErrors,
+} from "../../../lib/server-field-errors";
 import { resolveConditionalMarkdown } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../../../lib/form-builder/helpers/value-tree";
 import { formCategory, rememberFormCategory } from "../../../lib/form-category";
@@ -346,10 +349,37 @@ function FormView() {
         // Put those messages back on the fields they name and return the
         // citizen to the step holding the first one, so they can see and fix
         // it — rather than the generic failure panel and a retry that would
-        // fail identically (#1257). A bundle nothing maps to (a renamed field,
-        // a repeatable step's per-instance shape) falls through to the panel:
-        // no feedback at all is worse than imprecise feedback.
+        // fail identically (#1257). A bundle nothing maps to (a step a
+        // condition hides, a repeatable step's per-instance shape) falls
+        // through to the panel: no feedback at all is worse than imprecise
+        // feedback.
         if (error instanceof FormValidationError) {
+          // A bundle that names a step or a field this copy of the form does
+          // not have: the browser kept an old definition (#3886). The citizen
+          // cannot fix a field the form does not show, so tell them the form
+          // changed and offer a reload (#3901). Checked against every step,
+          // not only the visible ones: a field a condition hides is not a
+          // missing field.
+          const staleStepId = findStaleDefinitionStep(
+            error.errors,
+            formMeta.steps,
+          );
+          if (staleStepId) {
+            trackEvent("form-submit-error", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+              errors: "stale-definition",
+            });
+            setSubmissionState({
+              submissionSuccess: false,
+              hasPayment: false,
+              referenceNumber: "",
+              date: "",
+              serviceName: formMeta.formId,
+              staleDefinitionStepId: staleStepId,
+            });
+            return;
+          }
           const { byFieldId, stepId } = resolveServerFieldErrors(
             error.errors,
             visibleSteps,

@@ -243,7 +243,13 @@ describe("tallyTopErrors", () => {
   });
 
   it("knows every code apps/forms sends", () => {
-    const codes = ["validation", "network", "server", "payment-init"];
+    const codes = [
+      "validation",
+      "network",
+      "server",
+      "payment-init",
+      "stale-definition",
+    ];
     expect(
       tallyTopErrors(
         [],
@@ -254,6 +260,9 @@ describe("tallyTopErrors", () => {
     expect(
       tallyTopErrors([], [{ value: "payment-init", total: 1 }], labels),
     ).toEqual([{ label: "submit failed: payment-init", count: 1 }]);
+    expect(
+      tallyTopErrors([], [{ value: "stale-definition", total: 1 }], labels),
+    ).toEqual([{ label: "submit failed: stale-definition", count: 1 }]);
   });
 
   it("counts unknown fields and codes in one row each, but never names them", () => {

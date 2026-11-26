@@ -1088,3 +1088,88 @@ describe("SubmissionConfirmation — Print button (#2132)", () => {
     expect(results).toHaveNoViolations();
   });
 });
+
+// #3901: the API refused an answer for a field that the browser's copy of the
+// form does not have. Try again would fail the same way, so the panel says
+// that the form changed and reloads the form instead.
+describe("SubmissionConfirmation — the form changed (#3901)", () => {
+  const staleState: SubmissionState = {
+    hasPayment: false,
+    serviceName: "Passport Renewal",
+    submissionSuccess: false,
+    referenceNumber: "",
+    date: "",
+    staleDefinitionStepId: "declaration",
+  };
+
+  const assign = vi.fn();
+  const stubLocation = (search: string) =>
+    vi.stubGlobal("location", {
+      pathname: "/forms/passport-renewal",
+      search,
+      assign,
+    });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    assign.mockReset();
+  });
+
+  const renderStale = () =>
+    render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={staleState}
+        onTryAgain={vi.fn()}
+      />,
+    );
+
+  it("says that the form changed, instead of the general failure panel", () => {
+    renderStale();
+    expect(
+      screen.getByRole("heading", { name: "This form has changed" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We changed this form after you opened it, so we could not send your application. You do not need to enter your answers again. Reload the form to see the new questions.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /try again/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  // A full page load gets the new definition. The answers come back from
+  // sessionStorage, so the applicant lands on the step that the 422 named.
+  it("reloads the form on the step the 422 named, with the search params that select it", () => {
+    stubLocation(
+      "?step=submission-confirmation&preview=tok&draft=d1&source=passport-renewal&payment=failed&returnTo=check-your-answers",
+    );
+    renderStale();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload the form" }));
+
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledWith(
+      "/forms/passport-renewal?step=declaration&preview=tok&draft=d1&source=passport-renewal",
+    );
+  });
+
+  it("adds no search params that the page did not have", () => {
+    stubLocation("?step=submission-confirmation");
+    renderStale();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload the form" }));
+
+    expect(assign).toHaveBeenCalledWith(
+      "/forms/passport-renewal?step=declaration",
+    );
+  });
+
+  it("passes an axe audit", async () => {
+    const { container } = renderStale();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});

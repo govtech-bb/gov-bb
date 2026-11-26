@@ -60,3 +60,43 @@ export function resolveServerFieldErrors(
 
   return { byFieldId, ...(stepId && { stepId }) };
 }
+
+/**
+ * Find out if a server validation bundle (`meta.errors` on a 422) names a step,
+ * or a field in a step, that the browser's copy of the form does not have. Then
+ * the browser has an old copy of the definition, and the API checked the answers
+ * against a newer one (#3886). The applicant cannot correct a field that the form
+ * does not show, so the caller tells them that the form changed (#3901).
+ *
+ * Give all the steps of the definition, not only the visible steps: a field that
+ * a condition hides is not a missing field. `_step` holds errors for the step
+ * itself, so it is not a field name. The fields in a repeatable step's bundle
+ * (`{ _step?, instances }`) are not examined: that bundle keeps the general
+ * failure panel (see `resolveServerFieldErrors`).
+ *
+ * Returns the first step that the bundle names, which is where the applicant
+ * must go after the reload. Returns undefined when the definition has every
+ * step and field that the bundle names.
+ */
+export function findStaleDefinitionStep(
+  errors: unknown,
+  steps: ClientFormStep[],
+): string | undefined {
+  if (!errors || typeof errors !== "object" || Array.isArray(errors)) {
+    return undefined;
+  }
+  const bundle = errors as Record<string, unknown>;
+
+  const isStale = Object.entries(bundle).some(([stepId, stepErrors]) => {
+    const step = steps.find((s) => s.stepId === stepId);
+    if (!step) return true;
+    if (!stepErrors || typeof stepErrors !== "object") return false;
+    if ("instances" in stepErrors) return false;
+    return Object.keys(stepErrors).some(
+      (key) =>
+        key !== "_step" && !step.fields.some((field) => field.fieldId === key),
+    );
+  });
+
+  return isStale ? Object.keys(bundle)[0] : undefined;
+}

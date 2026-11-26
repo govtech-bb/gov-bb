@@ -50,15 +50,19 @@ export const UMAMI_SCRIPT_ATTRIBUTES = {
  * response came back, so the API could not be reached (`network`), any other
  * failure, such as an HTTP error status (5xx and 429 too) or the API reporting
  * the submission failed (`server`), or the payment could not start
- * (`payment-init`) (#3835). The /stats Slack report and the analytics dashboard name
- * these and count any other value as "other". `TrackingData` types `errors`
- * from this list, so a new value fails type-check until it is added here.
+ * (`payment-init`) (#3835). `stale-definition`: the API rejected an answer for a
+ * step or a field that the browser's copy of the form does not have, because
+ * the form changed after it was opened (#3901). The /stats Slack report and the
+ * analytics dashboard name these and count any other value as "other".
+ * `TrackingData` types `errors` from this list, so a new value fails type-check
+ * until it is added here.
  */
 export const SUBMIT_ERROR_CODES = [
   "validation",
   "network",
   "server",
   "payment-init",
+  "stale-definition",
 ] as const;
 export type SubmitErrorCode = (typeof SUBMIT_ERROR_CODES)[number];
 

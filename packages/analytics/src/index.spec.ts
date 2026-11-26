@@ -701,6 +701,7 @@ describe("SUBMIT_ERROR_CODES (#3826)", () => {
       "network",
       "server",
       "payment-init",
+      "stale-definition",
     ]);
   });
 
