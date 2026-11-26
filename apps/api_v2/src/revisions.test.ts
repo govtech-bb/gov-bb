@@ -6,7 +6,7 @@
 
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { FastifyInstance, InjectOptions } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
@@ -18,7 +18,6 @@ import {
   type PageFields,
   type PageId,
 } from "./modules/page";
-import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
 import { seed } from "./seed";
@@ -29,7 +28,10 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  registerEmployees,
+  requestAs,
   SELF_APPROVAL,
+  sessionsFor,
   expectOk,
   TEST_EDITOR,
   TEST_EMPLOYEE,
@@ -37,13 +39,13 @@ import {
 } from "./test-db";
 
 /** Signed in, but holding no role: reads stay open to them. */
-const READER: Employee = {
+const NO_ROLES: Employee = {
   id: UserId.parse("reader-test"),
   email: "reader@govtech.bb",
   name: "Test employee without roles",
   roles: [],
 };
-const FIXTURES = [TEST_EMPLOYEE, TEST_EDITOR, READER];
+const FIXTURES = [TEST_EMPLOYEE, TEST_EDITOR, NO_ROLES];
 
 let app: FastifyInstance;
 let db: Database;
@@ -55,20 +57,8 @@ beforeEach(async () => {
   // Fixtures are set up as AUTH_BYPASS would, so only the app under test
   // holds an approver to the self-approval rule.
   services = createTestServices(db, SELF_APPROVAL);
-  await db.execute(
-    sql`insert into auth_user (id, name, email, "emailVerified")
-        values (${READER.id}, ${READER.name}, ${READER.email}, true)`,
-  );
-  app = await createTestApp(db, {
-    sessions: {
-      findSession: async (cookie) =>
-        ok(
-          FIXTURES.find((employee) =>
-            cookie.reveal().endsWith(`=${employee.id}`),
-          ) ?? null,
-        ),
-    },
-  });
+  await registerEmployees(db, [NO_ROLES]);
+  app = await createTestApp(db, { sessions: sessionsFor(FIXTURES) });
   await app.ready();
 });
 
@@ -76,17 +66,6 @@ afterEach(async () => {
   await app.close();
   await close();
 });
-
-/** A browser request from the editor, signed in as `employee`. */
-const as = (employee: Employee, options: InjectOptions) =>
-  app.inject({
-    ...options,
-    headers: {
-      cookie: `test-session=${employee.id}`,
-      origin: TEST_HTTP_CONFIG.editorOrigin,
-      ...options.headers,
-    },
-  });
 
 const ENTRY = "/money-financial-support/calculate-severance-pay";
 
@@ -119,7 +98,7 @@ const save = (
   page: { id: string; version: number },
   fields: Record<string, unknown>,
 ) =>
-  as(employee, {
+  requestAs(app, employee, {
     method: "PUT",
     url: `/pages/${page.id}`,
     payload: { ...withDefaults(aPage(fields)), expected_version: page.version },
@@ -242,7 +221,7 @@ describe("a save to a public page", () => {
     const page = await seedPage();
     const { parent_id, ...unplaced } = withDefaults(aPage({ title: "Moved" }));
 
-    const response = await as(TEST_EDITOR, {
+    const response = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
       payload: { ...unplaced, expected_version: page.version },
@@ -301,7 +280,7 @@ describe("the seeded site pages, with no category or parent (#3500)", () => {
         expectOk(await new PostgresPages(db).indexedPages()).find(
           (page) => page.url === fixture.url,
         )?.id ?? expect.unreachable(fixture.url);
-      const opened = await as(READER, { url: `/pages/${id}` });
+      const opened = await requestAs(app, NO_ROLES, { url: `/pages/${id}` });
       expect(opened.statusCode).toBe(200);
       const page = opened.json<EditorPage>();
       expect(page).toMatchObject({
@@ -327,7 +306,7 @@ describe("the seeded site pages, with no category or parent (#3500)", () => {
       // As the editor saves: every field but the parent, left out to keep it.
       const send = (from: EditorPage, edits: Partial<PageFields>) => {
         const { parent_id: _, ...fields } = { ...fieldsOf(from), ...edits };
-        return as(TEST_EDITOR, {
+        return requestAs(app, TEST_EDITOR, {
           method: "PUT",
           url: `/pages/${id}`,
           payload: { ...fields, expected_version: from.version },
@@ -365,7 +344,9 @@ describe("the seeded site pages, with no category or parent (#3500)", () => {
             contributors: [TEST_EDITOR.id],
           },
         ]);
-        const reopened = await as(READER, { url: `/pages/${id}` });
+        const reopened = await requestAs(app, NO_ROLES, {
+          url: `/pages/${id}`,
+        });
         expect(reopened.json()).toEqual(saved);
         current = saved;
       }
@@ -375,7 +356,9 @@ describe("the seeded site pages, with no category or parent (#3500)", () => {
       expect((await app.inject({ url: publicUrl })).body).toBe(
         publicBefore.body,
       );
-      const listed = await as(READER, { url: "/editor/site-pages" });
+      const listed = await requestAs(app, NO_ROLES, {
+        url: "/editor/site-pages",
+      });
       expect(listed.json().pages).toContainEqual({
         id,
         title: page.title,
@@ -400,7 +383,7 @@ describe("the seeded site pages, with no category or parent (#3500)", () => {
       headers: { origin: TEST_HTTP_CONFIG.editorOrigin },
     });
     expect(anonymous.statusCode).toBe(401);
-    const elsewhere = await as(TEST_EDITOR, {
+    const elsewhere = await requestAs(app, TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
       payload,
@@ -408,7 +391,7 @@ describe("the seeded site pages, with no category or parent (#3500)", () => {
     });
     expect(elsewhere.statusCode).toBe(403);
     expect(
-      (await save(READER, page, { ...fieldsOf(page), title: "Renamed" }))
+      (await save(NO_ROLES, page, { ...fieldsOf(page), title: "Renamed" }))
         .statusCode,
     ).toBe(403);
     expect(
@@ -489,13 +472,17 @@ describe("a page that has never been public", () => {
 describe("reading the pending revision", () => {
   it("is open to every signed-in employee, and 404s when there is none", async () => {
     const page = await seedPage();
-    const none = await as(READER, { url: `/pages/${page.id}/revision` });
+    const none = await requestAs(app, NO_ROLES, {
+      url: `/pages/${page.id}/revision`,
+    });
     expect(none.statusCode).toBe(404);
     expect(none.json().error).toBe("not_found");
 
     await save(TEST_EDITOR, page, { title: "Severance pay" });
 
-    const response = await as(READER, { url: `/pages/${page.id}/revision` });
+    const response = await requestAs(app, NO_ROLES, {
+      url: `/pages/${page.id}/revision`,
+    });
     expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.json()).toMatchObject({
@@ -506,7 +493,7 @@ describe("reading the pending revision", () => {
       created_by: TEST_EDITOR.id,
       contributors: [TEST_EDITOR.id],
     });
-    const opened = await as(READER, { url: `/pages/${page.id}` });
+    const opened = await requestAs(app, NO_ROLES, { url: `/pages/${page.id}` });
     expect(opened.json()).toMatchObject({
       title: "Severance pay",
       updated_at: response.json().updated_at,
@@ -610,7 +597,7 @@ describe("deleting a page", () => {
       await save(TEST_EDITOR, page, { title: "Waiting" })
     ).json();
 
-    const response = await as(TEST_EMPLOYEE, {
+    const response = await requestAs(app, TEST_EMPLOYEE, {
       method: "DELETE",
       url: `/pages/${page.id}?expected_version=${pending.version}`,
     });

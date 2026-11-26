@@ -37,6 +37,10 @@ function recordRefused(
       return reply
         .status(409)
         .send({ error: "record_exists", message: error.message });
+    case "PermissionDenied":
+      return reply
+        .status(403)
+        .send({ error: "forbidden", message: error.message });
     case "ContentStoreUnavailable":
       return reply.status(500).send(storageFailed(request.log, error));
     default: {
@@ -65,6 +69,10 @@ function collectionRefused(
         message: error.message,
         errors: [{ field: "key", message: error.message }],
       });
+    case "PermissionDenied":
+      return reply
+        .status(403)
+        .send({ error: "forbidden", message: error.message });
     case "ContentStoreUnavailable":
       return reply.status(500).send(storageFailed(request.log, error));
     default: {
@@ -109,7 +117,6 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/collections/:key/records/:recordKey",
     schema: SCHEMAS.createRecord,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
       const created = await collections.create(
@@ -127,7 +134,6 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     method: "PUT",
     url: "/collections/:key/records/:recordKey",
     schema: SCHEMAS.saveRecord,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
       const expected = request.body.expected_version;
@@ -147,7 +153,6 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     method: "DELETE",
     url: "/collections/:key/records/:recordKey",
     schema: SCHEMAS.deleteRecord,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
       const expected = request.query.expected_version;
@@ -166,8 +171,6 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/collections",
     schema: SCHEMAS.createCollection,
-    // A field list decides what every record holds, so not every editor sets one (#3681)
-    config: { role: ["admin", "approver"] },
     handler: async (request, reply) => {
       const created = await collections.createCollection(
         request.body,

@@ -15,7 +15,8 @@ import {
   useGlobalAssistant,
   WorkspaceAssistant,
 } from "../../global-assistant";
-import { prepareFormDraft } from "../../builder/form-assistant";
+import { FormAssistant, prepareFormDraft } from "../../builder/form-assistant";
+import { recipeReducer } from "../../builder/recipe-reducer";
 import { restoreTranscript, historyKey } from "./history";
 import type { PreparedChange } from "./review";
 import { readConversations, writeConversations } from "./history";
@@ -35,6 +36,10 @@ vi.mock("./service-tools", () => ({
   readForm: vi.fn(),
 }));
 const serviceIndex = vi.hoisted(() => ({ entries: [] as any[] }));
+vi.mock("../../../server/registry", async (original) => ({
+  ...(await original<object>()),
+  validateRecipe: vi.fn(async () => ({ ok: true, issues: [] })),
+}));
 vi.mock("../../services/service-state", () => ({
   useServiceIndex: () => serviceIndex,
 }));
@@ -104,7 +109,7 @@ const proposal = {
   recipe: { formId: "test", title: "Proposed", steps: [] },
 };
 
-async function propose() {
+async function propose(args: object = proposal) {
   await act(async () => {
     await harness.options.fetcher(
       { messages: [], threadId: "t", runId: "r" },
@@ -119,7 +124,7 @@ async function propose() {
       id: "approval",
       toolCallId: "call",
       toolName: "apply_form_draft",
-      originalArgs: proposal,
+      originalArgs: args,
       canResolve: true,
       status: "pending",
       resolveInterrupt,
@@ -263,6 +268,175 @@ it("keeps DB settings, credentials and opaque metadata while normalizing the rev
   expect(() =>
     prepareFormDraft(draft, { title: "Broken" }, getCatalog(), true),
   ).toThrow();
+});
+
+describe("a proposal that leaves out existing steps (#3876)", () => {
+  const draft = {
+    formId: "fixed",
+    title: "Form",
+    steps: ["one", "two", "three"].map((stepId) => ({
+      stepId,
+      title: stepId,
+      fields: [],
+      behaviours: [],
+    })),
+  } as unknown as RecipeDraft;
+  const step = (stepId: string, title = stepId) => ({
+    stepId,
+    title,
+    elements: [],
+  });
+  // The reducer appends the required tail steps; compare the author's steps.
+  const required = [
+    "check-your-answers",
+    "declaration",
+    "submission-confirmation",
+  ];
+  const stepIds = (result: RecipeDraft) =>
+    result.steps
+      .map((item) => item.stepId)
+      .filter((id) => !required.includes(id));
+
+  it("is refused, naming the missing steps, and leaves the draft alone", () => {
+    const before = JSON.stringify(draft);
+    expect(() =>
+      prepareFormDraft(
+        draft,
+        { formId: "fixed", title: "Form", steps: [step("two", "Changed")] },
+        getCatalog(),
+        true,
+      ),
+    ).toThrow(
+      "Resend the full recipe, including unchanged steps: one, three. To delete a step, list it in removeStepIds.",
+    );
+    expect(JSON.stringify(draft)).toBe(before);
+  });
+
+  it("removes only the steps listed in removeStepIds", () => {
+    const result = prepareFormDraft(
+      draft,
+      { formId: "fixed", title: "Form", steps: [step("one"), step("three")] },
+      getCatalog(),
+      true,
+      ["two"],
+    );
+    expect(stepIds(result)).toEqual(["one", "three"]);
+  });
+
+  it("accepts a proposal that leaves out check-your-answers from a normalised draft", () => {
+    const loaded = recipeReducer(draft, { type: "LOAD_DRAFT", draft });
+    expect(loaded.steps.map((item) => item.stepId)).toContain(
+      "check-your-answers",
+    );
+    const result = prepareFormDraft(
+      loaded,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [
+          step("one"),
+          step("two"),
+          step("three"),
+          step("declaration"),
+          step("submission-confirmation"),
+        ],
+      },
+      getCatalog(),
+      true,
+    );
+    expect(result.steps.map((item) => item.stepId)).toContain(
+      "check-your-answers",
+    );
+  });
+
+  it("keeps a step that is resent even when it is also in removeStepIds", () => {
+    const result = prepareFormDraft(
+      draft,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("two", "Changed"), step("three")],
+      },
+      getCatalog(),
+      true,
+      ["two"],
+    );
+    expect(result.steps.find((item) => item.stepId === "two")?.title).toBe(
+      "Changed",
+    );
+  });
+
+  it("rejects a removeStepIds value that is not a list of ids", () => {
+    const proposal = {
+      formId: "fixed",
+      title: "Form",
+      steps: [step("one"), step("three")],
+    };
+    for (const value of ["one,two", null])
+      expect(() =>
+        prepareFormDraft(
+          draft,
+          proposal,
+          getCatalog(),
+          true,
+          value as unknown as string[],
+        ),
+      ).toThrow();
+  });
+
+  it("removes a listed step through the open form's prepare", async () => {
+    const onApply = vi.fn();
+    const element = () => (
+      <FormAssistant
+        user="alice"
+        documentId="one"
+        draft={draft}
+        catalog={getCatalog()}
+        readOnly={false}
+        onApply={onApply}
+      />
+    );
+    const view = render(element());
+    await waitFor(() => expect(harness.options).toBeTruthy());
+    const args = {
+      summary: "Remove step two",
+      recipe: {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("three")],
+      },
+      removeStepIds: ["two"],
+    };
+    await propose(args);
+    view.rerender(element());
+    const button = await screen.findByRole("button", {
+      name: "Apply to draft",
+    });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+    expect(
+      (await harness.options.tools[0].execute(args, { toolCallId: "call" }))
+        .applied,
+    ).toBe(true);
+    expect(stepIds(onApply.mock.calls[0][0])).toEqual(["one", "three"]);
+  });
+
+  it("still applies a full proposal that changes one step", () => {
+    const result = prepareFormDraft(
+      draft,
+      {
+        formId: "fixed",
+        title: "Form",
+        steps: [step("one"), step("two", "Changed"), step("three")],
+      },
+      getCatalog(),
+      true,
+    );
+    expect(stepIds(result)).toEqual(["one", "two", "three"]);
+    expect(result.steps.find((item) => item.stepId === "two")?.title).toBe(
+      "Changed",
+    );
+  });
 });
 
 it("restores only inert transcript data and separates users and documents", () => {
@@ -799,6 +973,158 @@ it("cancels Auto validation when stopped and never runs its apply handler", asyn
       .applied,
   ).toBe(false);
   expect(apply).not.toHaveBeenCalled();
+});
+
+it("cancels an Auto call when the editor becomes read-only during validation", async () => {
+  autoConversation();
+  let complete!: (value: PreparedChange) => void;
+  const apply = vi.fn();
+  const prepare = () =>
+    new Promise<PreparedChange>((resolve) => {
+      complete = resolve;
+    });
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  const cancel = vi.fn();
+  harness.interrupts[0].cancel = cancel;
+  act(() => publishInterrupts());
+  view.rerender(<Assistant {...props} readOnly prepare={prepare} />);
+  await act(async () =>
+    complete({ before: {}, after: { title: "Proposed" }, warnings: [], apply }),
+  );
+  // Read-only runs resume in ask mode, where the server refuses both an
+  // approval and a rejection for the edit tools.
+  expect(cancel).toHaveBeenCalledOnce();
+  expect(resolve).not.toHaveBeenCalled();
+  expect(apply).not.toHaveBeenCalled();
+});
+
+it("retries an Auto call that arrived while read-only once the editing claim comes back", async () => {
+  autoConversation();
+  const apply = vi.fn();
+  const prepare = vi.fn(async () => ({
+    before: {},
+    after: { title: "Proposed" },
+    warnings: [],
+    apply,
+  }));
+  const view = render(<Assistant {...props} readOnly prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  await act(async () => publishInterrupts());
+  expect(resolve).not.toHaveBeenCalled();
+  await act(async () => {
+    view.rerender(<Assistant {...props} prepare={prepare} />);
+  });
+  await waitFor(() => expect(resolve).toHaveBeenCalledExactlyOnceWith(true));
+  expect(
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
+  ).toBe(true);
+  expect(apply).toHaveBeenCalledOnce();
+});
+
+it("retries an Auto call whose read-only cancel failed once the editing claim comes back", async () => {
+  autoConversation();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const apply = vi.fn();
+  const prepare = vi.fn(async (): Promise<PreparedChange> => {
+    await gate;
+    return { before: {}, after: { title: "Proposed" }, warnings: [], apply };
+  });
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  harness.interrupts[0].cancel = vi.fn(() => {
+    throw new Error("Interrupts cannot be mutated while submitting.");
+  });
+  act(() => publishInterrupts());
+  view.rerender(<Assistant {...props} readOnly prepare={prepare} />);
+  await act(async () => release());
+  expect(harness.interrupts[0].cancel).toHaveBeenCalledOnce();
+  expect(resolve).not.toHaveBeenCalled();
+  await act(async () => {
+    view.rerender(<Assistant {...props} prepare={prepare} />);
+  });
+  await waitFor(() => expect(resolve).toHaveBeenCalledExactlyOnceWith(true));
+  expect(
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
+  ).toBe(true);
+  expect(apply).toHaveBeenCalledOnce();
+});
+
+it("ends an Auto call with a fresh-proposal message when the draft changes during validation", async () => {
+  autoConversation();
+  let complete!: (value: PreparedChange) => void;
+  const apply = vi.fn();
+  const prepare = () =>
+    new Promise<PreparedChange>((resolve) => {
+      complete = resolve;
+    });
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  act(() => publishInterrupts());
+  view.rerender(
+    <Assistant
+      {...props}
+      revisionSource={{ title: "Manual edit" }}
+      prepare={prepare}
+    />,
+  );
+  await act(async () =>
+    complete({ before: {}, after: { title: "Proposed" }, warnings: [], apply }),
+  );
+  expect(resolve).toHaveBeenCalledExactlyOnceWith(true);
+  expect(
+    await harness.options.tools[0].execute(proposal, { toolCallId: "call" }),
+  ).toEqual({
+    applied: false,
+    message: expect.stringContaining("Request a fresh proposal"),
+  });
+  expect(apply).not.toHaveBeenCalled();
+});
+
+it("hands an Auto call back for review when the author switches to Ask during validation", async () => {
+  autoConversation();
+  const user = userEvent.setup();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const apply = vi.fn();
+  const prepare = vi.fn(async (): Promise<PreparedChange> => {
+    await gate;
+    return { before: {}, after: { title: "Proposed" }, warnings: [], apply };
+  });
+  const view = render(<Assistant {...props} prepare={prepare} />);
+  await waitFor(() => expect(harness.options).toBeTruthy());
+  const resolve = await propose();
+  // The menu is disabled while an edit validates, so open it first.
+  await user.click(screen.getByRole("button", { name: "Edit behavior: Auto" }));
+  const ask = await screen.findByRole("menuitemradio", {
+    name: /Ask before editing/,
+  });
+  act(() => publishInterrupts());
+  expect(prepare).toHaveBeenCalledOnce();
+  await user.click(ask);
+  await act(async () => release());
+  view.rerender(<Assistant {...props} prepare={prepare} />);
+  const button = await screen.findByRole("button", { name: "Apply to draft" });
+  await waitFor(() => expect(button).not.toBeDisabled());
+  expect(resolve).not.toHaveBeenCalled();
+  fireEvent.click(button);
+  expect(resolve).toHaveBeenCalledExactlyOnceWith(true);
+  expect(
+    (await harness.options.tools[0].execute(proposal, { toolCallId: "call" }))
+      .applied,
+  ).toBe(true);
+  expect(apply).toHaveBeenCalledOnce();
 });
 
 it("clears Auto approval if TanStack cannot resolve the interrupt", async () => {

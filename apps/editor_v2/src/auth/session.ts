@@ -123,7 +123,7 @@ export function localReturnPath(value: string): string {
     url.origin !== "https://editor.invalid" ||
     !(
       url.pathname === "/" ||
-      /^\/(?:services(?:\/[^/]+){0,2}|categories|site-pages(?:\/[^/]+)?|reviews(?:\/[^/]+)?|history\/[^/]+|collections(?:\/[^/]+){0,2})\/?$/.test(
+      /^\/(?:services(?:\/[^/]+){0,2}|categories|site-pages(?:\/[^/]+)?|reviews(?:\/[^/]+)?|history\/[^/]+|collections(?:\/[^/]+){0,2}|people)\/?$/.test(
         url.pathname,
       )
     )

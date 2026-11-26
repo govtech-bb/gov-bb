@@ -1,14 +1,6 @@
 import { z } from "zod";
+import { DEFAULT_ROLE, GrantableRole, PERMISSIONS, Role } from "./permissions";
 import { err, ok, type Result } from "./result";
-
-/** What an employee may do, as `user_roles` stores it. */
-export const ROLES = ["editor", "approver", "admin"] as const;
-
-/** Parses a role. */
-export const Role = z.enum(ROLES);
-
-/** A role: `editor` writes content, `approver` changes what citizens see, `admin` grants and revokes roles. */
-export type Role = z.infer<typeof Role>;
 
 /**
  * An `auth_user` id: what the history records as a change's actor. Not
@@ -43,6 +35,16 @@ export const EmployeeView = z.object({
 /** An employee as the editor and the role routes read them. */
 export type EmployeeView = z.infer<typeof EmployeeView>;
 
+/** A role given by email to someone who hasn't signed in yet, as the role routes list it. */
+export const WaitingRoleView = z.object({
+  id: z.guid(),
+  email: z.string(),
+  role: GrantableRole,
+});
+
+/** A role given by email to someone who hasn't signed in yet. */
+export type WaitingRoleView = z.infer<typeof WaitingRoleView>;
+
 /** No live employee session accompanied the request. */
 export class Unauthenticated extends Error {
   /** Stable protocol-projection discriminator. */
@@ -63,16 +65,6 @@ export class Forbidden extends Error {
   }
 }
 
-/** A change to what citizens see, by an employee without the approver role. */
-export class NotApprover extends Error {
-  /** Stable protocol-projection discriminator. */
-  readonly _tag = "NotApprover";
-  /** Say who can make the change, and why when it isn't a visibility change. */
-  constructor(message = "Only approvers can change who can see a page.") {
-    super(message);
-  }
-}
-
 /**
  * An approver deciding on a revision they changed or submitted, or making
  * public content they changed since the page was last public (ADR 0134).
@@ -85,6 +77,55 @@ export class SelfApproval extends Error {
     message = "You can't approve or reject a change you made or submitted. Ask another approver.",
   ) {
     super(message);
+  }
+}
+
+/** Someone taking away their own role when it's the one that lets them give roles back. */
+export class OwnRoleChange extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "OwnRoleChange";
+  /** Name the role, and say who can take it away instead. */
+  constructor(role: Role) {
+    super(
+      `You can't take away your own ${role} role, because you'd lose the ` +
+        `permission to ${PERMISSIONS["people:manage"]}. Ask someone else who can.`,
+    );
+  }
+}
+
+/** A grant or revoke of the role everyone holds without a stored row. */
+export class DefaultRoleChange extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "DefaultRoleChange";
+  /** Say why it never changes. */
+  constructor() {
+    super(
+      `Everyone has the ${DEFAULT_ROLE} role. It can't be given or taken away.`,
+    );
+  }
+}
+
+/** A role given by email to an address sign-in would never admit. */
+export class EmailNotAllowed extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "EmailNotAllowed";
+  /** Name the domains that sign in, never the address: it's personal data. */
+  constructor(allowedDomains: readonly string[]) {
+    super(
+      `Give a role only to an address on ${allowedDomains.join(" or ")}, which can sign in.`,
+    );
+  }
+}
+
+/** A waiting role that isn't there: taken away already, or moved by its person's first sign-in. */
+export class WaitingRoleNotFound extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "WaitingRoleNotFound";
+  /** Say why it may have gone. */
+  constructor() {
+    super(
+      "That role isn't waiting any more: it was taken away, or its person has signed in.",
+    );
   }
 }
 
@@ -112,7 +153,7 @@ export class AuthUnavailable extends Error {
       | { readonly lookup: "session" }
       | {
           readonly lookup: "roles";
-          readonly operation: "rolesOf" | "grant";
+          readonly operation: "rolesOf" | "grant" | "claimWaiting";
         } = {
       lookup: "session",
     },
@@ -157,6 +198,10 @@ const workspaceIdentity = z.object({
   }),
 });
 
+/** An address's domain, the part after its @, as sign-in matches it to the Workspace. */
+export const emailDomain = (email: string) =>
+  email.slice(email.indexOf("@") + 1);
+
 /**
  * Admit fresh Google claims on both provisioning and returning OAuth sign-ins:
  * a verified email on an allowed Workspace domain, issued by that Workspace.
@@ -175,7 +220,7 @@ export function admitWorkspaceIdentity(
   if (
     email !== profile.email ||
     !allowedDomains.includes(profile.hd) ||
-    email.split("@")[1] !== profile.hd
+    emailDomain(email) !== profile.hd
   )
     return err(new Forbidden());
   return ok(undefined);

@@ -1,8 +1,8 @@
 name: Landing v2 Smoke
 
-# Post-deploy smoke of landing served from api_v2 (#3305: #3140, #3143, #3144).
-# After each Amplify build of `v2-rewrite` on the sandbox landing app, it
-# checks the preview:
+# Post-deploy smoke of sandbox landing served from api_v2 (#3305: #3140,
+# #3143, #3144; #3851). After each Deploy Sandbox run that deployed landing
+# or api_v2 from main, it checks https://sandbox.alpha.gov.bb:
 #
 # - every known api_v2 page comes back `x-content-source: api_v2`, so a
 #   broken, stale or empty api_v2 can't hide behind landing's static fallback;
@@ -12,93 +12,149 @@ name: Landing v2 Smoke
 #   is under maintenance, form_disabled or closed shows its notice, no Start
 #   link, and a 404 `/start` step.
 #
-# A red run on v2-rewrite's head blocks the v2-rewrite -> main merge (#3131).
-# After that merge, #3311 retargets it at landing.sandbox.alpha.gov.bb.
+# The gate job decides whether the smoke runs. On a Deploy Sandbox
+# completion it skips green, with a notice, when that run did not succeed,
+# when it deployed neither landing nor api_v2, or when a newer Deploy Sandbox
+# run on main is queued or in progress: the smoke would check a sandbox that
+# is mid-deploy, and the newer run's completion re-runs it. Caveat: if that
+# newer run deploys neither landing nor api_v2, its gate skips too, so the
+# smoke waits for the next landing or api_v2 deploy.
+#
+# On any trigger, the gate then asks sandbox landing for up to 5 public
+# catalog pages (landing's feature routes, src/routes/**/-meta.ts, are left
+# out: landing renders them itself with no x-content-source). It skips green
+# only when a page answers `x-content-source: static` and none answers from
+# api_v2 (before #3311). An api_v2 answer runs the smoke; so do
+# `api_v2-stale` and `static-fallback` (landing reads api_v2 but api_v2
+# failed). Every other case (no header, 5xx, timeout, landing unreachable, no
+# public pages) also runs it, with a warning naming the case, so a broken
+# landing goes red instead of skipping. A catalog that can't be read fails
+# the gate.
 # Scripts: apps/landing/e2e/smoke.
 
 on:
-  push:
-    branches: [v2-rewrite]
+  # Deploy Sandbox runs only on a push to main or by hand, and this workflow
+  # checks out main, never the triggering run's code, and reads no artifacts.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: [Deploy Sandbox]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions: {}
 
-# A newer push supersedes an older run's build anyway.
-concurrency:
-  group: landing-v2-smoke
-  cancel-in-progress: true
-
 env:
-  AWS_REGION: ca-central-1
-  # Trusts gov-bb v2-rewrite and main. Not a secret (see deploy-api-v2-sandbox.yml).
-  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
-  SMOKE_LANDING_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
+  SMOKE_LANDING_URL: https://sandbox.alpha.gov.bb
   SMOKE_API_V2_URL: https://api.sandbox.alpha.gov.bb/v2
-  # Must equal the Amplify v2-rewrite branch's VITE_FORMS_URL: the walk
-  # looks for Start links to exactly <this>/forms/<form_id>.
+  # Must equal the Amplify sandbox branch's VITE_FORMS_URL: the walk looks
+  # for Start links to exactly <this>/forms/<form_id>.
   SMOKE_FORMS_URL: https://forms.sandbox.alpha.gov.bb
-  # Must equal the Amplify v2-rewrite branch's VITE_FORMS_API_URL: the
+  # Must equal the Amplify sandbox branch's VITE_FORMS_API_URL: the
   # visibility check reads the same maintenance, closed and service-status
   # lists landing gates on.
   SMOKE_FORMS_API_URL: https://forms.api.sandbox.alpha.gov.bb
 
 jobs:
-  wait:
-    name: Wait for Amplify build
-    # The wait and the smoke target the v2-rewrite build, so a manual run from
-    # another branch would check the wrong commit.
-    if: github.ref == 'refs/heads/v2-rewrite'
+  gate:
+    name: Gate (landing or api_v2 deployed, landing serves api_v2)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    # No `environment:` here: it would change the OIDC subject, which the
-    # role does not trust.
+    timeout-minutes: 5
     permissions:
-      id-token: write # assume the role via OIDC
+      actions: read # read Deploy Sandbox runs and their jobs
       contents: read
-      actions: read # watch this commit's api_v2 deploy
     outputs:
-      superseded: ${{ steps.build.outputs.superseded }}
+      run: ${{ steps.gate.outputs.run }}
     steps:
-      - name: Checkout
+      - name: Checkout landing routes
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - id: build
-        uses: ./.github/actions/wait-for-amplify-build
-        with:
-          app-id: d3kbl8o0ovutw4
-          branch: v2-rewrite
-          sha: ${{ github.sha }}
-          url: ${{ env.SMOKE_LANDING_URL }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      # api_v2 now deploys from main through deploy-sandbox.yml (#3119), so a
-      # push to v2-rewrite has no deploy-api-v2-sandbox.yml run and this wait
-      # is a no-op (it exits 0) until #3311 retargets it. It used to smoke only
-      # once this commit's api_v2 rollout had finished.
-      - name: Wait for this commit's api_v2 deploy, if any
-        if: steps.build.outputs.superseded != 'true'
+          sparse-checkout: apps/landing/src/routes
+      - name: Decide whether to smoke
+        id: gate
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
           REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
-          RUN_ID=$(gh api "repos/$REPO/actions/workflows/deploy-api-v2-sandbox.yml/runs?head_sha=$SHA" \
-            --jq '.workflow_runs[0].id // empty')
-          if [ -z "$RUN_ID" ]; then
-            echo "No api_v2 deploy for ${SHA:0:7}"
+          set -euo pipefail
+          skip() {
+            echo "::notice::$1"
+            echo "run=false" >> "$GITHUB_OUTPUT"
             exit 0
+          }
+          run_smoke() {
+            [ -z "${1:-}" ] || echo "::warning::$1"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ "$EVENT" = workflow_run ]; then
+            [ "$CONCLUSION" = success ] ||
+              skip "Skipped: Deploy Sandbox run $RUN_ID concluded '$CONCLUSION', not success."
+            # A reusable workflow's jobs are named "Deploy api_v2 / <job>".
+            deployed="$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" \
+              --jq '.jobs[] | select(.conclusion == "success") | select(.name == "Amplify build (landing)" or (.name | startswith("Deploy api_v2"))) | .name')"
+            [ -n "$deployed" ] ||
+              skip "Skipped: Deploy Sandbox run $RUN_ID deployed neither landing nor api_v2."
+            newer="$(gh api "repos/$REPO/actions/workflows/deploy-sandbox.yml/runs?branch=main&per_page=20" \
+              --jq "[.workflow_runs[] | select(.id > $RUN_ID and .status != \"completed\")] | length")"
+            [ "$newer" = 0 ] ||
+              skip "Skipped: a newer Deploy Sandbox run is deploying; its completion re-runs the smoke."
           fi
-          gh run watch "$RUN_ID" --repo "$REPO" --exit-status --interval 30
+          # Feature routes carry no x-content-source, so they prove nothing.
+          features="$(find apps/landing/src/routes -name '-meta.ts' |
+            sed -e 's#^apps/landing/src/routes##' -e 's#/-meta\.ts$##' | jq -R . | jq -s .)"
+          paths="$(curl -fsS --max-time 30 "$SMOKE_API_V2_URL/catalog" |
+            jq -r --argjson features "$features" \
+              '[.pages[] | select(.visibility == "public") | .url | select(IN($features[]) | not)][:5][]')" || {
+            echo "::error::Could not list public pages from $SMOKE_API_V2_URL/catalog."
+            exit 1
+          }
+          [ -n "$paths" ] ||
+            run_smoke "$SMOKE_API_V2_URL/catalog lists no public pages besides feature routes; running the smoke."
+          headers="$(mktemp)"
+          api_v2=false
+          static=false
+          for path in $paths; do
+            rc=0
+            status="$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' --max-time 30 \
+              "$SMOKE_LANDING_URL$path?smoke-gate=$GITHUB_RUN_ID-$RANDOM")" || rc=$?
+            if [ "$rc" = 28 ]; then
+              echo "::warning::$path: sandbox landing timed out."
+              continue
+            elif [ "$rc" != 0 ]; then
+              echo "::warning::$path: sandbox landing unreachable (curl exit $rc)."
+              continue
+            fi
+            source="$(tr -d '\r' < "$headers" | awk -F': ' 'tolower($1) == "x-content-source" { print $2 }')"
+            echo "$path: HTTP $status, x-content-source ${source:-(none)}"
+            if [[ "$source" =~ ^(api_v2|api_v2-stale|static-fallback)$ ]]; then
+              api_v2=true
+            elif [ "$source" = static ]; then
+              static=true
+            elif [ "$status" -ge 500 ]; then
+              echo "::warning::$path: sandbox landing answered HTTP $status."
+            else
+              echo "::warning::$path: sandbox landing answered HTTP $status with no x-content-source."
+            fi
+          done
+          [ "$api_v2" = true ] && run_smoke
+          [ "$static" = true ] &&
+            skip "Skipped: sandbox landing serves static content, not api_v2 yet (#3311)."
+          run_smoke "No sampled page answered static or api_v2; running the smoke."
 
   smoke:
     name: Smoke (api_v2 source, Start links, visibility gating)
-    needs: wait
-    if: needs.wait.outputs.superseded != 'true'
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    # On the smoke, not the workflow: a newer deploy of landing or api_v2
+    # supersedes an older smoke, but a run the gate skips must not cancel one.
+    # Per ref, so a manual run from a branch can't cancel main's.
+    concurrency:
+      group: landing-v2-smoke-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -121,10 +177,10 @@ jobs:
         run: pnpm --filter @govtech-bb/landing exec playwright install chromium
       - name: Self-test (the checks fail on broken pages)
         run: pnpm --filter @govtech-bb/landing test:smoke --project selftest
-      - name: Smoke the v2-rewrite preview
+      - name: Smoke sandbox landing
         env:
           # Must equal sandbox api_v2's PREVIEW_SECRET, so the visibility check
-          # can list preview pages. Absent, the preview test skips.
+          # can list preview pages. Absent, the preview test fails in CI.
           SMOKE_API_V2_PREVIEW_TOKEN: ${{ secrets.RECIPE_PREVIEW_TOKEN }}
         run: pnpm --filter @govtech-bb/landing test:smoke --project live
       - name: Upload Playwright trace on failure

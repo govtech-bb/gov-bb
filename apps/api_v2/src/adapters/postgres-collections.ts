@@ -6,9 +6,9 @@
  * `change_events`, against the transaction's `app.user_id`.
  */
 
-import { and, asc, count, eq, sql } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 import type { Database } from "../db";
-import type { UserId } from "../modules/auth";
+import type { Grant } from "../modules/permissions";
 import {
   CollectionSchema,
   type CollectionDefinition,
@@ -23,6 +23,7 @@ import { ContentStoreUnavailable } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import { collectionRecords, dataCollections } from "../schema";
 import type { CollectionStore } from "../services/collection-editing";
+import { transactAs } from "./postgres-transaction";
 
 type CollectionRow = typeof dataCollections.$inferSelect;
 type RecordRow = typeof collectionRecords.$inferSelect;
@@ -65,25 +66,12 @@ export class PostgresCollections implements CollectionStore {
   constructor(private readonly db: Database) {}
 
   async atomically<R extends Result<unknown, Error>>(
-    actorId: UserId,
+    grant: Grant<"collections:edit" | "collections:manage">,
     work: (store: CollectionStore) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
-    let refused: R | undefined;
-    try {
-      return await this.db.transaction(async (tx) => {
-        await tx.execute(
-          sql`select set_config('app.user_id', ${actorId}, true)`,
-        );
-        const result = await work(new PostgresCollections(tx));
-        if (!result.ok) {
-          refused = result;
-          tx.rollback();
-        }
-        return result;
-      });
-    } catch (cause) {
-      return refused ?? err(new ContentStoreUnavailable("transaction", cause));
-    }
+    return transactAs(this.db, grant.actor, { contentLock: false }, (tx) =>
+      work(new PostgresCollections(tx)),
+    );
   }
 
   async collections(): Promise<

@@ -273,7 +273,8 @@ describe("an editor", () => {
       expect(response.statusCode, step).toBe(403);
       expect(response.json(), step).toEqual({
         error: "forbidden",
-        message: "You need the approver role to do this.",
+        message:
+          "You don't have permission to publish or reject a change. Ask an admin for the approver role.",
       });
     }
     expect(await publicResponses()).toEqual(before);
@@ -1608,8 +1609,12 @@ describe("making a page public (#3201)", () => {
   });
 
   it("counts only changes since the page was last public", async () => {
+    // As this block's beforeEach stores them: an approver who edits too.
     const page = expectOk(
-      await services.editing.create(aPage({ visibility: "draft" }), APPROVER),
+      await services.editing.create(aPage({ visibility: "draft" }), {
+        ...APPROVER,
+        roles: ["editor", "approver"],
+      }),
     );
     // They wrote it, and it has never been public.
     expect(

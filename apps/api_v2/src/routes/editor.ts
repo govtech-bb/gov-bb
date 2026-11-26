@@ -2,7 +2,12 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
 import type { CollectionEditing } from "../services/collection-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import type { Employee, Role, SelfApproval } from "../modules/auth";
+import type { Employee, SelfApproval } from "../modules/auth";
+import {
+  permissionsOf,
+  roleCatalogue,
+  type PermissionDenied,
+} from "../modules/permissions";
 import type {
   ContentStoreUnavailable,
   PageConflict,
@@ -12,7 +17,8 @@ import type {
   RevisionStateConflict,
 } from "../modules/page";
 import { Redacted } from "../modules/redacted";
-import type { EmployeeGate, RoleRecords } from "../services/editor-access";
+import type { EmployeeGate } from "../services/editor-access";
+import type { IPeople } from "../services/people";
 import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
 import { editorCategoryRoutes } from "./categories";
@@ -20,25 +26,6 @@ import { editorCollectionRoutes } from "./collections";
 import { SCHEMAS } from "./contracts";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
 import { editorRoleRoutes } from "./roles";
-
-declare module "fastify" {
-  interface FastifyContextConfig {
-    /**
-     * The role a route needs (ADR 0134), or the roles any one of which will
-     * do (#3681). Every write route names at least one, and a read may; the
-     * editor scope refuses a write that names none, so a new route fails
-     * closed rather than open.
-     */
-    role?: Role | readonly [Role, ...Role[]];
-  }
-}
-
-/** Why an employee without the role a route needs is refused. */
-const NEEDS_ROLE: Readonly<Record<Role, string>> = {
-  editor: "You need the editor role to make changes. Ask an admin to grant it.",
-  approver: "You need the approver role to do this.",
-  admin: "Only admins can see or change who has which role.",
-};
 
 /** Why a page write or review step was refused, as its response. */
 function pageRefused(
@@ -49,6 +36,7 @@ function pageRefused(
     | RevisionNotFound
     | PageConflict
     | RevisionStateConflict
+    | PermissionDenied
     | SelfApproval
     | PageRejected
     | ContentStoreUnavailable,
@@ -69,6 +57,7 @@ function pageRefused(
       return reply
         .status(409)
         .send({ error: error.reason, message: error.message });
+    case "PermissionDenied":
     case "SelfApproval":
       return reply
         .status(403)
@@ -84,18 +73,18 @@ function pageRefused(
   }
 }
 
-/** Authenticated editor operations, behind an employee session, the editor's Origin and the route's role. */
+/** Authenticated editor operations, behind an employee session and the editor's Origin. */
 export const editorRoutes: FastifyPluginAsyncZod<{
   editing: PageEditing;
   index: EditorIndex;
   categories: ICategoryEditing;
   collections: CollectionEditing;
   access: EmployeeGate;
-  roles: RoleRecords;
+  people: IPeople;
   editorOrigin: string;
 }> = async (
   editor,
-  { editing, index, categories, collections, access, roles, editorOrigin },
+  { editing, index, categories, collections, access, people, editorOrigin },
 ) => {
   editor.decorateRequest("employee", null);
   editor.addHook("onRequest", async (request, reply) => {
@@ -134,26 +123,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     ) {
       return reply.status(403).send({ error: "forbidden" });
     }
-    const { role } = request.routeOptions.config;
-    const needed: readonly Role[] = role === undefined ? [] : [role].flat();
-    // Fail closed: a write route that names no role is a bug, which
-    // route-auth.test.ts catches before it ships.
-    if (needed.length === 0 && !["GET", "HEAD"].includes(request.method))
-      return reply.status(403).send({
-        error: "forbidden",
-        message: "Nobody can make this change: its route names no role.",
-      });
-    if (
-      needed.length > 0 &&
-      !needed.some((one) => employee.value.roles.includes(one))
-    )
-      return reply.status(403).send({
-        error: "forbidden",
-        message:
-          needed.length === 1 && needed[0]
-            ? NEEDS_ROLE[needed[0]]
-            : `You need the ${needed.join(" or ")} role to do this.`,
-      });
+    // Who is asking, and nothing more: each service decides what they may do.
     request.setDecorator("employee", employee.value);
   });
 
@@ -280,15 +250,25 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   await editor.register(editorCategoryRoutes, { categories, actor });
   await editor.register(editorCollectionRoutes, { collections, actor });
-  await editor.register(editorRoleRoutes, { roles, actor });
+  await editor.register(editorRoleRoutes, { people, actor });
   editor.route({
     method: "GET",
     url: "/editor/me",
     schema: SCHEMAS.me,
     handler: async (request) => {
       const { roles: held, ...employee } = actor(request);
-      return { ...employee, roles: [...held] };
+      return {
+        ...employee,
+        roles: [...held],
+        permissions: [...permissionsOf(held)],
+      };
     },
+  });
+  editor.route({
+    method: "GET",
+    url: "/editor/roles",
+    schema: SCHEMAS.roles,
+    handler: async () => ({ roles: [...roleCatalogue()] }),
   });
   editor.route({
     method: "GET",
@@ -305,34 +285,16 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages",
     schema: SCHEMAS.createPage,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const created = await editing.create(request.body, actor(request));
       if (created.ok) return reply.status(201).send(created.value);
-      switch (created.error._tag) {
-        case "PageRejected":
-          return reply.status(422).send(rejected(created.error));
-        case "NotApprover":
-        case "SelfApproval":
-          return reply
-            .status(403)
-            .send({ error: "forbidden", message: created.error.message });
-        case "ContentStoreUnavailable":
-          return reply
-            .status(500)
-            .send(storageFailed(request.log, created.error));
-        default: {
-          const unexpected: never = created.error;
-          throw unexpected;
-        }
-      }
+      return pageRefused(request, reply, created.error);
     },
   });
   editor.route({
     method: "PUT",
     url: "/pages/:id",
     schema: SCHEMAS.savePage,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const { expected_version: expected, ...fields } = request.body;
       const saved = await editing.save(
@@ -342,10 +304,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         actor(request),
       );
       if (saved.ok) return saved.value;
-      if (saved.error._tag === "NotApprover")
-        return reply
-          .status(403)
-          .send({ error: "forbidden", message: saved.error.message });
       return pageRefused(request, reply, saved.error);
     },
   });
@@ -353,7 +311,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages/:id/history/:version/restore",
     schema: SCHEMAS.restorePageVersion,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const restored = await editing.restore(
         request.params.id,
@@ -372,10 +329,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
             error: "not_restorable",
             message: restored.error.message,
           });
-        case "NotApprover":
-          return reply
-            .status(403)
-            .send({ error: "forbidden", message: restored.error.message });
         default:
           return pageRefused(request, reply, restored.error);
       }
@@ -385,7 +338,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages/:id/revision/submit",
     schema: SCHEMAS.submitRevision,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const expected = request.body.expected_version;
       const submitted = await editing.submit(
@@ -402,7 +354,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages/:id/revision/reject",
     schema: SCHEMAS.rejectRevision,
-    config: { role: "approver" },
     handler: async (request, reply) => {
       const expected = request.body.expected_version;
       const decided = await editing.reject(
@@ -420,7 +371,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/pages/:id/revision/publish",
     schema: SCHEMAS.publishRevision,
-    config: { role: "approver" },
     handler: async (request, reply) => {
       const expected = request.body.expected_version;
       const published = await editing.publish(
@@ -437,7 +387,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     method: "DELETE",
     url: "/pages/:id",
     schema: SCHEMAS.deletePage,
-    config: { role: "editor" },
     handler: async (request, reply) => {
       const expected = request.query.expected_version;
       const deleted = await editing.delete(
@@ -446,10 +395,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         actor(request),
       );
       if (deleted.ok) return reply.status(204).send();
-      if (deleted.error._tag === "NotApprover")
-        return reply
-          .status(403)
-          .send({ error: "forbidden", message: deleted.error.message });
       return pageRefused(request, reply, deleted.error);
     },
   });

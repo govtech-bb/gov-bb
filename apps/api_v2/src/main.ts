@@ -21,6 +21,7 @@ import {
 import { migrate } from "./migrate";
 import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
+import { People } from "./services/people";
 import { EditorAccess, type EmployeeGate } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
@@ -171,7 +172,7 @@ async function main(): Promise<void> {
       categories: new CategoryEditing(pages),
       collections: new CollectionEditing(new PostgresCollections(db)),
       access,
-      roles,
+      people: new People(roles, config.auth.allowedDomains),
       auth,
       config: {
         apiOrigin: config.auth.apiOrigin,

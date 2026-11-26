@@ -39,7 +39,7 @@ import {
   isCategoryAnchor,
   type CategoryValues,
 } from "../modules/category";
-import type { UserId } from "../modules/auth";
+import type { Grant } from "../modules/permissions";
 import type { LastEditedBy } from "../modules/content-attribution";
 import { EditVersion } from "../modules/edit-concurrency";
 import type { CategoryRecords } from "../services/category-editing";
@@ -87,6 +87,7 @@ import type {
 } from "../services/page-editing";
 import type { PageRoute, PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
+import { transactAs } from "./postgres-transaction";
 
 const categoryDatabaseRow = EditorCategory.omit({
   updated_at: true,
@@ -268,34 +269,19 @@ export class PostgresPages
   constructor(private readonly db: Database) {}
 
   /**
-   * Run `work` in one transaction as `actorId`, whom the change-log trigger
-   * records, after taking the shared content lock; an error result rolls back
-   * everything it wrote. The setting is transaction-local, so a pooled
-   * connection never carries it into another request.
+   * Run `work` in one transaction as the grant's actor, whom the change-log
+   * trigger records, after taking the shared content lock; an error result
+   * rolls back everything it wrote. The setting is transaction-local, so a
+   * pooled connection never carries it into another request. It serves both
+   * the page and the category port, so it takes either's grant.
    */
   async atomically<R extends Result<unknown, Error>>(
-    actorId: UserId,
+    grant: Grant<"pages:edit" | "pages:publish" | "categories:manage">,
     work: (records: PostgresPages) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
-    let refused: R | undefined;
-    try {
-      return await this.db.transaction(async (tx) => {
-        await tx.execute(
-          sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
-        );
-        await tx.execute(
-          sql`select set_config('app.user_id', ${actorId}, true)`,
-        );
-        const result = await work(new PostgresPages(tx));
-        if (!result.ok) {
-          refused = result;
-          tx.rollback();
-        }
-        return result;
-      });
-    } catch (cause) {
-      return refused ?? err(new ContentStoreUnavailable("transaction", cause));
-    }
+    return transactAs(this.db, grant.actor, { contentLock: true }, (tx) =>
+      work(new PostgresPages(tx)),
+    );
   }
 
   /** Read the rule and exact page together, so a concurrent move cannot fall between two lookups. */

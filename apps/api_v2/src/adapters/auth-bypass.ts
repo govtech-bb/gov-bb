@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Database } from "../db";
-import { ROLES, UserId, type Employee } from "../modules/auth";
+import { UserId, type Employee } from "../modules/auth";
+import { ROLES } from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 import type { AuthHandler } from "../routes/auth";
 import { authUser } from "../schema";

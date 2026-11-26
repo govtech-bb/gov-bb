@@ -1,4 +1,4 @@
-import type { Employee, UserId } from "../modules/auth";
+import type { Employee } from "../modules/auth";
 import type { EditVersion } from "../modules/edit-concurrency";
 import {
   categoryAddress,
@@ -15,17 +15,23 @@ import {
   type EditorCategory,
 } from "../modules/category";
 import type { ContentStoreUnavailable } from "../modules/page";
+import {
+  authorize,
+  type Grant,
+  type PermissionDenied,
+} from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 
 /** Content persistence; every write transaction takes the shared content lock before any other locks. */
 export interface CategoryRecords {
   /**
-   * Run `work` as one transaction on behalf of `actorId`, whom storage
-   * records against every change it makes; a failed Result rolls back all
-   * writes, and the shared advisory lock is acquired first.
+   * Run `work` as one transaction on behalf of the grant's actor, whom
+   * storage records against every change it makes; a failed Result rolls
+   * back all writes, and the shared advisory lock is acquired first. Only a
+   * `categories:manage` check opens one.
    */
   atomically<R extends Result<unknown, Error>>(
-    actorId: UserId,
+    grant: Grant<"categories:manage">,
     work: (records: CategoryRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** All category rows in sibling order, with direct-service counts of every visibility. */
@@ -61,6 +67,7 @@ export interface CategoryRecords {
 
 /** Expected failures of a versioned category update. */
 export type CategoryUpdateFailure =
+  | PermissionDenied
   | CategoryRejected
   | CategoryNotFound
   | CategoryConflict
@@ -68,6 +75,7 @@ export type CategoryUpdateFailure =
 
 /** Expected failures of category deletion, including all occupancy blockers. */
 export type CategoryDeleteFailure =
+  | PermissionDenied
   | CategoryNotFound
   | CategoryConflict
   | CategoryInUse
@@ -82,7 +90,10 @@ export interface ICategoryEditing {
     fields: CategoryFields,
     actor: Employee,
   ): Promise<
-    Result<EditorCategory, CategoryRejected | ContentStoreUnavailable>
+    Result<
+      EditorCategory,
+      PermissionDenied | CategoryRejected | ContentStoreUnavailable
+    >
   >;
   /** Save only if the opened version still matches; occupied addresses cannot move. */
   update(
@@ -98,7 +109,10 @@ export interface ICategoryEditing {
   ): Promise<
     Result<
       EditorCategory[],
-      CategoryRejected | CategoryConflict | ContentStoreUnavailable
+      | PermissionDenied
+      | CategoryRejected
+      | CategoryConflict
+      | ContentStoreUnavailable
     >
   >;
   /** Refuse stale or occupied deletion without moving any content. */
@@ -109,7 +123,7 @@ export interface ICategoryEditing {
   ): Promise<Result<void, CategoryDeleteFailure>>;
 }
 
-/** Category workflow owner; every write is recorded against the acting employee. */
+/** Category workflow owner; every write needs `categories:manage` and is recorded against the acting employee. */
 export class CategoryEditing implements ICategoryEditing {
   constructor(private readonly records: CategoryRecords) {}
 
@@ -133,11 +147,16 @@ export class CategoryEditing implements ICategoryEditing {
     fields: CategoryFields,
     actor: Employee,
   ): Promise<
-    Result<EditorCategory, CategoryRejected | ContentStoreUnavailable>
+    Result<
+      EditorCategory,
+      PermissionDenied | CategoryRejected | ContentStoreUnavailable
+    >
   > {
+    const grant = authorize(actor, "categories:manage");
+    if (!grant.ok) return grant;
     const parsed = parseCategoryFields(fields);
     if (!parsed.ok) return parsed;
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const url = categoryAddress(parsed.value, rows.value);
@@ -163,7 +182,9 @@ export class CategoryEditing implements ICategoryEditing {
     expected: EditVersion,
     actor: Employee,
   ): Promise<Result<EditorCategory, CategoryUpdateFailure>> {
-    return this.records.atomically(actor.id, async (records) => {
+    const grant = authorize(actor, "categories:manage");
+    if (!grant.ok) return grant;
+    return this.records.atomically(grant.value, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const current = rows.value.find((row) => row.id === id);
@@ -220,10 +241,15 @@ export class CategoryEditing implements ICategoryEditing {
   ): Promise<
     Result<
       EditorCategory[],
-      CategoryRejected | CategoryConflict | ContentStoreUnavailable
+      | PermissionDenied
+      | CategoryRejected
+      | CategoryConflict
+      | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(actor.id, async (records) => {
+    const grant = authorize(actor, "categories:manage");
+    if (!grant.ok) return grant;
+    return this.records.atomically(grant.value, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       if (
@@ -275,7 +301,9 @@ export class CategoryEditing implements ICategoryEditing {
     expected: EditVersion,
     actor: Employee,
   ): Promise<Result<void, CategoryDeleteFailure>> {
-    return this.records.atomically(actor.id, async (records) => {
+    const grant = authorize(actor, "categories:manage");
+    if (!grant.ok) return grant;
+    return this.records.atomically(grant.value, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const current = rows.value.find((row) => row.id === id);

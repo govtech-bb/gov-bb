@@ -97,7 +97,8 @@ describe.skipIf(!HAS_DATABASE)(
       expect(response.status).toBe(403);
       expect(await response.json()).toEqual({
         error: "forbidden",
-        message: "You need the admin or approver role to do this.",
+        message:
+          "You don't have permission to create a collection. Ask an admin for the approver or admin role.",
       });
       expect(await stored()).toEqual(before);
     });

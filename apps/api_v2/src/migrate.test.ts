@@ -47,6 +47,7 @@ const UNAUDITED = new Set([
   "schema_migrations",
   "search_chunks",
   "user_roles",
+  "waiting_roles",
 ]);
 
 const freshDb = async () => {
@@ -100,6 +101,7 @@ describe("migrate", () => {
       "schema_migrations",
       "search_chunks",
       "user_roles",
+      "waiting_roles",
     ]);
     expect((await exec("select id, email from auth_user")).rows).toEqual([
       { id: "system", email: "system@api-v2.invalid" },

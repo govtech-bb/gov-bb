@@ -141,10 +141,11 @@ export type AiAnswers = z.infer<typeof askQuestionsTool.outputSchema>;
 export const proposeFormTool = {
   name: "apply_form_draft" as const,
   description:
-    "Propose a complete form draft. Omit target for the open form, or provide a serviceId after reading its form. Omit processors to keep them unchanged. Payment settings, metadata, routing and secrets are preserved. Never invent or alter credentials. Only drafts are changed; nothing is published.",
+    "Propose a complete form draft. Resend every existing step, unchanged ones included; to delete steps, leave them out and list their stepIds in removeStepIds. A step missing from the recipe and not listed there is refused. Omit target for the open form, or provide a serviceId after reading its form. Omit processors to keep them unchanged. Payment settings, metadata, routing and secrets are preserved. Never invent or alter credentials. Only drafts are changed; nothing is published.",
   inputSchema: z.object({
     summary: shortText,
     recipe: aiRecipeSchema,
+    removeStepIds: z.array(z.string().max(200)).max(100).optional(),
     target: serviceTargetSchema.optional(),
   }),
   outputSchema: outcome,
