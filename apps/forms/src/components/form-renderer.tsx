@@ -658,10 +658,15 @@ function ActiveStep({
 
   const handleSubmit = async () => {
     await form.handleSubmit();
-    // Judge this step's own fields, as handleContinue does: the form-wide
-    // isValid below also covers other steps' fields (#3902).
-    const stepHasErrors = currentFields.some(
-      (field) => (form.state.fieldMeta[field.id]?.errors.length ?? 0) > 0,
+    // Judge this step's own fields by the client rules, as handleContinue
+    // does. The form-wide isValid below also covers other steps' fields. Skip
+    // onServer: after a 422, the form's onSubmit (in the route) puts the API's
+    // message there. It breaks no client rule, and form-submit-error reports
+    // it (#3902).
+    const stepHasErrors = currentFields.some((field) =>
+      Object.entries(form.state.fieldMeta[field.id]?.errorMap ?? {}).some(
+        ([source, error]) => source !== "onServer" && error !== undefined,
+      ),
     );
     if (stepHasErrors) trackStepValidationError();
     // handleSubmit resolves even when validation fails, so only advance when the

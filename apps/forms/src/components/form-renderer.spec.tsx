@@ -178,7 +178,7 @@ function makePlainField(id: string, fieldId: string, stepId: string) {
 
 const mockForm = {
   store: {},
-  state: { isValid: true, isSubmitting: false, values: {} },
+  state: { isValid: true, isSubmitting: false, values: {}, fieldMeta: {} },
   getFieldValue: vi.fn(),
   validateField: vi.fn().mockResolvedValue([]),
   handleSubmit: vi.fn(),
@@ -202,7 +202,12 @@ beforeEach(() => {
   // silently leak into subsequent tests under `clearAllMocks`.
   vi.resetAllMocks();
   // resetAllMocks doesn't touch plain object fields, so reset form.state too.
-  mockForm.state = { isValid: true, isSubmitting: false, values: {} };
+  mockForm.state = {
+    isValid: true,
+    isSubmitting: false,
+    values: {},
+    fieldMeta: {},
+  };
   mockForm.validateField.mockResolvedValue([]);
   mockUseStepGuard.mockReturnValue({
     navigateToStep: mockNavigateToStep,
@@ -1372,6 +1377,19 @@ describe("FormRenderer", () => {
       );
     }
 
+    // The real form.handleSubmit validates the fields, and runs onSubmit when
+    // they pass. So the state that Submit must read exists only after it.
+    const handleSubmitLeaves = (state: Record<string, unknown>) =>
+      mockForm.handleSubmit.mockImplementation(async () => {
+        mockForm.state = { isSubmitting: false, values: {}, ...state };
+      });
+
+    // Field meta as TanStack Form keeps it: errors lists each errorMap entry.
+    const meta = (errorMap: Record<string, string | string[]>) => ({
+      errorMap,
+      errors: Object.values(errorMap).flat(),
+    });
+
     const validationErrorEvents = () =>
       mockTrackEvent.mock.calls.filter(
         ([event]) => event === "form-validation-error",
@@ -1384,16 +1402,15 @@ describe("FormRenderer", () => {
         { fieldId: "declaration-confirmed", codes: ["required"] },
       ]);
       const values = { "declaration_declaration-confirmed": [] };
-      mockForm.state = {
+      handleSubmitLeaves({
         isValid: false,
-        isSubmitting: false,
         values,
         fieldMeta: {
-          "declaration_declaration-confirmed": {
-            errors: ["You must confirm the declaration to continue."],
-          },
+          "declaration_declaration-confirmed": meta({
+            onDynamic: ["You must confirm the declaration to continue."],
+          }),
         },
-      };
+      });
       renderDeclaration();
 
       await user.click(screen.getByRole("button", { name: /submit/i }));
@@ -1426,12 +1443,10 @@ describe("FormRenderer", () => {
       (collectStepErrorCodes as Mock).mockReturnValue([
         { fieldId: "overtime-costs-acknowledged", codes: ["required"] },
       ]);
-      mockForm.state = {
+      handleSubmitLeaves({
         isValid: true,
-        isSubmitting: false,
-        values: {},
-        fieldMeta: { "declaration_declaration-confirmed": { errors: [] } },
-      };
+        fieldMeta: { "declaration_declaration-confirmed": meta({}) },
+      });
       renderDeclaration();
 
       await user.click(screen.getByRole("button", { name: /submit/i }));
@@ -1444,15 +1459,35 @@ describe("FormRenderer", () => {
       // form.state.isValid also covers other steps' fields, so it alone would
       // send an event with no error codes for this step.
       const user = userEvent.setup();
-      mockForm.state = {
+      handleSubmitLeaves({
         isValid: false,
-        isSubmitting: false,
-        values: {},
         fieldMeta: {
-          "declaration_declaration-confirmed": { errors: [] },
-          "applicant-details_email": { errors: ["Enter an email address"] },
+          "declaration_declaration-confirmed": meta({}),
+          "applicant-details_email": meta({
+            onDynamic: ["Enter an email address"],
+          }),
         },
-      };
+      });
+      renderDeclaration();
+
+      await user.click(screen.getByRole("button", { name: /submit/i }));
+
+      expect(validationErrorEvents()).toEqual([]);
+      expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing for an error that the API put on the step after a 422", async () => {
+      // onSubmit puts the API's message on the field (#2573). It breaks no
+      // client rule, so it has no codes, and form-submit-error reports it.
+      const user = userEvent.setup();
+      handleSubmitLeaves({
+        isValid: false,
+        fieldMeta: {
+          "declaration_declaration-confirmed": meta({
+            onServer: "You must confirm the declaration to continue.",
+          }),
+        },
+      });
       renderDeclaration();
 
       await user.click(screen.getByRole("button", { name: /submit/i }));
