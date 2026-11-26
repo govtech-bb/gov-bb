@@ -73,7 +73,7 @@ function pageRefused(
   }
 }
 
-/** Authenticated editor operations, behind an employee session, the editor's Origin and the route's role. */
+/** Authenticated editor operations, behind an employee session and the editor's Origin. */
 export const editorRoutes: FastifyPluginAsyncZod<{
   editing: PageEditing;
   index: EditorIndex;
