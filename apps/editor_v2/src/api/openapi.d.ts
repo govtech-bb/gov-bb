@@ -4285,7 +4285,7 @@ export interface paths {
                 header?: never;
                 path: {
                     id: string;
-                    role: "editor" | "approver" | "admin";
+                    role: "reader" | "editor" | "approver" | "admin";
                 };
                 cookie?: never;
             };
@@ -4395,7 +4395,7 @@ export interface paths {
                 header?: never;
                 path: {
                     id: string;
-                    role: "editor" | "approver" | "admin";
+                    role: "reader" | "editor" | "approver" | "admin";
                 };
                 cookie?: never;
             };

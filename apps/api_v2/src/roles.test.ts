@@ -427,13 +427,13 @@ describe("role management", () => {
           id: TEST_EDITOR.id,
           email: TEST_EDITOR.email,
           name: TEST_EDITOR.name,
-          roles: ["editor"],
+          roles: ["reader", "editor"],
         },
         {
           id: TEST_EMPLOYEE.id,
           email: TEST_EMPLOYEE.email,
           name: TEST_EMPLOYEE.name,
-          roles: ["admin", "approver", "editor"],
+          roles: ["reader", "admin", "approver", "editor"],
         },
       ],
     });
@@ -473,6 +473,24 @@ describe("role management", () => {
       },
     });
     expect(response.statusCode).toBe(403);
+  });
+
+  it("refuses an admin taking away their own admin role, changing nothing", async () => {
+    const response = await requestAs(app, TEST_EMPLOYEE, {
+      method: "DELETE",
+      url: `/editor/employees/${TEST_EMPLOYEE.id}/roles/admin`,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: "forbidden",
+      message:
+        "You can't take away your own admin role, because you'd lose the " +
+        "permission to give and take away roles. Ask someone else who can.",
+    });
+    expect(
+      (await requestAs(app, TEST_EMPLOYEE, { url: "/editor/me" })).json().roles,
+    ).toContain("admin");
   });
 
   it("404s a grant to someone who has never signed in", async () => {
@@ -665,15 +683,19 @@ describe("the Reader role", () => {
   it("can't be given or taken away through the role routes, or stored", async () => {
     const before = await storedRoles();
 
-    for (const method of ["PUT", "DELETE"] as const)
-      expect(
-        (
-          await requestAs(app, TEST_EMPLOYEE, {
-            method,
-            url: `/editor/employees/${TEST_EDITOR.id}/roles/reader`,
-          })
-        ).statusCode,
-      ).toBe(400);
+    for (const method of ["PUT", "DELETE"] as const) {
+      const response = await requestAs(app, TEST_EMPLOYEE, {
+        method,
+        url: `/editor/employees/${TEST_EDITOR.id}/roles/reader`,
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({
+        error: "forbidden",
+        message:
+          "Everyone has the reader role. It can't be given or taken away.",
+      });
+    }
     expect(await storedRoles()).toEqual(before);
     await expect(
       db.execute(

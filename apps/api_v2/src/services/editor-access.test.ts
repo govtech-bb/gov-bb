@@ -20,8 +20,6 @@ function rolesHolding(held: GrantableRole[] = []) {
       granted.push({ role, grantedBy });
       return ok(undefined);
     },
-    revoke: async () => ok(undefined),
-    employees: async () => ok([]),
   };
   return { records, granted };
 }

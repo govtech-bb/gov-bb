@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Role } from "./permissions";
+import { DEFAULT_ROLE, PERMISSIONS, Role } from "./permissions";
 import { err, ok, type Result } from "./result";
 
 /**
@@ -67,6 +67,31 @@ export class SelfApproval extends Error {
     message = "You can't approve or reject a change you made or submitted. Ask another approver.",
   ) {
     super(message);
+  }
+}
+
+/** Someone taking away their own role when it's the one that lets them give roles back. */
+export class OwnRoleChange extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "OwnRoleChange";
+  /** Name the role, and say who can take it away instead. */
+  constructor(role: Role) {
+    super(
+      `You can't take away your own ${role} role, because you'd lose the ` +
+        `permission to ${PERMISSIONS["people:manage"]}. Ask someone else who can.`,
+    );
+  }
+}
+
+/** A grant or revoke of the role everyone holds without a stored row. */
+export class DefaultRoleChange extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "DefaultRoleChange";
+  /** Say why it never changes. */
+  constructor() {
+    super(
+      `Everyone has the ${DEFAULT_ROLE} role. It can't be given or taken away.`,
+    );
   }
 }
 

@@ -2,7 +2,6 @@ import {
   AuthUnavailable,
   Unauthenticated,
   type Employee,
-  type EmployeeView,
   type Forbidden,
   type Identity,
   type UserNotFound,
@@ -32,13 +31,6 @@ export interface RoleRecords {
     role: GrantableRole,
     grantedBy: string | null,
   ): Promise<Result<void, UserNotFound | ContentStoreUnavailable>>;
-  /** Revoke a role; not holding it is not an error. */
-  revoke(
-    userId: string,
-    role: GrantableRole,
-  ): Promise<Result<void, ContentStoreUnavailable>>;
-  /** Everyone who has signed in, with their roles, by email. */
-  employees(): Promise<Result<EmployeeView[], ContentStoreUnavailable>>;
 }
 
 /** Decides whether a browser credential belongs to an admitted employee. */

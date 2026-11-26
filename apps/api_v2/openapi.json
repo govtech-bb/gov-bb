@@ -8230,6 +8230,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "reader",
                 "editor",
                 "approver",
                 "admin"
@@ -8403,6 +8404,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "reader",
                 "editor",
                 "approver",
                 "admin"
