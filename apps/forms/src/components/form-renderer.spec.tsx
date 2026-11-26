@@ -1350,6 +1350,118 @@ describe("FormRenderer", () => {
     expect(mockCompleteAndContinue).toHaveBeenCalledWith("check-your-answers");
   });
 
+  // #3902: Submit reports the submit step's validation errors, as Continue
+  // does for every other step, so the analytics see declaration-step errors.
+  describe("form-validation-error from the submit step (#3902)", () => {
+    const declarationField = makePlainField(
+      "declaration_declaration-confirmed",
+      "declaration-confirmed",
+      "declaration",
+    );
+
+    function renderDeclaration() {
+      render(
+        <FormRenderer
+          form={mockForm}
+          formMeta={makeMeta() as any}
+          stepId="declaration"
+          visibleSteps={[makeStep("declaration", [declarationField])]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+    }
+
+    const validationErrorEvents = () =>
+      mockTrackEvent.mock.calls.filter(
+        ([event]) => event === "form-validation-error",
+      );
+
+    it("sends the step's error codes when the submit step has errors", async () => {
+      const user = userEvent.setup();
+      const { collectStepErrorCodes } = vi.mocked(formsLibMock);
+      (collectStepErrorCodes as Mock).mockReturnValue([
+        { fieldId: "declaration-confirmed", codes: ["required"] },
+      ]);
+      const values = { "declaration_declaration-confirmed": [] };
+      mockForm.state = {
+        isValid: false,
+        isSubmitting: false,
+        values,
+        fieldMeta: {
+          "declaration_declaration-confirmed": {
+            errors: ["You must confirm the declaration to continue."],
+          },
+        },
+      };
+      renderDeclaration();
+
+      await user.click(screen.getByRole("button", { name: /submit/i }));
+
+      expect(collectStepErrorCodes).toHaveBeenCalledWith(
+        [declarationField],
+        values,
+      );
+      expect(validationErrorEvents()).toEqual([
+        [
+          "form-validation-error",
+          {
+            form: "test-form",
+            category: expect.any(String),
+            step: "declaration",
+            errorCount: 1,
+            fieldErrors: "declaration-confirmed:required",
+          },
+        ],
+      ]);
+      expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing when the submit step has no errors", async () => {
+      const user = userEvent.setup();
+      // collectStepErrorCodes does not filter out hidden fields, so a hidden,
+      // required field gives a code even when the step shows no error. The
+      // codes alone cannot decide that the step has errors.
+      const { collectStepErrorCodes } = vi.mocked(formsLibMock);
+      (collectStepErrorCodes as Mock).mockReturnValue([
+        { fieldId: "overtime-costs-acknowledged", codes: ["required"] },
+      ]);
+      mockForm.state = {
+        isValid: true,
+        isSubmitting: false,
+        values: {},
+        fieldMeta: { "declaration_declaration-confirmed": { errors: [] } },
+      };
+      renderDeclaration();
+
+      await user.click(screen.getByRole("button", { name: /submit/i }));
+
+      expect(validationErrorEvents()).toEqual([]);
+      expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
+    });
+
+    it("sends nothing when only another step's fields have errors", async () => {
+      // form.state.isValid also covers other steps' fields, so it alone would
+      // send an event with no error codes for this step.
+      const user = userEvent.setup();
+      mockForm.state = {
+        isValid: false,
+        isSubmitting: false,
+        values: {},
+        fieldMeta: {
+          "declaration_declaration-confirmed": { errors: [] },
+          "applicant-details_email": { errors: ["Enter an email address"] },
+        },
+      };
+      renderDeclaration();
+
+      await user.click(screen.getByRole("button", { name: /submit/i }));
+
+      expect(validationErrorEvents()).toEqual([]);
+      expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+    });
+  });
+
   it("clicking Continue with validation errors does NOT call completeAndContinue", async () => {
     const user = userEvent.setup();
     Object.defineProperty(window, "scrollTo", {
@@ -1371,6 +1483,39 @@ describe("FormRenderer", () => {
     );
     await user.click(screen.getByRole("button", { name: /continue/i }));
     expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+  });
+
+  it("clicking Continue with validation errors sends form-validation-error with the step's error codes", async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(window, "scrollTo", {
+      value: vi.fn(),
+      writable: true,
+    });
+    const { collectStepErrorCodes } = vi.mocked(formsLibMock);
+    (collectStepErrorCodes as Mock).mockReturnValue([
+      { fieldId: "name", codes: ["required"] },
+    ]);
+    const field = makePlainField("step-1_name", "name", "step-1");
+    mockForm.validateField.mockResolvedValue(["This field is required"]);
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="step-1"
+        visibleSteps={[makeStep("step-1", [field])]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    expect(collectStepErrorCodes).toHaveBeenCalledWith([field], {});
+    expect(mockTrackEvent).toHaveBeenCalledWith("form-validation-error", {
+      form: "test-form",
+      category: expect.any(String),
+      step: "step-1",
+      errorCount: 1,
+      fieldErrors: "name:required",
+    });
   });
 
   it("clicking Continue on a repeatable step with addAnother=yes calls addRepeatableStep", async () => {

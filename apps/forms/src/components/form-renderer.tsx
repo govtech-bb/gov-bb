@@ -551,6 +551,22 @@ function ActiveStep({
   }, [repeatableStepValues]);
 
   const repeatableStepSettings = repeatableStepSettingsRef.current;
+
+  // One payload for the step's errors, from Continue and from Submit (#3902).
+  const trackStepValidationError = () =>
+    trackEvent(
+      "form-validation-error",
+      buildValidationErrorPayload(
+        formMeta.formId,
+        formCategory(formMeta.formId),
+        currentStep.stepId,
+        collectStepErrorCodes(
+          currentFields,
+          form.state.values as Record<string, unknown>,
+        ),
+      ),
+    );
+
   const handleContinue = async () => {
     // Validate current step fields
     const results = await Promise.all(
@@ -566,18 +582,7 @@ function ActiveStep({
 
     const hasError = results.some((r) => r.length > 0);
     if (hasError) {
-      trackEvent(
-        "form-validation-error",
-        buildValidationErrorPayload(
-          formMeta.formId,
-          formCategory(formMeta.formId),
-          currentStep.stepId,
-          collectStepErrorCodes(
-            currentFields,
-            form.state.values as Record<string, unknown>,
-          ),
-        ),
-      );
+      trackStepValidationError();
       scrollToTop();
       return;
     }
@@ -653,6 +658,12 @@ function ActiveStep({
 
   const handleSubmit = async () => {
     await form.handleSubmit();
+    // Judge this step's own fields, as handleContinue does: the form-wide
+    // isValid below also covers other steps' fields (#3902).
+    const stepHasErrors = currentFields.some(
+      (field) => (form.state.fieldMeta[field.id]?.errors.length ?? 0) > 0,
+    );
+    if (stepHasErrors) trackStepValidationError();
     // handleSubmit resolves even when validation fails, so only advance when the
     // form is valid — otherwise the user would be moved past their own errors.
     if (form.state.isValid) {
