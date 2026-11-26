@@ -1,4 +1,4 @@
-import type { Employee, UserId } from "../modules/auth";
+import type { Employee } from "../modules/auth";
 import type { EditVersion } from "../modules/edit-concurrency";
 import {
   categoryAddress,
@@ -15,18 +15,23 @@ import {
   type EditorCategory,
 } from "../modules/category";
 import type { ContentStoreUnavailable } from "../modules/page";
-import { authorize, type PermissionDenied } from "../modules/permissions";
+import {
+  authorize,
+  type Grant,
+  type PermissionDenied,
+} from "../modules/permissions";
 import { err, ok, type Result } from "../modules/result";
 
 /** Content persistence; every write transaction takes the shared content lock before any other locks. */
 export interface CategoryRecords {
   /**
-   * Run `work` as one transaction on behalf of `actorId`, whom storage
-   * records against every change it makes; a failed Result rolls back all
-   * writes, and the shared advisory lock is acquired first.
+   * Run `work` as one transaction on behalf of the grant's actor, whom
+   * storage records against every change it makes; a failed Result rolls
+   * back all writes, and the shared advisory lock is acquired first. Only a
+   * `categories:manage` check opens one.
    */
   atomically<R extends Result<unknown, Error>>(
-    actorId: UserId,
+    grant: Grant<"categories:manage">,
     work: (records: CategoryRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** All category rows in sibling order, with direct-service counts of every visibility. */
@@ -151,7 +156,7 @@ export class CategoryEditing implements ICategoryEditing {
     if (!grant.ok) return grant;
     const parsed = parseCategoryFields(fields);
     if (!parsed.ok) return parsed;
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const url = categoryAddress(parsed.value, rows.value);
@@ -179,7 +184,7 @@ export class CategoryEditing implements ICategoryEditing {
   ): Promise<Result<EditorCategory, CategoryUpdateFailure>> {
     const grant = authorize(actor, "categories:manage");
     if (!grant.ok) return grant;
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const current = rows.value.find((row) => row.id === id);
@@ -244,7 +249,7 @@ export class CategoryEditing implements ICategoryEditing {
   > {
     const grant = authorize(actor, "categories:manage");
     if (!grant.ok) return grant;
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       if (
@@ -298,7 +303,7 @@ export class CategoryEditing implements ICategoryEditing {
   ): Promise<Result<void, CategoryDeleteFailure>> {
     const grant = authorize(actor, "categories:manage");
     if (!grant.ok) return grant;
-    return this.records.atomically(actor.id, async (records) => {
+    return this.records.atomically(grant.value, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const current = rows.value.find((row) => row.id === id);

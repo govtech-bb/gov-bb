@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
 import {
-  rolesQuery,
+  permissionsQuery,
   serviceQuery,
   servicesQuery,
   estateVersionQuery,
@@ -74,7 +74,7 @@ const ReviewScreen = lazyRouteComponent(loadReviews, "ReviewScreen");
 const READ_ONLY =
   "You can read pages, categories and collections but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
 
-/** Why something that needs a role is off, where the roles couldn't be read; the app's banner offers Try again. */
+/** Why something that needs a permission is off, where they couldn't be read; the app's banner offers Try again. */
 const UNCHECKED = "We couldn’t check your permissions.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
@@ -218,18 +218,20 @@ export function ServiceWorkspace({
 
   const sitePageRead = useQuery({ ...pageQuery(api, sitePageId ?? ""), enabled: false });
   const sitePage = sitePageRead.data;
-  const rolesRead = useQuery(rolesQuery(api));
-  const roles = rolesRead.data;
+  const permissionsRead = useQuery(permissionsQuery(api));
+  const permissions = permissionsRead.data;
   // They couldn't be read: what needs them says so, rather than that it needs a role this person may well have
-  const unchecked = !roles && rolesRead.errorUpdateCount > 0;
-  // Until the roles load, deleting a public page and changing categories wait rather than offering what the API may
-  // refuse
-  const approver = roles?.includes("approver") ?? false;
-  // Adding a collection sets the fields every record holds, so it's an admin's or an approver's (#3681)
-  const collector = approver || (roles?.includes("admin") ?? false);
-  // Without the editor role everything still reads, but nothing can be changed. Until the roles load everyone is
-  // offered the changes, since nearly everyone is an editor; the API refuses anyone who isn't
-  const readOnly = !!roles && !roles.includes("editor");
+  const unchecked = !permissions && permissionsRead.errorUpdateCount > 0;
+  // Until the permissions load, deleting a public page, changing categories and adding a collection wait rather than
+  // offering what the API may refuse
+  const publisher = permissions?.includes("pages:publish") ?? false;
+  const categorizer = permissions?.includes("categories:manage") ?? false;
+  // Adding a collection sets the fields every record holds, so not every editor may (#3681)
+  const collector = permissions?.includes("collections:manage") ?? false;
+  // Without them pages and records still read, but can't be changed. Until the permissions load everyone is offered
+  // the changes, since nearly everyone edits; the API refuses anyone who doesn't
+  const readOnly = !!permissions && !permissions.includes("pages:edit");
+  const recordsReadOnly = !!permissions && !permissions.includes("collections:edit");
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
@@ -398,7 +400,7 @@ export function ServiceWorkspace({
           {error}
         </Banner>
       )}
-      {readOnly && (
+      {readOnly && recordsReadOnly && (
         <Banner tone="info" layout="strip">
           {READ_ONLY}
         </Banner>
@@ -410,12 +412,12 @@ export function ServiceWorkspace({
           actions={
             <Button
               variant="secondary"
-              pending={rolesRead.isFetching}
+              pending={permissionsRead.isFetching}
               pendingLabel="Checking permissions…"
               onClick={(event) => {
                 const button = event.currentTarget;
 
-                void rolesRead.refetch().then(({ data }) => {
+                void permissionsRead.refetch().then(({ data }) => {
                   // Read, its notice goes, and this button with it: the content takes the focus
                   if (data && document.activeElement === button) content.current?.focus();
                 });
@@ -444,7 +446,7 @@ export function ServiceWorkspace({
             deleteBlocked={
               selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
                 ? "Delete or move the pages under this page first."
-                : !approver &&
+                : !publisher &&
                     remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
                       "public"
                   ? unchecked
@@ -519,11 +521,11 @@ export function ServiceWorkspace({
             <section>
               <CategoriesScreen
                 api={api}
-                readOnly={!approver}
+                readOnly={!categorizer}
                 why={
                   unchecked
                     ? UNCHECKED
-                    : roles && !approver
+                    : permissions && !categorizer
                       ? "Only approvers can add, change, move or delete categories."
                       : undefined
                 }
@@ -539,7 +541,7 @@ export function ServiceWorkspace({
                   collectionKey={collectionKey}
                   record={collectionSearch?.record}
                   onRecord={openRecord}
-                  readOnly={readOnly}
+                  readOnly={recordsReadOnly}
                 />
               ) : (
                 <CollectionsScreen
@@ -548,7 +550,7 @@ export function ServiceWorkspace({
                   why={
                     unchecked
                       ? UNCHECKED
-                      : roles && !collector
+                      : permissions && !collector
                         ? "Only admins and approvers can add collections."
                         : undefined
                   }

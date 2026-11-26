@@ -54,7 +54,7 @@ export type ServiceDetail = Json<paths["/services/{id}"]["get"]["responses"][200
 /** A page of an opened service. */
 export type ServicePage = ServiceDetail["pages"][number];
 
-/** The signed-in employee and their roles. */
+/** The signed-in employee, their roles and their permissions. */
 export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
 
 /** Every role, with what it lets a person do, in the API's words. */

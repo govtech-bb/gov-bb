@@ -9,6 +9,7 @@ import { routeTree } from "../../src/routeTree.gen";
 import { loadPageEditor } from "../../src/workspace/preload";
 import { renderInPage } from "../helpers/page-editor";
 import { shownText } from "../helpers/shown-text";
+import { permissionsOf } from "../helpers/employee";
 
 // The page editor loads apart from the workspace: import it once up front, not within the first test to open a page
 beforeAll(() => loadPageEditor());
@@ -184,7 +185,13 @@ async function mountWorkspace(
       if (path === "/editor/me")
         return me
           ? me()
-          : Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
+          : Response.json({
+              id: "me",
+              email: "author@govtech.bb",
+              name: "Author",
+              roles,
+              permissions: permissionsOf(roles),
+            });
 
       if (path === "/editor/roles") return catalogue();
 
@@ -330,6 +337,58 @@ test.each([
   },
 );
 
+test.each([
+  { permissions: ["content:read", "collections:edit"], records: true, pages: false },
+  { permissions: ["content:read", "pages:edit"], records: false, pages: true },
+])(
+  "records follow collections:edit and pages follow pages:edit, with no read-only notice for $permissions",
+  async ({ permissions, records, pages }) => {
+    const h = await mountWorkspace("/collections/contacts", {
+      me: async () =>
+        Response.json({
+          id: "me",
+          email: "author@govtech.bb",
+          name: "Author",
+          roles: ["reader", "made-up"],
+          permissions,
+        }),
+    });
+
+    const button = (text: string) =>
+      [...document.querySelectorAll("button")].find((item) => item.textContent === text);
+
+    await until(() => expect(button("Add record")?.disabled).toBe(!records));
+    expect(document.body.textContent).not.toContain("but not change them");
+
+    await act(async () => h.router.navigate({ to: "/services" }));
+    await until(() => expect(button("Create service")?.disabled).toBe(!pages));
+    expect(document.body.textContent).not.toContain("but not change them");
+  },
+);
+
+test("a role the editor has never heard of gets what its permissions allow, with no change to the editor", async () => {
+  await mountWorkspace("/services/service/fees", {
+    publicIds: ["fees"],
+    me: async () =>
+      Response.json({
+        id: "me",
+        email: "author@govtech.bb",
+        name: "Author",
+        roles: ["reader", "publisher"],
+        permissions: ["content:read", "pages:edit", "pages:publish"],
+      }),
+  });
+
+  const deleteButton = () =>
+    [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === "Delete page",
+    )!;
+
+  // Deleting a public page is offered, as it is to an approver
+  await until(() => expect(deleteButton().disabled).toBe(false));
+  expect(deleteButton().getAttribute("aria-describedby")).toBeNull();
+});
+
 test("the workspace opens with the roles read, so a read-only notice is there from the start", async () => {
   const answer = Promise.withResolvers<void>();
 
@@ -338,7 +397,13 @@ test("the workspace opens with the roles read, so a read-only notice is there fr
     me: async () => {
       await answer.promise;
 
-      return Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles: [] });
+      return Response.json({
+        id: "me",
+        email: "author@govtech.bb",
+        name: "Author",
+        roles: [],
+        permissions: permissionsOf([]),
+      });
     },
   });
 
@@ -363,6 +428,7 @@ test("roles that can't be read are said to be unchecked, with Try again, never t
             email: "a@govtech.bb",
             name: "A",
             roles: ["editor", "approver"],
+            permissions: permissionsOf(["editor", "approver"]),
           })
         : Response.json({}, { status: 503 }),
   });

@@ -78,31 +78,34 @@ export const categoriesQuery = (api: EditorApi) =>
   });
 
 /**
- * The signed-in employee, in the one read their roles and their id share. An answer without a list of roles holds
- * none, and one without an id gives null.
+ * The signed-in employee, in the one read their permissions and their id share. An answer without a list of
+ * permissions holds none, and one without an id gives null.
  */
 export const meQuery = (api: Pick<EditorApi, "me">) =>
   queryOptions({
     queryKey: ["me"],
     queryFn: async (): Promise<{
-      readonly roles: readonly string[];
+      readonly permissions: readonly string[];
       readonly id: string | null;
     }> => {
       const me: unknown = await api.me();
 
       return {
-        roles: me instanceof Object && "roles" in me && Array.isArray(me.roles) ? me.roles : [],
+        permissions:
+          me instanceof Object && "permissions" in me && Array.isArray(me.permissions)
+            ? me.permissions
+            : [],
         id: me instanceof Object && "id" in me && isText(me.id) ? me.id : null,
       };
     },
   });
 
 /**
- * The signed-in employee's roles, which decide what the editor offers them. An answer without a list of roles holds
- * none, so the editor offers less rather than more; the API enforces roles either way.
+ * What the signed-in employee may do, which decides what the editor offers them. An answer without a list of
+ * permissions holds none, so the editor offers less rather than more; the API enforces every permission either way.
  */
-export const rolesQuery = (api: Pick<EditorApi, "me">) =>
-  queryOptions({ ...meQuery(api), select: (me) => me.roles });
+export const permissionsQuery = (api: Pick<EditorApi, "me">) =>
+  queryOptions({ ...meQuery(api), select: (me) => me.permissions });
 
 /** A role and what it lets a person do, worded by the API. */
 export interface RoleDescription {
