@@ -47,6 +47,41 @@ describe("isTestApplicant", () => {
     ).toBe(true);
   });
 
+  it("reads names in name order when keys arrive in jsonb order (last before first)", () => {
+    // jsonb stores keys shorter-first, so this is the order Postgres returns.
+    expect(
+      isTestApplicant(
+        { "you.last-name": "Doe", "you.first-name": "John" },
+        none,
+      ),
+    ).toBe(true);
+    expect(
+      isTestApplicant({ "you.lastName": "Doe", "you.firstName": "Jane" }, none),
+    ).toBe(true);
+    expect(
+      isTestApplicant(
+        {
+          "you.surname": "Doe",
+          "you.middle-name": "Q",
+          "you.given-name": "John",
+        },
+        none,
+      ),
+    ).toBe(false);
+  });
+
+  it("checks only the domain, not the part before the @", () => {
+    expect(
+      isTestApplicant({ "contact.email": "govtech.fan@gmail.com" }, none),
+    ).toBe(false);
+    expect(
+      isTestApplicant(
+        { "contact.email": "my.example.address@gmail.com" },
+        none,
+      ),
+    ).toBe(false);
+  });
+
   it("does not join names across different steps", () => {
     expect(
       isTestApplicant(

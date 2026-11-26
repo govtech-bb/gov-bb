@@ -51,6 +51,14 @@ function fieldId(key: string): string {
   return dot === -1 ? key : key.slice(dot + 1);
 }
 
+/** Where a name part goes when the parts are read together: first or given
+ *  (or a full name) first, then middle, then last. */
+function namePosition(field: string): number {
+  if (/middle/i.test(field)) return 1;
+  if (/(last|sur|family)/i.test(field)) return 2;
+  return 0;
+}
+
 function stepId(key: string): string {
   const dot = key.lastIndexOf(".");
   return dot === -1 ? "" : key.slice(0, dot);
@@ -64,8 +72,10 @@ export function isTestApplicant(
   if (!identity) return false;
 
   // Names are judged per step, so first + last name ("John" + "Doe") read
-  // together as "John Doe".
-  const namesByStep = new Map<string, string[]>();
+  // together as "John Doe". The parts are put in name order rather than key
+  // order: the map comes from jsonb, which stores keys shorter-first, so
+  // `last-name` arrives before `first-name`.
+  const namesByStep = new Map<string, { position: number; value: string }[]>();
 
   for (const [key, rawValue] of Object.entries(identity)) {
     const value = (rawValue ?? "").trim();
@@ -74,7 +84,10 @@ export function isTestApplicant(
 
     if (EMAIL_KEY.test(field)) {
       const email = value.toLowerCase();
-      if (TEAM_OR_THROWAWAY_DOMAIN.test(email)) return true;
+      // The domain only: a real applicant's address can contain one of these
+      // words before the @ (govtech.fan@gmail.com).
+      const domain = email.slice(email.lastIndexOf("@") + 1);
+      if (TEAM_OR_THROWAWAY_DOMAIN.test(domain)) return true;
       if (namedInboxes.has(email)) return true;
       continue;
     }
@@ -82,13 +95,17 @@ export function isTestApplicant(
     if (PERSON_NAME_KEY.test(field)) {
       const step = stepId(key);
       const parts = namesByStep.get(step) ?? [];
-      parts.push(value);
+      parts.push({ position: namePosition(field), value });
       namesByStep.set(step, parts);
     }
   }
 
   for (const parts of namesByStep.values()) {
-    if (TEST_STYLE_NAME.test(parts.join(" "))) return true;
+    const fullName = parts
+      .sort((a, b) => a.position - b.position)
+      .map((p) => p.value)
+      .join(" ");
+    if (TEST_STYLE_NAME.test(fullName)) return true;
   }
   return false;
 }
