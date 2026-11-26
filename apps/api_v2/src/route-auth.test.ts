@@ -192,7 +192,34 @@ async function requestFor(
         ? recordWrite(method, url, n)
         : url.startsWith("/editor/employees")
           ? roleWrite(method, url)
-          : pageWrite(method, url, n);
+          : url.startsWith("/editor/waiting-roles")
+            ? waitingWrite(method, url, n)
+            : pageWrite(method, url, n);
+}
+
+/** A signed-in request to give a role by email, or to take away one of the database's own. */
+async function waitingWrite(
+  method: string,
+  url: string,
+  n: number,
+): Promise<InjectOptions> {
+  if (method === "POST")
+    return {
+      method: "POST",
+      url,
+      headers: TEST_HEADERS,
+      payload: { email: `newcomer-${n}@govtech.bb`, role: "editor" },
+    };
+  const { rows } = await db.execute<{ id: string }>(
+    sql`insert into waiting_roles (email, role, granted_by)
+        values (${`waiting-${n}@govtech.bb`}, 'editor', ${TEST_EMPLOYEE.id})
+        returning id`,
+  );
+  return {
+    method: method as InjectOptions["method"],
+    url: url.replace(":id", rows[0]!.id),
+    headers: TEST_HEADERS,
+  };
 }
 
 /** A signed-in request to give or take away the editor's approver role. */
@@ -376,6 +403,9 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
     "rejects a pending revision, in page_revisions; #3200 records review",
   "PUT /editor/employees/:id/roles/:role": "grants a role, in user_roles",
   "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
+  "POST /editor/waiting-roles": "gives a role by email, in waiting_roles",
+  "DELETE /editor/waiting-roles/:id":
+    "takes a waiting role away, in waiting_roles",
 };
 
 it("records every signed-in write against the employee", async () => {
@@ -423,6 +453,9 @@ const NOT_PAGE_VISIBILITY: Readonly<Record<string, string>> = {
   "POST /collections": "creates a data collection; pages are untouched",
   "PUT /editor/employees/:id/roles/:role": "grants a role, in user_roles",
   "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
+  "POST /editor/waiting-roles": "gives a role by email, in waiting_roles",
+  "DELETE /editor/waiting-roles/:id":
+    "takes a waiting role away, in waiting_roles",
 };
 
 /** Public rows exclude the private edit identity; non-public rows expose only visibility here. */
@@ -649,12 +682,16 @@ it("refuses every admin route to a non-admin", async () => {
   const signedIn = await createTestApp(db, {
     sessions: { findSession: async () => ok(TEST_EDITOR) },
   });
-  for (const { method, url } of admin) {
-    const response = await signedIn.inject({
-      method: method as InjectOptions["method"],
-      url: url.replace(":id", TEST_EDITOR.id).replace(":role", "admin"),
-      headers: TEST_HEADERS,
-    });
+  for (const [n, { method, url }] of admin.entries()) {
+    const response = await signedIn.inject(
+      READS.has(method)
+        ? {
+            method: method as InjectOptions["method"],
+            url,
+            headers: TEST_HEADERS,
+          }
+        : await requestFor(method, url, n),
+    );
     expect(response.statusCode, `${method} ${url}`).toBe(403);
   }
   await signedIn.close();

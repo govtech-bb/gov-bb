@@ -15,6 +15,7 @@ import { EditorAccess, type RoleRecords } from "./editor-access";
 function rolesHolding(held: GrantableRole[] = []) {
   const granted: { role: GrantableRole; grantedBy: string | null }[] = [];
   const records: RoleRecords = {
+    claimWaiting: async () => ok(undefined),
     rolesOf: async () => ok([...held]),
     grant: async (_userId, role, grantedBy) => {
       granted.push({ role, grantedBy });

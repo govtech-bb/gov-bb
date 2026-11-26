@@ -424,6 +424,34 @@ export const userRoles = pgTable(
 );
 
 /**
+ * A role an admin gave by email to someone who hasn't signed in yet. It moves
+ * to user_roles with that person's first request, and goes from here.
+ */
+export const waitingRoles = pgTable(
+  "waiting_roles",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    // Lowercased, as sign-in lowercases the address it admits.
+    email: text("email").notNull(),
+    role: text("role").notNull(),
+    // The admin who gave it, as user_roles.granted_by records once it moves.
+    grantedBy: text("granted_by").notNull(),
+    grantedAt: timestamp("granted_at", { withTimezone: true, precision: 3 })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("waiting_roles_email_role_key").on(table.email, table.role),
+    check(
+      "waiting_roles_role_check",
+      sql`${table.role} in (${sql.raw(GRANTABLE_ROLES.map((role) => `'${role}'`).join(", "))})`,
+    ),
+  ],
+);
+
+/**
  * A change to a public page waiting for an approver; the live row is
  * unchanged until it is published. A page has at most one open revision, a
  * draft or a submitted one; rejected and published revisions are kept.

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_ROLE, PERMISSIONS, Role } from "./permissions";
+import { DEFAULT_ROLE, GrantableRole, PERMISSIONS, Role } from "./permissions";
 import { err, ok, type Result } from "./result";
 
 /**
@@ -34,6 +34,16 @@ export const EmployeeView = z.object({
 
 /** An employee as the editor and the role routes read them. */
 export type EmployeeView = z.infer<typeof EmployeeView>;
+
+/** A role given by email to someone who hasn't signed in yet, as the role routes list it. */
+export const WaitingRoleView = z.object({
+  id: z.guid(),
+  email: z.string(),
+  role: GrantableRole,
+});
+
+/** A role given by email to someone who hasn't signed in yet. */
+export type WaitingRoleView = z.infer<typeof WaitingRoleView>;
 
 /** No live employee session accompanied the request. */
 export class Unauthenticated extends Error {
@@ -95,6 +105,30 @@ export class DefaultRoleChange extends Error {
   }
 }
 
+/** A role given by email to an address sign-in would never admit. */
+export class EmailNotAllowed extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "EmailNotAllowed";
+  /** Name the domains that sign in, never the address: it's personal data. */
+  constructor(allowedDomains: readonly string[]) {
+    super(
+      `Give a role only to an address on ${allowedDomains.join(" or ")}, which can sign in.`,
+    );
+  }
+}
+
+/** A waiting role that isn't there: taken away already, or moved by its person's first sign-in. */
+export class WaitingRoleNotFound extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "WaitingRoleNotFound";
+  /** Say why it may have gone. */
+  constructor() {
+    super(
+      "That role isn't waiting any more: it was taken away, or its person has signed in.",
+    );
+  }
+}
+
 /** A role grant named a user who has never signed in. */
 export class UserNotFound extends Error {
   /** Stable protocol-projection discriminator. */
@@ -119,7 +153,7 @@ export class AuthUnavailable extends Error {
       | { readonly lookup: "session" }
       | {
           readonly lookup: "roles";
-          readonly operation: "rolesOf" | "grant";
+          readonly operation: "rolesOf" | "grant" | "claimWaiting";
         } = {
       lookup: "session",
     },
