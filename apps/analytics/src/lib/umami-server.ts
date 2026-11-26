@@ -327,9 +327,9 @@ export function buildStepFunnel(
 
 // The forms app sends one of SUBMIT_ERROR_CODES as `errors` (validation,
 // network, server, payment-init, stale-definition — the same list /stats uses,
-// #3826). Older data
-// put other strings (e.g. field validation messages) here, and anyone can send
-// Umami events, so anything off the list is bucketed as "other" (#1916).
+// #3826). Older data put other strings (e.g. field validation messages) here,
+// and anyone can send Umami events, so anything off the list is bucketed as
+// "other" (#1916).
 export function shapeSubmitError(
   submitTotal: number,
   errorTotal: number,

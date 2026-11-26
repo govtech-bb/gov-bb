@@ -68,8 +68,9 @@ export function resolveServerFieldErrors(
  * against a newer one (#3886). The applicant cannot correct a field that the form
  * does not show, so the caller tells them that the form changed (#3901).
  *
- * Give all the steps of the definition, not only the visible steps: a field that
- * a condition hides is not a missing field. `_step` holds errors for the step
+ * Give all the steps of the definition as the contract has them
+ * (`FormMeta.contractSteps`), not only the visible steps: a field that a
+ * condition hides is not a missing field. `_step` holds errors for the step
  * itself, so it is not a field name. The fields in a repeatable step's bundle
  * (`{ _step?, instances }`) are not examined: that bundle keeps the general
  * failure panel (see `resolveServerFieldErrors`).

@@ -357,12 +357,14 @@ function FormView() {
           // A bundle that names a step or a field this copy of the form does
           // not have: the browser kept an old definition (#3886). The citizen
           // cannot fix a field the form does not show, so tell them the form
-          // changed and offer a reload (#3901). Checked against every step,
-          // not only the visible ones: a field a condition hides is not a
-          // missing field.
+          // changed and offer a reload (#3901). Checked against the contract's
+          // steps, keyed as the API keys the bundle: every step, not only the
+          // visible ones (a field a condition hides is not a missing field),
+          // and a repeatable step with all its fields, before the split
+          // across a shared page and one page per instance.
           const staleStepId = findStaleDefinitionStep(
             error.errors,
-            formMeta.steps,
+            formMeta.contractSteps,
           );
           if (staleStepId) {
             trackEvent("form-submit-error", {

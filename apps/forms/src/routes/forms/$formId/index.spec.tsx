@@ -1099,6 +1099,7 @@ describe("RouteComponent onSubmit handler", () => {
       vi.spyOn(Route, "useLoaderData").mockReturnValue({
         ...mockFormMeta,
         steps: [stepWithParish, hiddenStep],
+        contractSteps: [stepWithParish, hiddenStep],
       });
     });
 
