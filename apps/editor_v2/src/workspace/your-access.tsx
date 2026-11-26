@@ -36,7 +36,7 @@ export function YourAccess({
           ...catalogue.data.filter(({ role }) => roles.data.includes(role)),
           ...roles.data
             .filter((role) => !catalogue.data.some((described) => described.role === role))
-            .map((role) => ({ role, lets: [] })),
+            .map((role) => ({ role, lets: [], everyone: false })),
         ]
       : [];
 

@@ -51,6 +51,7 @@ import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
 import { forgetUnsavedWork } from "./unsaved-work";
 import { YourAccess } from "./your-access";
+import { PeopleScreen } from "./people-screen";
 
 type Account = {
   email: string;
@@ -97,6 +98,8 @@ export function ServiceWorkspace({
   const historySearch = useSearch({ from: "/_workspace/history/$pageId", shouldThrow: false });
   const onHistory = !!historySearch;
   const onCollections = !!useMatch({ from: "/_workspace/collections", shouldThrow: false });
+  const peopleSearch = useSearch({ from: "/_workspace/people", shouldThrow: false });
+  const onPeople = !!peopleSearch;
 
   const collectionSearch = useSearch({
     from: "/_workspace/collections/$key",
@@ -300,6 +303,13 @@ export function ServiceWorkspace({
     [collectionKey, routerNavigate],
   );
 
+  // A person's panel lives in the People address too, so a refresh keeps it open
+  const openPerson = useCallback(
+    (person: string | undefined) =>
+      void routerNavigate({ to: "/people", search: person ? { person } : {}, replace: true }),
+    [routerNavigate],
+  );
+
   const navigate = (next: WorkspaceLocation) =>
     routerNavigate(next ? workspaceLink(next) : { to: "/services", search: servicesSearch });
 
@@ -324,7 +334,9 @@ export function ServiceWorkspace({
           ? { label: "Review queue", render: <Link to="/reviews" /> }
           : onCollections
             ? { label: "Collections", render: <Link to="/collections" /> }
-            : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
+            : onPeople
+              ? { label: "People", render: <Link to="/people" /> }
+              : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
   ];
 
   const workspaceName = sitePageId ? sitePage?.title : serviceName;
@@ -355,7 +367,15 @@ export function ServiceWorkspace({
                     : ["Review queue"]
                   : onHistory
                     ? ["Page history"]
-                    : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
+                    : [
+                        onCategories
+                          ? "Categories"
+                          : onCollections
+                            ? "Collections"
+                            : onPeople
+                              ? "People"
+                              : "Services",
+                      ]
         }
       />
       <a
@@ -431,7 +451,12 @@ export function ServiceWorkspace({
         </Banner>
       )}
       <div className="flex flex-1">
-        <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
+        <AppNav
+          sidebar={appNav}
+          rail={!!location}
+          servicesSearch={servicesSearch}
+          people={permissions?.includes("people:read") ?? false}
+        />
         {servicePages && (
           <ServiceNav
             sidebar={sidebar}
@@ -532,6 +557,11 @@ export function ServiceWorkspace({
               />
             </section>
           )}
+          {!location && onPeople && (
+            <section>
+              <PeopleScreen api={api} person={peopleSearch?.person} onPerson={openPerson} />
+            </section>
+          )}
           {!location && onCollections && (
             <section>
               {collectionKey ? (
@@ -594,6 +624,7 @@ export function ServiceWorkspace({
             !onSitePages &&
             !onCategories &&
             !onCollections &&
+            !onPeople &&
             !onReviews &&
             !onHistory && (
               <section>

@@ -117,9 +117,14 @@ export const rolesQuery = (api: Pick<EditorApi, "me">) =>
 export interface RoleDescription {
   readonly role: string;
   readonly lets: readonly string[];
+  /** Every signed-in employee holds it, and nobody can give it or take it away. */
+  readonly everyone: boolean;
 }
 
-const isRoleDescription = (value: unknown): value is RoleDescription =>
+/** A description as the API sends it; an API that doesn't say `everyone` means no. */
+const isSentDescription = (
+  value: unknown,
+): value is { role: string; lets: string[]; everyone?: unknown } =>
   value instanceof Object &&
   "role" in value &&
   isText(value.role) &&
@@ -138,7 +143,9 @@ export const roleCatalogueQuery = (api: Pick<EditorApi, "roles">) =>
       const catalogue: unknown = await api.roles();
 
       return catalogue instanceof Object && "roles" in catalogue && Array.isArray(catalogue.roles)
-        ? catalogue.roles.filter(isRoleDescription)
+        ? catalogue.roles
+            .filter(isSentDescription)
+            .map(({ role, lets, everyone }) => ({ role, lets, everyone: everyone === true }))
         : [];
     },
     staleTime: Infinity,
@@ -169,6 +176,10 @@ export const estateVersionQuery = (api: Pick<EditorApi, "version">, client: Quer
 /** The data collections, with their record counts, for the Collections screen. */
 export const collectionsQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "collections"], queryFn: () => api.collections() });
+
+/** Everyone who has signed in, with their roles; only someone with people:read may list them. */
+export const employeesQuery = (api: Pick<EditorApi, "employees">) =>
+  queryOptions({ queryKey: ["employees"], queryFn: async () => (await api.employees()).employees });
 
 /** Private record content and definition, read together for editing. */
 export const recordQuery = (api: EditorApi, key: string, recordKey: string) =>

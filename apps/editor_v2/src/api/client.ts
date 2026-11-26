@@ -57,6 +57,9 @@ export type ServicePage = ServiceDetail["pages"][number];
 /** The signed-in employee, their roles and their permissions. */
 export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
 
+/** Everyone who has signed in, with their roles. */
+export type Employees = Json<paths["/editor/employees"]["get"]["responses"][200]>;
+
 /** Every role, with what it lets a person do, in the API's words. */
 export type RoleCatalogue = Json<paths["/editor/roles"]["get"]["responses"][200]>;
 
@@ -692,6 +695,21 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     version: () => read<EstateVersion>("/version"),
     me: () => read<Me>("/editor/me"),
     roles: () => read<RoleCatalogue>("/editor/roles"),
+    employees: () => read<Employees>("/editor/employees"),
+    /** Gives an employee a role; it applies from their next request. */
+    grantRole: async (id: string, role: string) => {
+      await send(
+        "PUT",
+        `/editor/employees/${encodeURIComponent(id)}/roles/${encodeURIComponent(role)}`,
+      );
+    },
+    /** Takes a role away; it applies from their next request. */
+    revokeRole: async (id: string, role: string) => {
+      await send(
+        "DELETE",
+        `/editor/employees/${encodeURIComponent(id)}/roles/${encodeURIComponent(role)}`,
+      );
+    },
     page: async (id: string) => checkedReply(await send("GET", `/pages/${id}`), isPage),
     createPage: async (page: CreatePageInput) =>
       checkedReply(await send("POST", "/pages", page), isPage),
