@@ -57,7 +57,7 @@ export type ServicePage = ServiceDetail["pages"][number];
 /** The signed-in employee, their roles and their permissions. */
 export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
 
-/** Everyone who has signed in, with their roles. */
+/** Everyone who has signed in, with their roles, and the roles given by email to people who haven't yet. */
 export type Employees = Json<paths["/editor/employees"]["get"]["responses"][200]>;
 
 /** Every role, with what it lets a person do, in the API's words. */
@@ -94,6 +94,12 @@ type CreateRecordInput = Json<
 
 /** What creating a collection sends: its key, title, field list and the field that names each record. */
 export type NewCollectionInput = Json<paths["/collections"]["post"]["requestBody"]>;
+
+/** A role to give by email before a first sign-in, named as the role catalogue names it. */
+export interface WaitingRoleInput {
+  readonly email: string;
+  readonly role: string;
+}
 
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
@@ -469,6 +475,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       | RecordInput
       | CreateRecordInput
       | NewCollectionInput
+      | WaitingRoleInput
       | { expected_version: number; comment?: string },
   ) {
     const headers = new Headers();
@@ -709,6 +716,14 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
         "DELETE",
         `/editor/employees/${encodeURIComponent(id)}/roles/${encodeURIComponent(role)}`,
       );
+    },
+    /** Gives a role by email; it becomes theirs with their first sign-in. The email goes in the body, never the URL. */
+    giveWaitingRole: async (email: string, role: string) => {
+      await send("POST", "/editor/waiting-roles", { email, role });
+    },
+    /** Takes away a role still waiting for its person's first sign-in. */
+    takeWaitingRole: async (id: string) => {
+      await send("DELETE", `/editor/waiting-roles/${encodeURIComponent(id)}`);
     },
     page: async (id: string) => checkedReply(await send("GET", `/pages/${id}`), isPage),
     createPage: async (page: CreatePageInput) =>

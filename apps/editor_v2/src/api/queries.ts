@@ -177,9 +177,12 @@ export const estateVersionQuery = (api: Pick<EditorApi, "version">, client: Quer
 export const collectionsQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "collections"], queryFn: () => api.collections() });
 
-/** Everyone who has signed in, with their roles; only someone with people:read may list them. */
-export const employeesQuery = (api: Pick<EditorApi, "employees">) =>
-  queryOptions({ queryKey: ["employees"], queryFn: async () => (await api.employees()).employees });
+/**
+ * Everyone who has signed in, with their roles, and the roles given by email to people who haven't yet; only someone
+ * with people:read may list them.
+ */
+export const peopleQuery = (api: Pick<EditorApi, "employees">) =>
+  queryOptions({ queryKey: ["employees"], queryFn: () => api.employees() });
 
 /** Private record content and definition, read together for editing. */
 export const recordQuery = (api: EditorApi, key: string, recordKey: string) =>

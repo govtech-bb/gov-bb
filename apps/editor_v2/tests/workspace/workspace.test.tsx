@@ -119,7 +119,7 @@ async function mountWorkspace(
     publicIds = [],
     me,
     catalogue = async () => Response.json({ roles: CATALOGUE }),
-    people = async () => Response.json({ employees: [] }),
+    people = async () => Response.json({ employees: [], waiting: [] }),
     serverPages = new Map<string, ApiPage>([
       ...pages,
       ...sitePages.map((page) => [page.id, page] as const),
@@ -131,7 +131,7 @@ async function mountWorkspace(
     me?: () => Promise<Response>;
     /** How /editor/roles answers. */
     catalogue?: () => Promise<Response>;
-    /** How /editor/employees and its role routes answer. */
+    /** How /editor/employees, its role routes and the waiting-role routes answer. */
     people?: (path: string, init?: RequestInit) => Promise<Response>;
     /** The pages /pages/:id reads and saves, kept across mounts when passed in. */
     serverPages?: Map<string, ApiPage>;
@@ -198,7 +198,8 @@ async function mountWorkspace(
 
       if (path === "/editor/roles") return catalogue();
 
-      if (path.startsWith("/editor/employees")) return people(path, init);
+      if (path.startsWith("/editor/employees") || path.startsWith("/editor/waiting-roles"))
+        return people(path, init);
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
@@ -1044,7 +1045,8 @@ describe("People", () => {
       changes,
       answer: (response: Response) => act(async () => answers.shift()!(response)),
       people: async (path: string, init?: RequestInit) => {
-        if (path === "/editor/employees") return Response.json({ employees: EMPLOYEES });
+        if (path === "/editor/employees")
+          return Response.json({ employees: EMPLOYEES, waiting: [] });
 
         changes.push(`${init?.method} ${path}`);
 
@@ -1195,7 +1197,7 @@ describe("People", () => {
     await mountWorkspace("/people", {
       me: meWith(["content:read", "people:read", "people:manage"]),
       catalogue,
-      people: async () => Response.json({ employees: EMPLOYEES }),
+      people: async () => Response.json({ employees: EMPLOYEES, waiting: [] }),
     });
 
     await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
@@ -1217,7 +1219,7 @@ describe("People", () => {
       me: meWith(["content:read", "people:read", "people:manage"]),
       catalogue: async () =>
         fails ? Response.json({}, { status: 500 }) : Response.json({ roles: PEOPLE_CATALOGUE }),
-      people: async () => Response.json({ employees: EMPLOYEES }),
+      people: async () => Response.json({ employees: EMPLOYEES, waiting: [] }),
     });
 
     await until(() => expect(document.body.textContent).toContain("We could not load roles"));
@@ -1236,7 +1238,7 @@ describe("People", () => {
       me: meWith(["content:read", "people:read", "people:manage"]),
       catalogue: async () =>
         Response.json({ roles: PEOPLE_CATALOGUE.map(({ role, lets }) => ({ role, lets })) }),
-      people: async () => Response.json({ employees: EMPLOYEES }),
+      people: async () => Response.json({ employees: EMPLOYEES, waiting: [] }),
     });
 
     await until(() => expect(box("reader for Bob")).not.toBeNull());
@@ -1249,7 +1251,7 @@ describe("People", () => {
     await mountWorkspace("/people", {
       me: meWith(["content:read", "people:read"]),
       catalogue,
-      people: async () => Response.json({ employees: EMPLOYEES }),
+      people: async () => Response.json({ employees: EMPLOYEES, waiting: [] }),
     });
 
     await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
@@ -1283,7 +1285,7 @@ describe("People", () => {
     await mountWorkspace("/people?person=bob", {
       me: meWith(["content:read", "people:read"]),
       catalogue,
-      people: async () => Response.json({ employees: EMPLOYEES }),
+      people: async () => Response.json({ employees: EMPLOYEES, waiting: [] }),
     });
 
     await until(() => expect(box("approver for Bob")).not.toBeNull());
@@ -1293,5 +1295,265 @@ describe("People", () => {
     expect(document.body.textContent).toContain(
       "You can see everyone’s roles, but not give them or take them away.",
     );
+    expect(control("Add someone").disabled).toBe(true);
+  });
+
+  const NOT_ALLOWED = "Give a role only to an address on govtech.bb, which can sign in.";
+
+  /** An API whose waiting roles change as the screen gives and takes them, recording each change it's asked for. */
+  function waitingApi(
+    waiting: { id: string; email: string; role: string }[] = [],
+    /** A role whose giving fails, as a dropped connection or a 500 would. */
+    failing?: string,
+  ) {
+    const changes: string[] = [];
+    let given = waiting.length;
+
+    return {
+      changes,
+      people: async (path: string, init?: RequestInit) => {
+        if (path === "/editor/employees") return Response.json({ employees: EMPLOYEES, waiting });
+
+        if (init?.method === "POST") {
+          const { email, role }: { email: string; role: string } = JSON.parse(String(init.body));
+          changes.push(`POST ${path} ${email} ${role}`);
+
+          if (role === failing) return Response.json({}, { status: 500 });
+
+          if (!email.endsWith("@govtech.bb"))
+            return Response.json(
+              { error: "email_not_allowed", message: NOT_ALLOWED },
+              { status: 400 },
+            );
+
+          given += 1;
+          waiting.push({ id: `w${given}`, email, role });
+
+          return Response.json({ id: `w${given}`, email, role }, { status: 201 });
+        }
+
+        changes.push(`${init?.method} ${path}`);
+        waiting.splice(
+          waiting.findIndex((one) => path.endsWith(`/${one.id}`)),
+          1,
+        );
+
+        return new Response(null, { status: 204 });
+      },
+    };
+  }
+
+  const addDialog = () =>
+    [...document.querySelectorAll<HTMLElement>('[role="dialog"]')].find((dialog) =>
+      dialog.textContent?.includes("Add someone"),
+    );
+
+  const emailBox = () => addDialog()!.querySelector<HTMLInputElement>('input[type="email"]')!;
+
+  const typeEmail = (words: string) =>
+    act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        emailBox(),
+        words,
+      );
+      emailBox().dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+  const tick = (role: string) =>
+    act(async () =>
+      [...addDialog()!.querySelectorAll<HTMLElement>("label")]
+        .find((label) => label.textContent?.startsWith(role))!
+        .click(),
+    );
+
+  test("gives roles by email to someone who hasn't signed in, who then shows in the list as waiting", async () => {
+    const api = waitingApi();
+
+    const h = await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: api.people,
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    await click("Add someone");
+    await until(() => expect(addDialog()).toBeDefined());
+    await typeEmail(" New.Starter@govtech.bb ");
+    await tick("Editor");
+    await tick("Approver");
+    await click("Give roles", addDialog()!);
+
+    await until(() =>
+      expect(api.changes.toSorted()).toEqual([
+        "POST /editor/waiting-roles new.starter@govtech.bb approver",
+        "POST /editor/waiting-roles new.starter@govtech.bb editor",
+      ]),
+    );
+    await until(() => expect(addDialog()).toBeUndefined());
+    await until(() => expect(listed()).toEqual(["Ann", "Bob", "new.starter@govtech.bb"]));
+    expect(row("new.starter@govtech.bb").textContent).toContain("Hasn’t signed in yet");
+    expect(row("new.starter@govtech.bb").textContent).toContain("Editor");
+    expect(row("new.starter@govtech.bb").textContent).toContain("Approver");
+    // An email is personal data: it goes in a request's body, never in an address
+    expect(h.asked.filter((path) => path.includes("starter"))).toEqual([]);
+  });
+
+  test("keeps what was typed, with the API's reason beside it, when the API refuses the address", async () => {
+    const api = waitingApi();
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: api.people,
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    await click("Add someone");
+    await until(() => expect(addDialog()).toBeDefined());
+    await typeEmail("someone@example.com");
+    await tick("Editor");
+    await click("Give roles", addDialog()!);
+
+    await until(() => expect(addDialog()!.textContent).toContain(NOT_ALLOWED));
+    expect(emailBox().value).toBe("someone@example.com");
+    expect(emailBox().getAttribute("aria-invalid")).toBe("true");
+    expect(listed()).toEqual(["Ann", "Bob"]);
+
+    // Once the address is changed, its refusal goes, and nothing stands in for it
+    await typeEmail("someone@example.co");
+    expect(addDialog()!.textContent).not.toContain(NOT_ALLOWED);
+    expect(addDialog()!.textContent).not.toContain("Not every role was given");
+  });
+
+  test("keeps Add someone off until the list it checks against has loaded", async () => {
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: () => new Promise<Response>(() => {}),
+    });
+
+    await until(() => expect(document.querySelector("h1")?.textContent).toBe("People"));
+    expect(control("Add someone").disabled).toBe(true);
+  });
+
+  test("says not every role was given when one of them fails, while the one given shows in the list", async () => {
+    const api = waitingApi([], "approver");
+
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: api.people,
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    await click("Add someone");
+    await until(() => expect(addDialog()).toBeDefined());
+    await typeEmail("new@govtech.bb");
+    await tick("Editor");
+    await tick("Approver");
+    await click("Give roles", addDialog()!);
+
+    await until(() => expect(addDialog()!.textContent).toContain("Not every role was given"));
+    expect(addDialog()!.textContent).toContain("Try again: a role that was given stays as it is.");
+    await until(() => expect(listed()).toEqual(["Ann", "Bob", "new@govtech.bb"]));
+    expect(row("new@govtech.bb").textContent).toContain("Editor");
+    expect(row("new@govtech.bb").textContent).not.toContain("Approver");
+  });
+
+  test("checks the form before sending: an address, a role, and not someone signed in already", async () => {
+    const api = waitingApi();
+    await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: api.people,
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    await click("Add someone");
+    await until(() => expect(addDialog()).toBeDefined());
+    await click("Give roles", addDialog()!);
+    expect(addDialog()!.textContent).toContain("Enter their work email.");
+    expect(addDialog()!.textContent).toContain("Choose at least one role.");
+
+    await typeEmail("Ann@govtech.bb");
+    await tick("Editor");
+    await click("Give roles", addDialog()!);
+    expect(addDialog()!.textContent).toContain(
+      "Ann has signed in already. Open them in the list to change their roles.",
+    );
+    expect(api.changes).toEqual([]);
+  });
+
+  test("opens someone who hasn't signed in, gives and takes their waiting roles, and keeps their email out of the address", async () => {
+    const api = waitingApi([{ id: "w1", email: "new@govtech.bb", role: "editor" }]);
+
+    const h = await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: api.people,
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob", "new@govtech.bb"]));
+    await act(async () => nameLink("new@govtech.bb").click());
+    await until(() => expect(panel()?.textContent).toContain("Hasn’t signed in yet"));
+    expect(panel()!.textContent).toContain("They get these when they first sign in.");
+    expect(ticked("reader for new@govtech.bb")).toBe("true");
+    expect(off("reader for new@govtech.bb")).toBe(true);
+    expect(ticked("editor for new@govtech.bb")).toBe("true");
+    expect(ticked("approver for new@govtech.bb")).toBe("false");
+
+    // Settled: the switch is on again, with the list read again behind it. Neither holds before or during the change.
+    const settled = (role: string, held: "true" | "false") =>
+      until(() => {
+        expect(off(`${role} for new@govtech.bb`)).toBe(false);
+        expect(ticked(`${role} for new@govtech.bb`)).toBe(held);
+      });
+
+    await act(async () => box("approver for new@govtech.bb")!.click());
+    await settled("approver", "true");
+
+    await act(async () => box("editor for new@govtech.bb")!.click());
+    await settled("editor", "false");
+
+    expect(api.changes).toEqual([
+      "POST /editor/waiting-roles new@govtech.bb approver",
+      "DELETE /editor/waiting-roles/w1",
+    ]);
+    expect(h.router.state.location.href).not.toContain("new@");
+    expect(h.asked.filter((path) => path.includes("new@"))).toEqual([]);
+  });
+
+  test("gives focus back to a waiting person's name, and closes their panel for good when their last role is taken away", async () => {
+    const waiting = [{ id: "w1", email: "new@govtech.bb", role: "editor" }];
+    const api = waitingApi(waiting);
+
+    const h = await mountWorkspace("/people", {
+      me: meWith(["content:read", "people:read", "people:manage"]),
+      catalogue,
+      people: api.people,
+    });
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob", "new@govtech.bb"]));
+    nameLink("new@govtech.bb").focus();
+    await act(async () => nameLink("new@govtech.bb").click());
+    await until(() => expect(panel()?.contains(document.activeElement)).toBe(true));
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await until(() => expect(panel()).toBeNull());
+    await until(() => expect(document.activeElement).toBe(nameLink("new@govtech.bb")));
+
+    await act(async () => nameLink("new@govtech.bb").click());
+    await until(() => expect(box("editor for new@govtech.bb")).not.toBeNull());
+    await act(async () => box("editor for new@govtech.bb")!.click());
+
+    await until(() => expect(listed()).toEqual(["Ann", "Bob"]));
+    await until(() => expect(panel()).toBeNull());
+    expect(api.changes).toEqual(["DELETE /editor/waiting-roles/w1"]);
+
+    // Given a role again by another admin, they come back to the list, but their panel doesn't open by itself
+    waiting.push({ id: "w2", email: "new@govtech.bb", role: "approver" });
+    await act(async () => h.client.invalidateQueries({ queryKey: ["employees"] }));
+    await until(() => expect(listed()).toEqual(["Ann", "Bob", "new@govtech.bb"]));
+    expect(panel()).toBeNull();
   });
 });
