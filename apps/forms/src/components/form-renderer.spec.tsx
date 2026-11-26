@@ -118,6 +118,9 @@ import { trackEvent } from "../lib/analytics";
 const mockTrackEvent = trackEvent as Mock;
 
 import * as formsLibMock from "@forms/lib";
+// The real collector, past the @forms/lib mock below, for the
+// form-validation-error payload tests (#3929).
+import { collectStepErrorCodes as realCollectStepErrorCodes } from "../lib/form-builder/validation-builder";
 
 vi.mock("@forms/lib", () => ({
   getFullFieldId: (step: string, field: string) => `${step}_${field}`,
@@ -178,7 +181,13 @@ function makePlainField(id: string, fieldId: string, stepId: string) {
 
 const mockForm = {
   store: {},
-  state: { isValid: true, isSubmitting: false, values: {}, fieldMeta: {} },
+  state: {
+    isValid: true,
+    isSubmitting: false,
+    isSubmitted: false,
+    values: {},
+    fieldMeta: {},
+  },
   getFieldValue: vi.fn(),
   validateField: vi.fn().mockResolvedValue([]),
   handleSubmit: vi.fn(),
@@ -205,6 +214,7 @@ beforeEach(() => {
   mockForm.state = {
     isValid: true,
     isSubmitting: false,
+    isSubmitted: false,
     values: {},
     fieldMeta: {},
   };
@@ -1357,143 +1367,303 @@ describe("FormRenderer", () => {
 
   // #3902: Submit reports the submit step's validation errors, as Continue
   // does for every other step, so the analytics see declaration-step errors.
-  describe("form-validation-error from the submit step (#3902)", () => {
-    const declarationField = makePlainField(
-      "declaration_declaration-confirmed",
-      "declaration-confirmed",
-      "declaration",
-    );
-
-    function renderDeclaration() {
-      render(
-        <FormRenderer
-          form={mockForm}
-          formMeta={makeMeta() as any}
-          stepId="declaration"
-          visibleSteps={[makeStep("declaration", [declarationField])]}
-          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
-          submissionState={mockSubmissionState as any}
-        />,
+  // #3929: both name only the fields that failed validation on screen.
+  describe("form-validation-error (#3902, #3929)", () => {
+    beforeEach(() => {
+      // The real collector: it gives a code to a hidden, empty, required
+      // field, so a payload built from all the step's fields would show it.
+      vi.mocked(formsLibMock.collectStepErrorCodes).mockImplementation(
+        realCollectStepErrorCodes,
       );
-    }
-
-    // The real form.handleSubmit validates the fields, and runs onSubmit when
-    // they pass. So the state that Submit must read exists only after it.
-    const handleSubmitLeaves = (state: Record<string, unknown>) =>
-      mockForm.handleSubmit.mockImplementation(async () => {
-        mockForm.state = { isSubmitting: false, values: {}, ...state };
-      });
-
-    // Field meta as TanStack Form keeps it: errors lists each errorMap entry.
-    const meta = (errorMap: Record<string, string | string[]>) => ({
-      errorMap,
-      errors: Object.values(errorMap).flat(),
     });
+
+    // Shown only to event organisers, as on the temporary restaurant permit.
+    const organisersOnly = [
+      {
+        type: "fieldConditionalOn",
+        targetStepId: "event-organiser",
+        targetFieldId: "is-organiser",
+        operator: "equal",
+        value: "yes",
+      },
+    ];
 
     const validationErrorEvents = () =>
       mockTrackEvent.mock.calls.filter(
         ([event]) => event === "form-validation-error",
       );
 
-    it("sends the step's error codes when the submit step has errors", async () => {
+    it("clicking Continue names only the fields that failed on screen", async () => {
       const user = userEvent.setup();
-      const { collectStepErrorCodes } = vi.mocked(formsLibMock);
-      (collectStepErrorCodes as Mock).mockReturnValue([
-        { fieldId: "declaration-confirmed", codes: ["required"] },
-      ]);
-      const values = { "declaration_declaration-confirmed": [] };
-      handleSubmitLeaves({
-        isValid: false,
-        values,
-        fieldMeta: {
-          "declaration_declaration-confirmed": meta({
-            onDynamic: ["You must confirm the declaration to continue."],
-          }),
-        },
+      Object.defineProperty(window, "scrollTo", {
+        value: vi.fn(),
+        writable: true,
       });
-      renderDeclaration();
-
-      await user.click(screen.getByRole("button", { name: /submit/i }));
-
-      expect(collectStepErrorCodes).toHaveBeenCalledWith(
-        [declarationField],
-        values,
+      const eventName = {
+        ...makePlainField(
+          "event-details_event-name",
+          "event-name",
+          "event-details",
+        ),
+        validations: { required: { value: true, error: "Enter the name" } },
+      };
+      const numPatrons = {
+        ...makePlainField(
+          "event-details_num-patrons",
+          "num-patrons",
+          "event-details",
+        ),
+        htmlType: "number" as const,
+        validations: { required: { value: true, error: "Enter the number" } },
+        behaviours: organisersOnly,
+      };
+      mockForm.state = {
+        ...mockForm.state,
+        values: {
+          "event-organiser_is-organiser": "no",
+          "event-details_event-name": "",
+        },
+      };
+      // A hidden field is not mounted, so validateField finds no error on it.
+      mockForm.validateField.mockImplementation(async (id: string) =>
+        id === eventName.id ? ["Enter the name"] : [],
       );
+      render(
+        <FormRenderer
+          form={mockForm}
+          formMeta={makeMeta() as any}
+          stepId="event-details"
+          visibleSteps={[makeStep("event-details", [eventName, numPatrons])]}
+          repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+          submissionState={mockSubmissionState as any}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /continue/i }));
+
       expect(validationErrorEvents()).toEqual([
         [
           "form-validation-error",
           {
             form: "test-form",
             category: expect.any(String),
-            step: "declaration",
+            step: "event-details",
             errorCount: 1,
-            fieldErrors: "declaration-confirmed:required",
+            fieldErrors: "event-name:required",
           },
         ],
       ]);
-      expect(mockCompleteAndContinue).not.toHaveBeenCalled();
     });
 
-    it("sends nothing when the submit step has no errors", async () => {
-      const user = userEvent.setup();
-      // collectStepErrorCodes does not filter out hidden fields, so a hidden,
-      // required field gives a code even when the step shows no error. The
-      // codes alone cannot decide that the step has errors.
-      const { collectStepErrorCodes } = vi.mocked(formsLibMock);
-      (collectStepErrorCodes as Mock).mockReturnValue([
-        { fieldId: "overtime-costs-acknowledged", codes: ["required"] },
-      ]);
-      handleSubmitLeaves({
-        isValid: true,
-        fieldMeta: { "declaration_declaration-confirmed": meta({}) },
+    describe("from the submit step", () => {
+      // The declaration step of the temporary restaurant permit.
+      const confirmation = (fieldId: string, behaviours: unknown[] = []) => ({
+        ...makePlainField(`declaration_${fieldId}`, fieldId, "declaration"),
+        htmlType: "checkbox" as const,
+        options: [{ label: fieldId, value: "yes" }],
+        validations: { required: { value: true, error: `Tick ${fieldId}` } },
+        behaviours,
       });
-      renderDeclaration();
+      const declarationConfirmed = confirmation("declaration-confirmed");
+      const regulations = confirmation("regulations-acknowledged");
+      const overtime = confirmation(
+        "overtime-costs-acknowledged",
+        organisersOnly,
+      );
 
-      await user.click(screen.getByRole("button", { name: /submit/i }));
+      // A non-organiser who ticked both boxes. The overtime box is hidden, so
+      // it is empty.
+      const nonOrganiser = {
+        "event-organiser_is-organiser": "no",
+        [declarationConfirmed.id]: ["yes"],
+        [regulations.id]: ["yes"],
+        [overtime.id]: [],
+      };
 
-      expect(validationErrorEvents()).toEqual([]);
-      expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
-    });
+      function renderDeclaration() {
+        render(
+          <FormRenderer
+            form={mockForm}
+            formMeta={makeMeta() as any}
+            stepId="declaration"
+            visibleSteps={[
+              makeStep("declaration", [
+                declarationConfirmed,
+                regulations,
+                overtime,
+              ]),
+            ]}
+            repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+            submissionState={mockSubmissionState as any}
+          />,
+        );
+      }
 
-    it("sends nothing when only another step's fields have errors", async () => {
-      // form.state.isValid also covers other steps' fields, so it alone would
-      // send an event with no error codes for this step.
-      const user = userEvent.setup();
-      handleSubmitLeaves({
-        isValid: false,
-        fieldMeta: {
-          "declaration_declaration-confirmed": meta({}),
-          "applicant-details_email": meta({
-            onDynamic: ["Enter an email address"],
-          }),
-        },
+      // The real form.handleSubmit validates the fields, and runs onSubmit
+      // when they pass. So the state that Submit reads exists only after it.
+      // isSubmitted is true only when the attempt reached the API.
+      const nextSubmitLeaves = (state: Record<string, unknown>) =>
+        mockForm.handleSubmit.mockImplementationOnce(async () => {
+          mockForm.state = { isSubmitting: false, ...state };
+        });
+
+      // Field meta as TanStack Form keeps it: errors lists each errorMap entry.
+      const meta = (errorMap: Record<string, string | string[]>) => ({
+        errorMap,
+        errors: Object.values(errorMap).flat(),
       });
-      renderDeclaration();
 
-      await user.click(screen.getByRole("button", { name: /submit/i }));
+      const submit = () =>
+        userEvent
+          .setup()
+          .click(screen.getByRole("button", { name: /submit/i }));
 
-      expect(validationErrorEvents()).toEqual([]);
-      expect(mockCompleteAndContinue).not.toHaveBeenCalled();
-    });
+      it("names only the fields that failed on screen when the browser stops Submit", async () => {
+        // The reviewer's case: declaration ticked, regulations not ticked.
+        nextSubmitLeaves({
+          isSubmitted: false,
+          isValid: false,
+          values: { ...nonOrganiser, [regulations.id]: [] },
+          fieldMeta: {
+            [declarationConfirmed.id]: meta({}),
+            [regulations.id]: meta({ onDynamic: ["Tick it"] }),
+          },
+        });
+        renderDeclaration();
 
-    it("sends nothing for an error that the API put on the step after a 422", async () => {
-      // onSubmit puts the API's message on the field (#2573). It breaks no
-      // client rule, so it has no codes, and form-submit-error reports it.
-      const user = userEvent.setup();
-      handleSubmitLeaves({
-        isValid: false,
-        fieldMeta: {
-          "declaration_declaration-confirmed": meta({
-            onServer: "You must confirm the declaration to continue.",
-          }),
-        },
+        await submit();
+
+        expect(validationErrorEvents()).toEqual([
+          [
+            "form-validation-error",
+            {
+              form: "test-form",
+              category: expect.any(String),
+              step: "declaration",
+              errorCount: 1,
+              fieldErrors: "regulations-acknowledged:required",
+            },
+          ],
+        ]);
+        expect(mockCompleteAndContinue).not.toHaveBeenCalled();
       });
-      renderDeclaration();
 
-      await user.click(screen.getByRole("button", { name: /submit/i }));
+      it("sends nothing when the submit step has no errors", async () => {
+        nextSubmitLeaves({
+          isSubmitted: true,
+          isValid: true,
+          values: nonOrganiser,
+          fieldMeta: {
+            [declarationConfirmed.id]: meta({}),
+            [regulations.id]: meta({}),
+          },
+        });
+        renderDeclaration();
 
-      expect(validationErrorEvents()).toEqual([]);
-      expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+        await submit();
+
+        expect(validationErrorEvents()).toEqual([]);
+        expect(mockCompleteAndContinue).toHaveBeenCalledWith("declaration");
+      });
+
+      it("sends nothing when only another step's fields have errors", async () => {
+        // isValid alone would send an event. The codes of all the step's
+        // fields would name the hidden overtime box.
+        nextSubmitLeaves({
+          isSubmitted: false,
+          isValid: false,
+          values: nonOrganiser,
+          fieldMeta: {
+            [declarationConfirmed.id]: meta({}),
+            [regulations.id]: meta({}),
+            "applicant-details_email": meta({ onDynamic: ["Enter an email"] }),
+          },
+        });
+        renderDeclaration();
+
+        await submit();
+
+        expect(validationErrorEvents()).toEqual([]);
+        expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+      });
+
+      it("sends nothing when the attempt reached the API, even if a box changed while the request was pending", async () => {
+        nextSubmitLeaves({
+          isSubmitted: true,
+          isValid: false,
+          values: { ...nonOrganiser, [regulations.id]: [] },
+          fieldMeta: {
+            [declarationConfirmed.id]: meta({}),
+            [regulations.id]: meta({ onDynamic: ["Tick it"] }),
+          },
+        });
+        renderDeclaration();
+
+        await submit();
+
+        expect(validationErrorEvents()).toEqual([]);
+      });
+
+      it("sends nothing for an error that the API put on the step after a 422", async () => {
+        // onSubmit puts the API's message on the field (#2573). While it
+        // stays, the browser stops each new attempt, but the message breaks
+        // no client rule, and form-submit-error reports the 422.
+        nextSubmitLeaves({
+          isSubmitted: false,
+          isValid: false,
+          values: nonOrganiser,
+          fieldMeta: {
+            [declarationConfirmed.id]: meta({}),
+            [regulations.id]: meta({ onServer: "Tick it" }),
+          },
+        });
+        renderDeclaration();
+
+        await submit();
+
+        expect(validationErrorEvents()).toEqual([]);
+        expect(mockCompleteAndContinue).not.toHaveBeenCalled();
+      });
+
+      it("reports an attempt that the browser stops after one that reached the API", async () => {
+        // Attempt 1 reaches the API, which refuses the regulations box (422).
+        nextSubmitLeaves({
+          isSubmitted: true,
+          isValid: false,
+          values: nonOrganiser,
+          fieldMeta: {
+            [declarationConfirmed.id]: meta({}),
+            [regulations.id]: meta({ onServer: "Tick it" }),
+          },
+        });
+        // Attempt 2: the applicant removed the declaration tick, so the
+        // browser stops it. isSubmitted resets for each attempt.
+        nextSubmitLeaves({
+          isSubmitted: false,
+          isValid: false,
+          values: { ...nonOrganiser, [declarationConfirmed.id]: [] },
+          fieldMeta: {
+            [declarationConfirmed.id]: meta({ onDynamic: ["Tick it"] }),
+            [regulations.id]: meta({ onServer: "Tick it" }),
+          },
+        });
+        renderDeclaration();
+
+        await submit();
+        expect(validationErrorEvents()).toEqual([]);
+
+        await submit();
+        expect(validationErrorEvents()).toEqual([
+          [
+            "form-validation-error",
+            expect.objectContaining({
+              step: "declaration",
+              errorCount: 1,
+              fieldErrors: "declaration-confirmed:required",
+            }),
+          ],
+        ]);
+      });
     });
   });
 
@@ -1518,39 +1688,6 @@ describe("FormRenderer", () => {
     );
     await user.click(screen.getByRole("button", { name: /continue/i }));
     expect(mockCompleteAndContinue).not.toHaveBeenCalled();
-  });
-
-  it("clicking Continue with validation errors sends form-validation-error with the step's error codes", async () => {
-    const user = userEvent.setup();
-    Object.defineProperty(window, "scrollTo", {
-      value: vi.fn(),
-      writable: true,
-    });
-    const { collectStepErrorCodes } = vi.mocked(formsLibMock);
-    (collectStepErrorCodes as Mock).mockReturnValue([
-      { fieldId: "name", codes: ["required"] },
-    ]);
-    const field = makePlainField("step-1_name", "name", "step-1");
-    mockForm.validateField.mockResolvedValue(["This field is required"]);
-    render(
-      <FormRenderer
-        form={mockForm}
-        formMeta={makeMeta() as any}
-        stepId="step-1"
-        visibleSteps={[makeStep("step-1", [field])]}
-        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
-        submissionState={mockSubmissionState as any}
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: /continue/i }));
-    expect(collectStepErrorCodes).toHaveBeenCalledWith([field], {});
-    expect(mockTrackEvent).toHaveBeenCalledWith("form-validation-error", {
-      form: "test-form",
-      category: expect.any(String),
-      step: "step-1",
-      errorCount: 1,
-      fieldErrors: "name:required",
-    });
   });
 
   it("clicking Continue on a repeatable step with addAnother=yes calls addRepeatableStep", async () => {

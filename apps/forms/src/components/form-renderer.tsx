@@ -552,8 +552,11 @@ function ActiveStep({
 
   const repeatableStepSettings = repeatableStepSettingsRef.current;
 
-  // One payload for the step's errors, from Continue and from Submit (#3902).
-  const trackStepValidationError = () =>
+  // The step's form-validation-error event, from Continue and from Submit. It
+  // names only the fields that failed validation on screen. A hidden field is
+  // not mounted, so it never fails, but collectStepErrorCodes would still
+  // give it a code (#3902, #3929).
+  const trackStepValidationError = (failedFields: ClientPrimitive[]) =>
     trackEvent(
       "form-validation-error",
       buildValidationErrorPayload(
@@ -561,7 +564,7 @@ function ActiveStep({
         formCategory(formMeta.formId),
         currentStep.stepId,
         collectStepErrorCodes(
-          currentFields,
+          failedFields,
           form.state.values as Record<string, unknown>,
         ),
       ),
@@ -580,9 +583,11 @@ function ActiveStep({
       });
     };
 
-    const hasError = results.some((r) => r.length > 0);
-    if (hasError) {
-      trackStepValidationError();
+    const failedFields = currentFields.filter(
+      (_, index) => results[index].length > 0,
+    );
+    if (failedFields.length > 0) {
+      trackStepValidationError(failedFields);
       scrollToTop();
       return;
     }
@@ -658,17 +663,21 @@ function ActiveStep({
 
   const handleSubmit = async () => {
     await form.handleSubmit();
-    // Judge this step's own fields by the client rules, as handleContinue
-    // does. The form-wide isValid below also covers other steps' fields. Skip
-    // onServer: after a 422, the form's onSubmit (in the route) puts the API's
-    // message there. It breaks no client rule, and form-submit-error reports
-    // it (#3902).
-    const stepHasErrors = currentFields.some((field) =>
-      Object.entries(form.state.fieldMeta[field.id]?.errorMap ?? {}).some(
-        ([source, error]) => source !== "onServer" && error !== undefined,
-      ),
-    );
-    if (stepHasErrors) trackStepValidationError();
+    // Report only an attempt that the browser stopped. isSubmitted is true
+    // when the attempt reached the API, even if a field changed while the
+    // request was pending, and form-submit-error reports a 422 (#3902).
+    if (!form.state.isSubmitted) {
+      // This step's own fields, judged by the client rules as handleContinue
+      // does. The form-wide isValid below also covers other steps' fields.
+      // Skip onServer: after a 422, the form's onSubmit (in the route) puts
+      // the API's message there, and it breaks no client rule.
+      const failedFields = currentFields.filter((field) =>
+        Object.entries(form.state.fieldMeta[field.id]?.errorMap ?? {}).some(
+          ([source, error]) => source !== "onServer" && error !== undefined,
+        ),
+      );
+      if (failedFields.length > 0) trackStepValidationError(failedFields);
+    }
     // handleSubmit resolves even when validation fails, so only advance when the
     // form is valid — otherwise the user would be moved past their own errors.
     if (form.state.isValid) {
