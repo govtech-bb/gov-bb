@@ -21,6 +21,7 @@ import {
   expectOk,
   TEST_EMPLOYEE,
   TEST_SERVER,
+  grantFor,
 } from "./test-db";
 
 const CATEGORY_A = "33333333-3333-4333-8333-333333333333";
@@ -264,7 +265,7 @@ describe("the change history trigger", () => {
     const { db, close } = await createTestDb();
 
     const outcome = await new PostgresPages(db).atomically(
-      UserId.parse("nobody"),
+      grantFor({ ...TEST_EMPLOYEE, id: UserId.parse("nobody") }, "pages:edit"),
       (records) => records.insert(newPage()),
     );
 
@@ -281,8 +282,9 @@ describe("the change history trigger", () => {
     const db = drizzle(pool);
     try {
       const created = expectOk(
-        await new PostgresPages(db).atomically(TEST_EMPLOYEE.id, (records) =>
-          records.insert(newPage()),
+        await new PostgresPages(db).atomically(
+          grantFor(TEST_EMPLOYEE, "pages:edit"),
+          (records) => records.insert(newPage()),
         ),
       );
       await db.execute(

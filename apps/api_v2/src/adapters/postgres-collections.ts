@@ -8,7 +8,7 @@
 
 import { and, asc, count, eq } from "drizzle-orm";
 import type { Database } from "../db";
-import type { UserId } from "../modules/auth";
+import type { Grant } from "../modules/permissions";
 import {
   CollectionSchema,
   type CollectionDefinition,
@@ -66,10 +66,10 @@ export class PostgresCollections implements CollectionStore {
   constructor(private readonly db: Database) {}
 
   async atomically<R extends Result<unknown, Error>>(
-    actorId: UserId,
+    grant: Grant<"collections:edit" | "collections:manage">,
     work: (store: CollectionStore) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
-    return transactAs(this.db, actorId, { contentLock: false }, (tx) =>
+    return transactAs(this.db, grant.actor, { contentLock: false }, (tx) =>
       work(new PostgresCollections(tx)),
     );
   }
