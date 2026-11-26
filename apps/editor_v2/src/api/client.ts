@@ -57,6 +57,9 @@ export type ServicePage = ServiceDetail["pages"][number];
 /** The signed-in employee, their roles and their permissions. */
 export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
 
+/** Every role, with what it lets a person do, in the API's words. */
+export type RoleCatalogue = Json<paths["/editor/roles"]["get"]["responses"][200]>;
+
 /** A data collection in the editor's list: its field list and how many records it holds. */
 export type CollectionSummary = Json<
   paths["/collections"]["get"]["responses"][200]
@@ -688,6 +691,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       checkedReply(await send("POST", "/collections", input), isEditorCollection),
     version: () => read<EstateVersion>("/version"),
     me: () => read<Me>("/editor/me"),
+    roles: () => read<RoleCatalogue>("/editor/roles"),
     page: async (id: string) => checkedReply(await send("GET", `/pages/${id}`), isPage),
     createPage: async (page: CreatePageInput) =>
       checkedReply(await send("POST", "/pages", page), isPage),

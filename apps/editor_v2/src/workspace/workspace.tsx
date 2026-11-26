@@ -50,6 +50,7 @@ import type { PageDocument, WorkspaceLocation } from "./model";
 import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
 import { forgetUnsavedWork } from "./unsaved-work";
+import { YourAccess } from "./your-access";
 
 type Account = {
   email: string;
@@ -377,9 +378,7 @@ export function ServiceWorkspace({
           <GovbbLogo fit="height" className="h-6 shrink-0" />
           <Bar.Crumbs crumbs={crumbs} />
           <Bar.Actions>
-            <Bar.Status className="max-w-64 truncate font-normal max-lg:hidden" title={email}>
-              {email}
-            </Bar.Status>
+            <YourAccess api={api} email={email} />
             <Button
               variant="inverse"
               pending={signingOut}
