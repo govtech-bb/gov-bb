@@ -24,6 +24,19 @@ export function employeeSession() {
 }
 
 /** Compose real editor/browser code with a session fixture at its HTTP boundary. */
+/** What api_v2's table lets each role do, so a fixture can answer GET /editor/me as the API does. */
+const ROLE_PERMISSIONS = {
+  reader: ["content:read"],
+  editor: ["pages:edit", "collections:edit"],
+  approver: ["pages:publish", "categories:manage", "collections:manage"],
+  admin: ["people:read", "people:manage", "collections:manage"],
+};
+
+/** The permissions `roles` hold, Reader's included, as GET /editor/me lists them. */
+export function permissionsOf(roles) {
+  return [...new Set(["reader", ...roles].flatMap((role) => ROLE_PERMISSIONS[role] ?? []))];
+}
+
 export async function authenticatedContext(browser, options) {
   const context = await browser.newContext(options);
   await context.route("**/api/auth/get-session*", (route) =>
@@ -38,7 +51,11 @@ export async function authenticatedContext(browser, options) {
   );
   await context.route("**/editor/me", (route) =>
     route.fulfill({
-      json: { ...employeeSession().user, roles: ["editor", "approver"] },
+      json: {
+        ...employeeSession().user,
+        roles: ["editor", "approver"],
+        permissions: permissionsOf(["editor", "approver"]),
+      },
       headers: {
         "access-control-allow-origin": route.request().headers().origin ?? "*",
         "access-control-allow-credentials": "true",

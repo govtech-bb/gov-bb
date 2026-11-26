@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { parse } from "yaml";
-import { authenticatedContext, servicesFixture } from "./auth-fixture.mjs";
+import { authenticatedContext, permissionsOf, servicesFixture } from "./auth-fixture.mjs";
 import { fixtureCategory } from "./page-api-fixture.mjs";
 import { chromium } from "./playwright.mjs";
 
@@ -97,6 +97,7 @@ await context.route("**/*", async (route) => {
       email: "employee@govtech.bb",
       name: "Test employee",
       roles: ["editor", "approver"],
+      permissions: permissionsOf(["editor", "approver"]),
     },
   };
 

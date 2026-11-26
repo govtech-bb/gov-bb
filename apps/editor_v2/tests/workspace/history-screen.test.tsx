@@ -14,6 +14,7 @@ import { createEditorApi, type ApiPage, type PageHistoryEntry } from "../../src/
 import { Toaster } from "../../src/ui/toast";
 import { HistoryScreen } from "../../src/workspace/history-screen";
 import { shownText } from "../helpers/shown-text";
+import { permissionsOf } from "../helpers/employee";
 
 const PAGE = "44444444-4444-4444-8444-444444444444";
 
@@ -104,7 +105,7 @@ async function render(
 
       if (path === `/pages/${PAGE}`) return Response.json(currentPage);
 
-      if (path === "/editor/me") return Response.json({ roles });
+      if (path === "/editor/me") return Response.json({ roles, permissions: permissionsOf(roles) });
 
       if (path.endsWith("/restore")) {
         restores.push({ url: path, init });
