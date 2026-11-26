@@ -8,7 +8,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Database } from "../db";
 import { EmployeeView, UserNotFound } from "../modules/auth";
-import { Role } from "../modules/permissions";
+import { GrantableRole } from "../modules/permissions";
 import { ContentStoreUnavailable } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import { userRoles } from "../schema";
@@ -18,9 +18,9 @@ import type { RoleRecords } from "../services/editor-access";
 const missingUser = z.object({ cause: z.object({ code: z.literal("23503") }) });
 
 /** Stored role names this build knows; a role a later release added is left out. */
-function knownRoles(names: readonly string[]): Role[] {
+function knownRoles(names: readonly string[]): GrantableRole[] {
   return names.flatMap((name) => {
-    const role = Role.safeParse(name);
+    const role = GrantableRole.safeParse(name);
     return role.success ? [role.data] : [];
   });
 }
@@ -49,7 +49,7 @@ export class PostgresRoles implements RoleRecords {
   /** The user's roles, leaving out a stored name this build doesn't know. */
   async rolesOf(
     userId: string,
-  ): Promise<Result<Role[], ContentStoreUnavailable>> {
+  ): Promise<Result<GrantableRole[], ContentStoreUnavailable>> {
     const rows = await attempt("rolesOf", () =>
       this.db
         .select({ role: userRoles.role })
@@ -63,7 +63,7 @@ export class PostgresRoles implements RoleRecords {
   /** Grant a role; one already held keeps its first grantor. */
   async grant(
     userId: string,
-    role: Role,
+    role: GrantableRole,
     grantedBy: string | null,
   ): Promise<Result<void, UserNotFound | ContentStoreUnavailable>> {
     try {
@@ -84,7 +84,7 @@ export class PostgresRoles implements RoleRecords {
   /** Revoke a role. */
   async revoke(
     userId: string,
-    role: Role,
+    role: GrantableRole,
   ): Promise<Result<void, ContentStoreUnavailable>> {
     const deleted = await attempt("revoke", () =>
       this.db

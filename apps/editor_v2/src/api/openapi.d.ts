@@ -4196,7 +4196,7 @@ export interface paths {
                                 id: string;
                                 email: string;
                                 name: string;
-                                roles: ("editor" | "approver" | "admin")[];
+                                roles: ("reader" | "editor" | "approver" | "admin")[];
                             }[];
                         };
                     };
@@ -4512,7 +4512,7 @@ export interface paths {
                             id: string;
                             email: string;
                             name: string;
-                            roles: ("editor" | "approver" | "admin")[];
+                            roles: ("reader" | "editor" | "approver" | "admin")[];
                         };
                     };
                 };

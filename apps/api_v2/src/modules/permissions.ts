@@ -12,6 +12,7 @@ import { err, ok, type Result } from "./result";
  * "You don't have permission to …" and "This role lets you …".
  */
 export const PERMISSIONS = {
+  "content:read": "read all the content",
   "pages:edit":
     "create, change and delete pages, restore an earlier version, and submit a change for review",
   "pages:publish": "publish or reject a change",
@@ -25,28 +26,46 @@ export const PERMISSIONS = {
 /** One thing an employee may do. */
 export type Permission = keyof typeof PERMISSIONS;
 
-/** What each role holds. Roles don't include each other: an approver is not an editor. */
+/**
+ * What each role holds. Roles don't include each other: an approver is not
+ * an editor. Everyone holds `reader` without a stored row, so no other role
+ * repeats `content:read`.
+ */
 const ROLE_PERMISSIONS = {
+  reader: ["content:read"],
   editor: ["pages:edit", "collections:edit"],
   approver: ["pages:publish", "categories:manage", "collections:manage"],
   admin: ["people:read", "people:manage", "collections:manage"],
 } as const satisfies Record<string, readonly Permission[]>;
 
-/** A role, as `user_roles` stores it. */
+/** A role. Every one but `DEFAULT_ROLE` is stored in `user_roles`. */
 export type Role = keyof typeof ROLE_PERMISSIONS;
 
 const isRole = (name: string): name is Role =>
   Object.hasOwn(ROLE_PERMISSIONS, name);
 
-/**
- * Every role, in table order. The database check and the API's role list
- * derive from it.
- */
+/** Every role, in table order. The API's role list derives from it. */
 export const ROLES: readonly Role[] =
   Object.keys(ROLE_PERMISSIONS).filter(isRole);
 
 /** Parses a role. */
 export const Role = z.enum(ROLES);
+
+/** The role every signed-in employee holds without a stored row. Nobody can give it or take it away. */
+export const DEFAULT_ROLE = "reader" satisfies Role;
+
+/** A role an admin gives and takes away, and `user_roles` stores: every role but the default. */
+export type GrantableRole = Exclude<Role, typeof DEFAULT_ROLE>;
+
+const isGrantable = (role: Role): role is GrantableRole =>
+  role !== DEFAULT_ROLE;
+
+/** Every grantable role, in table order. The `user_roles` check derives from it. */
+export const GRANTABLE_ROLES: readonly GrantableRole[] =
+  ROLES.filter(isGrantable);
+
+/** Parses a role an admin can give or take away. */
+export const GrantableRole = z.enum(GRANTABLE_ROLES);
 
 /** A permission that at least one role holds. */
 type HeldPermission = (typeof ROLE_PERMISSIONS)[Role][number];
@@ -61,11 +80,15 @@ const isPermission = (name: string): name is Permission =>
 const HELD_PERMISSIONS: readonly HeldPermission[] =
   Object.keys(PERMISSIONS).filter(isPermission);
 
-/** The permissions a set of roles holds, without repeats, in PERMISSIONS order. */
+/**
+ * The permissions a set of roles holds, with the default role's, without
+ * repeats, in PERMISSIONS order.
+ */
 export function permissionsOf(roles: readonly Role[]): readonly Permission[] {
-  const held = new Set<Permission>(
-    roles.flatMap((role) => ROLE_PERMISSIONS[role]),
-  );
+  const held = new Set<Permission>([
+    ...ROLE_PERMISSIONS[DEFAULT_ROLE],
+    ...roles.flatMap((role) => ROLE_PERMISSIONS[role]),
+  ]);
   return HELD_PERMISSIONS.filter((permission) => held.has(permission));
 }
 

@@ -31,7 +31,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { ROLES } from "./modules/permissions";
+import { GRANTABLE_ROLES } from "./modules/permissions";
 import type { CollectionSchema, RecordData } from "./modules/collection";
 import {
   REVISION_STATUSES,
@@ -418,7 +418,7 @@ export const userRoles = pgTable(
     }).onDelete("cascade"),
     check(
       "user_roles_role_check",
-      sql`${table.role} in (${sql.raw(ROLES.map((role) => `'${role}'`).join(", "))})`,
+      sql`${table.role} in (${sql.raw(GRANTABLE_ROLES.map((role) => `'${role}'`).join(", "))})`,
     ),
   ],
 );

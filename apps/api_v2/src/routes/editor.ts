@@ -3,7 +3,7 @@ import type { ICategoryEditing } from "../services/category-editing";
 import type { CollectionEditing } from "../services/collection-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee, SelfApproval } from "../modules/auth";
-import type { PermissionDenied, Role } from "../modules/permissions";
+import type { GrantableRole, PermissionDenied } from "../modules/permissions";
 import type {
   ContentStoreUnavailable,
   PageConflict,
@@ -30,12 +30,12 @@ declare module "fastify" {
      * editor scope refuses a write that names none, so a new route fails
      * closed rather than open.
      */
-    role?: Role | readonly [Role, ...Role[]];
+    role?: GrantableRole | readonly [GrantableRole, ...GrantableRole[]];
   }
 }
 
 /** Why an employee without the role a route needs is refused. */
-const NEEDS_ROLE: Readonly<Record<Role, string>> = {
+const NEEDS_ROLE: Readonly<Record<GrantableRole, string>> = {
   editor: "You need the editor role to make changes. Ask an admin to grant it.",
   approver: "You need the approver role to do this.",
   admin: "Only admins can see or change who has which role.",
@@ -138,7 +138,8 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       return reply.status(403).send({ error: "forbidden" });
     }
     const { role } = request.routeOptions.config;
-    const needed: readonly Role[] = role === undefined ? [] : [role].flat();
+    const needed: readonly GrantableRole[] =
+      role === undefined ? [] : [role].flat();
     // Fail closed: a write route that names no role is a bug, which
     // route-auth.test.ts catches before it ships.
     if (needed.length === 0 && !["GET", "HEAD"].includes(request.method))

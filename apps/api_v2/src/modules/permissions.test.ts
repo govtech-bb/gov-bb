@@ -2,6 +2,9 @@ import { assert, describe, expect, expectTypeOf, it } from "vitest";
 import { UserId } from "./auth";
 import {
   authorize,
+  DEFAULT_ROLE,
+  GRANTABLE_ROLES,
+  GrantableRole,
   PermissionDenied,
   permissionsOf,
   ROLES,
@@ -15,6 +18,7 @@ import { expectOk } from "../test-db";
 
 /** Who may use each permission, written by permission, the other way round from the table. */
 const ALLOWED = {
+  "content:read": ["reader"],
   "pages:edit": ["editor"],
   "pages:publish": ["approver"],
   "collections:edit": ["editor"],
@@ -28,8 +32,8 @@ const EVERY_PERMISSION = Object.keys(ALLOWED).filter(
   (name): name is Permission => Object.hasOwn(ALLOWED, name),
 );
 
-/** Every set of roles, from none to all. */
-const ROLE_SETS = ROLES.reduce<Role[][]>(
+/** Every set of stored roles, from none to all. Reader is never stored. */
+const ROLE_SETS = GRANTABLE_ROLES.reduce<Role[][]>(
   (sets, role) => [...sets, ...sets.map((set) => [...set, role])],
   [[]],
 );
@@ -40,8 +44,12 @@ const actor = (roles: readonly Role[]) => ({
 });
 
 describe("the permissions table", () => {
-  it("lists the roles in table order", () => {
-    expect(ROLES).toEqual(["editor", "approver", "admin"]);
+  it("lists the roles in table order, and every role but Reader as grantable", () => {
+    expect(ROLES).toEqual(["reader", "editor", "approver", "admin"]);
+    expect(DEFAULT_ROLE).toBe("reader");
+    expect(GRANTABLE_ROLES).toEqual(["editor", "approver", "admin"]);
+    expect(GrantableRole.safeParse("reader").success).toBe(false);
+    expectTypeOf<typeof DEFAULT_ROLE>().not.toExtend<GrantableRole>();
   });
 
   describe.each(
@@ -51,7 +59,10 @@ describe("the permissions table", () => {
     })),
   )("$name", ({ roles }) => {
     it.each(EVERY_PERMISSION)("%s", (permission) => {
-      const allowed = ALLOWED[permission].some((role) => roles.includes(role));
+      // Everyone holds Reader, stored or not.
+      const allowed = ALLOWED[permission].some(
+        (role) => role === "reader" || roles.includes(role),
+      );
 
       expect(authorize(actor(roles), permission).ok).toBe(allowed);
       expect(permissionsOf(roles).includes(permission)).toBe(allowed);
@@ -64,6 +75,7 @@ describe("the permissions table", () => {
 
   it("adds roles up without repeats, in the order PERMISSIONS lists them", () => {
     expect(permissionsOf(["admin", "approver"])).toEqual([
+      "content:read",
       "pages:publish",
       "collections:manage",
       "categories:manage",
@@ -79,6 +91,7 @@ describe("the permissions table", () => {
 
   it("describes each role in words", () => {
     expect(roleCatalogue()).toEqual([
+      { role: "reader", lets: ["read all the content"] },
       {
         role: "editor",
         lets: [
@@ -145,7 +158,7 @@ describe("authorize", () => {
     // @ts-expect-error: "pages:delete" isn't a permission.
     expect(authorize(employee, "pages:delete").ok).toBe(false);
     // @ts-expect-error: "superuser" isn't a role.
-    expect(permissionsOf(["superuser"])).toEqual([]);
+    expect(permissionsOf(["superuser"])).toEqual(["content:read"]);
     expectTypeOf({
       actor: employee.id,
       permission: "pages:edit",
