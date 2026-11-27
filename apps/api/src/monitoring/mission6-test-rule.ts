@@ -13,8 +13,9 @@
  * `@gov.bb` and `barbados.gov.bb` are deliberately NOT left out: public
  * servants apply for services as citizens too.
  *
- * On purpose, the rule reads EVERY email and person-name answer in the
- * submission, not only the applicant's own (there is no standard applicant
+ * On purpose, the rule reads every email and person-name answer in the
+ * top-level and single-object steps (repeatable steps are not read), not
+ * only the applicant's own (there is no standard applicant
  * field across forms). A team address anywhere in a form almost always means
  * a test; the cost is that a real citizen who names a GovTech colleague as a
  * referee or emergency contact is left out too, which is rare. Name parts are

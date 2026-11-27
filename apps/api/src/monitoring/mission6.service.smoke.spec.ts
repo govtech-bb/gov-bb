@@ -5,10 +5,11 @@ import { Mission6Service } from "./mission6.service";
 
 // The Mission 6 counting rules live in the SQL, which the unit spec mocks.
 // This runs the real queries against Postgres: set DB_HOST etc. to a database
-// you can write to (skipped otherwise, like the other smoke specs). It runs
-// the package migrations (a no-op where they are already applied), inserts
-// rows under a unique form-id prefix, reads only those back, and deletes
-// them afterwards.
+// you can write to (skipped otherwise, like the other smoke specs). On an
+// empty database it runs the package migrations first (kept afterwards); on
+// one that already has the forms tables it runs none, so a feature branch's
+// unmerged migrations never land on a shared database. It inserts rows under
+// a unique form-id prefix, reads only those back, and deletes them afterwards.
 const HAS_DB = !!process.env.DB_HOST;
 
 (HAS_DB ? describe : describe.skip)(
@@ -78,14 +79,24 @@ const HAS_DB = !!process.env.DB_HOST;
         synchronize: false,
       });
       await dataSource.initialize();
-      // The first migration uses uuid_generate_v4(); a fresh database lacks it.
-      await dataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
-      await dataSource.runMigrations();
+      const [{ exists }] = await dataSource.query(
+        `SELECT to_regclass('public.form_submissions') IS NOT NULL AS "exists"`,
+      );
+      if (!exists) {
+        // The first migration uses uuid_generate_v4(); a fresh database
+        // lacks it.
+        await dataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+        await dataSource.runMigrations();
+      }
       service = new Mission6Service(dataSource, {
         findAll: async () => [],
       } as never);
 
-      const citizen = { you: { email: "a.person@gmail.com" } };
+      // national-id is not identity data, so it must never leave the
+      // database (see the last test).
+      const citizen = {
+        you: { email: "a.person@gmail.com", "national-id": "123456-7890" },
+      };
       // Applications, form A. 03:30 UTC on 1 Nov is 23:30 on 31 Oct in
       // Barbados; 04:30 UTC is midnight-thirty on 1 Nov.
       const paid = await submission(
@@ -234,6 +245,28 @@ const HAS_DB = !!process.env.DB_HOST;
           leftOutAsTests: 1,
         },
       ]);
+    });
+
+    it("takes only email and name answers out of the database", async () => {
+      const seen: {
+        formId: string;
+        identity: Record<string, unknown> | null;
+      }[] = [];
+      const recording = new Mission6Service(
+        {
+          query: async (sql: string) => {
+            const rows = await dataSource.query(sql);
+            seen.push(...rows);
+            return rows;
+          },
+        } as never,
+        { findAll: async () => [] } as never,
+      );
+      await recording.report();
+
+      const keys = ours(seen).flatMap((r) => Object.keys(r.identity ?? {}));
+      expect(keys).toContain("you.email");
+      expect(keys.filter((k) => !/(email|name)/i.test(k))).toEqual([]);
     });
   },
 );

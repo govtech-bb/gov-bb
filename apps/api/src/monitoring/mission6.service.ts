@@ -52,6 +52,10 @@ const IDENTITY_SQL = `(
 
 // Applications: submissions that reached the MDA (submitted, processing or
 // complete). Drafts, unpaid and errored submissions are not applications.
+// Dated by created_at (when the applicant pressed submit), not submitted_at:
+// that is what the September services report used, so the figures stay
+// comparable. For a paid form, a citizen who starts on 31 Oct and pays on
+// 2 Nov is an October application with a November payment.
 // created_at is UTC; Barbados is UTC-4 all year.
 const APPLICATIONS_SQL = `
   select fs.form_id as "formId",
