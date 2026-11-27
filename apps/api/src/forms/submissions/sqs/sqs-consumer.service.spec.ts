@@ -261,6 +261,30 @@ describe("SqsConsumerService", () => {
       expect(slackNotify).not.toHaveBeenCalled();
     });
 
+    it("does NOT alert a terminally-failing SMOKE submission's webhook (#3795)", async () => {
+      factory.resolveByType.mockReturnValue(
+        makeProcessor(
+          "webhook",
+          vi.fn().mockRejectedValue(new Error("CaMS 500")),
+        ),
+      );
+
+      await service.processMessage(
+        QUEUE_URL,
+        // terminal attempt, but a smoke/E2E submission — ADR 0087 says it pages
+        // no operator (the failure is still logged + reddens the E2E job).
+        sqsMessage({ processorType: "webhook", isSmokeSubmission: true }, "3"),
+      );
+
+      expect(slackNotify).not.toHaveBeenCalled();
+      // Still dead-letters exactly as a real terminal failure would — not deleted.
+      expect(
+        sendMock.mock.calls.filter(
+          ([cmd]) => cmd instanceof DeleteMessageCommand,
+        ),
+      ).toHaveLength(0);
+    });
+
     /** An email message whose single processor sends to `recipientField`. */
     function emailMessage(recipientField: string, receiveCount = "3") {
       return sqsMessage(

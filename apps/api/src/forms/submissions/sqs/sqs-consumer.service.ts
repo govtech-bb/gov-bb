@@ -295,6 +295,11 @@ export class SqsConsumerService
     kind: "config" | "delivery",
     err: unknown,
   ): Promise<void> {
+    // A smoke/E2E submission must produce zero operator-facing side-effects
+    // (ADR 0087, #3795). A kept test-programme webhook failing is a real E2E
+    // signal — already surfaced in the retry/failure logs above and by the
+    // failing E2E job — but it must never page an operator, so skip the alert.
+    if (payload.isSmokeSubmission) return;
     if (
       !(ALERTED_PROCESSOR_TYPES as readonly string[]).includes(
         payload.processorType,
