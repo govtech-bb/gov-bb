@@ -5,13 +5,13 @@ import type { createApiV2Breaker } from './api-v2-reader'
 /**
  * In-memory cache in front of api_v2 page reads (#3127), per server instance.
  * TTLs come only from api_v2's `Cache-Control` (#2702): pages get max-age 60 +
- * stale-while-revalidate 300, a 404 max-age 10, `no-store` nothing. A stale
- * entry is served at once while one background refetch per URL runs; on a
- * failure the last good copy is served at any age, marked `stale`. While the
- * breaker (api-v2-reader.ts) is open api_v2 isn't called. `expire()` makes
- * every entry stale at once, for when api_v2's site version moves (a publish):
- * the next read of each url waits for a fresh copy, falling back to the old
- * one on a failure.
+ * stale-while-revalidate 300, a 404 max-age 10, `no-store` nothing. Past
+ * max-age the request waits for one refetch per URL, never a background one
+ * (#3935); on a failure the last good copy is served at any age, marked
+ * `stale`. While the breaker (api-v2-reader.ts) is open api_v2 isn't called.
+ * `expire()` makes every entry stale at once, for when api_v2's site version
+ * moves (a publish): the next read of each url waits for a fresh copy,
+ * falling back to the old one on a failure.
  *
  * Keyed by URL alone, which is safe only because every read through it is a
  * public one: a reviewer's read sends `x-preview-token` and skips this cache
@@ -32,7 +32,6 @@ interface Entry {
   result: ApiV2Result
   storedAt: number
   maxAgeMs: number
-  swrMs: number
 }
 
 /** `breaker`: the one every api_v2 read shares; a fresh one only in tests. */
@@ -63,7 +62,7 @@ export function createApiV2Cache(
         )
         entries.delete(url)
         if (maxAgeMs + swrMs > 0) {
-          entries.set(url, { result, storedAt: now, maxAgeMs, swrMs })
+          entries.set(url, { result, storedAt: now, maxAgeMs })
           // Oldest non-page first, so junk-url 404s can't push out the pages
           // served during an outage. ponytail: FIFO within each kind; LRU if
           // real pages are ever seen evicted.
@@ -98,10 +97,10 @@ export function createApiV2Cache(
       return entry
         ? kept(entry.result)
         : { kind: 'miss', reason: 'circuit_open' }
-    if (entry && age < entry.maxAgeMs + entry.swrMs) {
-      void revalidate(url, resolve, now).catch(() => {})
-      return entry.result
-    }
+    // Past max-age the request waits for the refetch, never leaving it to run
+    // after the response: Amplify compute (Lambda) freezes the process then,
+    // and on the next request its expired timeout fires as a false `timeout`
+    // that trips the breaker (#3935).
     const result = await revalidate(url, resolve, now)
     return failed(result) && entry ? kept(entry.result) : result
   }
