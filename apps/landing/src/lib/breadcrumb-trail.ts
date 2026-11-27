@@ -33,9 +33,9 @@ function staticLabel(segment: string, previous?: string): string {
 }
 
 /**
- * The label api_v2's public tree gives a path, or null where a category should
- * be but the tree doesn't list it (empty, removed or unreadable), so the trail
- * leaves it out rather than showing a stale name or linking to a 404.
+ * The label the viewer's api_v2 tree gives a path, or null where a category
+ * should be but the tree doesn't list it (empty, removed or unreadable), so the
+ * trail leaves it out rather than showing a stale name or linking to a 404.
  */
 function apiLabel(
   path: string,

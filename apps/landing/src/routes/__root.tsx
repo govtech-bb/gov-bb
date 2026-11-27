@@ -84,8 +84,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   beforeLoad: async ({ context, location }) => {
     const search = location.search as Record<string, unknown>
     const { queryClient } = context
-    // The public category tree (api_v2 mode) holds no grant, so even a token
-    // navigation reads it through the shared query. It never rejects: an
+    // The category tree (api_v2 mode) is read on the server with the visitor's
+    // own grant cookie (#3940), so even a token navigation reads it through
+    // this client's query. It never rejects: an
     // outage is a value the routes that list categories show, and every other
     // route ignores. Each branch starts it only once it knows it won't
     // redirect (#3858): a redirect ends the request, the SSR integration then
@@ -264,7 +265,7 @@ function ServerErrorPage() {
 
 function RootLayout() {
   const { level, serviceStatuses, categoryTree } = Route.useRouteContext()
-  // api_v2 mode (ADR 0132): listed only when the public tree lists it. An
+  // api_v2 mode (ADR 0132): listed only when the viewer's tree lists it. An
   // unreadable tree hides it too, never falling back to the static category.
   const showAboutBarbados =
     categoryTree.kind === 'disabled'

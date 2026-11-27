@@ -195,6 +195,15 @@ function previewSecret(): string | undefined {
   return config.previewSecret || process.env.PREVIEW_SECRET || undefined
 }
 
+/**
+ * The visitor's `x-preview-token`: the level comes from the httpOnly grant
+ * cookie, read here, never from the client. Server-only, so the client build
+ * drops it and the cookie read with it.
+ */
+export const reviewerPreviewToken = createServerOnlyFn((): string | undefined =>
+  previewTokenFor(levelFromCookie(getCookie(COOKIE_NAME)), previewSecret()),
+)
+
 /** A 301 from api_v2: a same-site redirect, or why it can't be followed. */
 type RedirectRead =
   | { kind: 'redirect'; to: string; cacheControl: string | null }
@@ -456,13 +465,12 @@ export const readApiV2Page = createServerOnlyFn(
       return { kind: 'miss', reason: 'rejected' }
     }
     await checkSiteVersion()
-    const level = levelFromCookie(getCookie(COOKIE_NAME))
     return loadApiV2Page(
       apiV2Cache,
       apiV2Base(),
       url,
       landingToken(),
-      previewTokenFor(level, previewSecret()),
+      reviewerPreviewToken(),
     )
   },
 )
