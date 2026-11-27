@@ -77,7 +77,13 @@ describe('readPublic', () => {
         cacheControl: null,
       })
       expect(lines(warn)).toEqual([
-        { event: 'api_v2_fallback', reason: 'rejected', url: '/x', status },
+        {
+          event: 'api_v2_fallback',
+          level: 'warn',
+          reason: 'rejected',
+          url: '/x',
+          status,
+        },
       ])
     },
   )
@@ -91,7 +97,13 @@ describe('readPublic', () => {
         reason: 'status',
       })
       expect(lines(error)).toEqual([
-        { event: 'api_v2_fallback', reason: 'status', url: '/x', status },
+        {
+          event: 'api_v2_fallback',
+          level: 'error',
+          reason: 'status',
+          url: '/x',
+          status,
+        },
       ])
     },
   )
@@ -106,7 +118,12 @@ describe('readPublic', () => {
       reason: 'malformed',
     })
     expect(lines(error)).toEqual([
-      { event: 'api_v2_fallback', reason: 'malformed', url: '/x' },
+      {
+        event: 'api_v2_fallback',
+        level: 'error',
+        reason: 'malformed',
+        url: '/x',
+      },
     ])
   })
 
@@ -121,6 +138,7 @@ describe('readPublic', () => {
     expect(lines(error)).toEqual([
       {
         event: 'api_v2_fallback',
+        level: 'error',
         reason: 'network',
         url: '/x',
         error: 'fetch failed: connect ECONNREFUSED',
@@ -143,7 +161,12 @@ describe('readPublic', () => {
     await vi.advanceTimersByTimeAsync(API_V2_TIMEOUT_MS)
     expect(await result).toEqual({ kind: 'miss', reason: 'timeout' })
     expect(lines(error)).toMatchObject([
-      { event: 'api_v2_fallback', reason: 'timeout', url: '/x' },
+      {
+        event: 'api_v2_fallback',
+        level: 'error',
+        reason: 'timeout',
+        url: '/x',
+      },
     ])
   })
 })
@@ -183,7 +206,13 @@ describe('readApiV2', () => {
       logUrl: '/a',
     })
     expect(lines(error)).toEqual([
-      { event: 'api_v2_fallback', reason: 'status', url: '/a', status: 503 },
+      {
+        event: 'api_v2_fallback',
+        level: 'error',
+        reason: 'status',
+        url: '/a',
+        status: 503,
+      },
     ])
   })
 
@@ -279,6 +308,7 @@ describe('the breaker', () => {
     for (let i = 0; i < 3; i++) await read(failing)
     expect(lines(error).at(-1)).toEqual({
       event: 'api_v2_circuit_open',
+      level: 'error',
       url: '/x',
     })
     error.mockClear()

@@ -26,8 +26,9 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * page"), or `static-fallback` (static markdown because api_v2 failed or sent
  * bad content). Category listings send `api_v2` when api_v2 lists them
  * (ADR 0132) and `static` otherwise. Each failed fetch logs one JSON line
- * `{event: "api_v2_fallback", reason, url, status?, error?}`, whichever header
- * follows (but the site-version check logs nothing: api-v2-version.ts)
+ * `{event: "api_v2_fallback", level, reason, url, status?, error?}`,
+ * whichever header follows (but the site-version check logs nothing:
+ * api-v2-version.ts)
  * — `console.error` for api_v2 failures (`status`, `timeout`, `network`,
  * `malformed`, `no_target`: these count toward the breaker) and for
  * `preview_token` (a reviewer's read refused with 401: landing's and api_v2's
@@ -35,8 +36,8 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * for answers landing can't use (`rejected` — a 4xx other than 404, 408 and
  * 429, or for a page another 2xx or a 3xx other than 301 — `bad_redirect`,
  * `compile`). A 404 isn't logged. A breaker trip logs one
- * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
- * away aren't logged. Category, site-list and collection reads
+ * `{event: "api_v2_circuit_open", level, url}` at `console.error`; requests
+ * it turns away aren't logged. Category, site-list and collection reads
  * (api-v2-categories.ts, api-v2-site.ts, api-v2-collections.ts) log the same
  * lines and count toward the same breaker (api-v2-reader.ts), with the api_v2
  * path as `url`. A 4xx other than 404, 408 and 429 is `rejected` for them too,

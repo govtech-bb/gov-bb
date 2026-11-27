@@ -166,6 +166,7 @@ describe('fetchApiV2Page', () => {
     expect(contentSource(result as ApiV2Result)).toBe('static-fallback')
     expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
+      level: 'error',
       reason: 'preview_token',
       url: '/x',
       status: 401,
@@ -236,6 +237,7 @@ describe('fetchApiV2Page', () => {
       expect(result).toEqual({ kind: 'miss', reason: 'status' })
       expect(logged(error)).toEqual({
         event: 'api_v2_fallback',
+        level: 'error',
         reason: 'status',
         url: '/x',
         status,
@@ -259,6 +261,7 @@ describe('fetchApiV2Page', () => {
     expect(result).toEqual({ kind: 'miss', reason: 'network' })
     expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
+      level: 'error',
       reason: 'network',
       url: '/x',
       error: 'fetch failed: connect ECONNREFUSED: socket closed',
@@ -280,6 +283,7 @@ describe('fetchApiV2Page', () => {
     })
     expect(logged(warn)).toEqual({
       event: 'api_v2_fallback',
+      level: 'warn',
       reason: 'rejected',
       url: '/x',
       status: 400,
@@ -305,6 +309,7 @@ describe('fetchApiV2Page', () => {
       })
       expect(logged(warn)).toEqual({
         event: 'api_v2_fallback',
+        level: 'warn',
         reason: 'rejected',
         url: '/x',
         status,
@@ -353,6 +358,7 @@ describe('fetchApiV2Page', () => {
     expect(await pending).toEqual({ kind: 'miss', reason: 'timeout' })
     expect(logged(error)).toMatchObject({
       event: 'api_v2_fallback',
+      level: 'error',
       reason: 'timeout',
       url: '/x',
       error: 'aborted',
@@ -390,6 +396,7 @@ describe('fetchApiV2Page', () => {
     expect(result).toEqual({ kind: 'miss', reason: 'malformed' })
     expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
+      level: 'error',
       reason: 'malformed',
       url: '/x',
     })
@@ -446,6 +453,7 @@ describe('fetchApiV2Page', () => {
       expect(result).toEqual({ kind: 'miss', reason: 'malformed' })
       expect(logged(error)).toEqual({
         event: 'api_v2_fallback',
+        level: 'error',
         reason: 'malformed',
         url: '/x',
       })
@@ -622,6 +630,7 @@ describe('fetchApiV2Page', () => {
     expect(result).toEqual({ kind: 'miss', reason: 'no_target' })
     expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
+      level: 'error',
       reason: 'no_target',
       url: '/old',
     })
@@ -664,6 +673,7 @@ describe('fetchApiV2Page', () => {
       })
       expect(logged(warn)).toEqual({
         event: 'api_v2_fallback',
+        level: 'warn',
         reason: 'bad_redirect',
         url: '/old',
         to: target,
@@ -1116,6 +1126,7 @@ describe('resolveApiV2Page', () => {
     })
     expect(logged(warn)).toMatchObject({
       event: 'api_v2_fallback',
+      level: 'warn',
       reason: 'compile',
       url: '/x',
       error: expect.any(String),

@@ -35,7 +35,10 @@ export const message = (error: unknown): string =>
       : error.message
     : String(error)
 
-/** The `api_v2_fallback` line, at the reason's level. */
+/**
+ * The `api_v2_fallback` line, at the reason's level. The level is in the JSON
+ * too: Amplify compute logs the bare line, with no level of its own.
+ */
 export function logFallback(
   reason: ApiV2MissReason,
   url: string,
@@ -44,6 +47,12 @@ export function logFallback(
   const { level } = REASONS[reason]
   if (level)
     console[level](
-      JSON.stringify({ event: 'api_v2_fallback', reason, url, ...detail }),
+      JSON.stringify({
+        event: 'api_v2_fallback',
+        level,
+        reason,
+        url,
+        ...detail,
+      }),
     )
 }

@@ -43,7 +43,9 @@ export function createApiV2Breaker() {
       if (++failures >= FAILURES_TO_OPEN) {
         openUntil = now + OPEN_MS
         failures = 0
-        console.error(JSON.stringify({ event: 'api_v2_circuit_open', url }))
+        console.error(
+          JSON.stringify({ event: 'api_v2_circuit_open', level: 'error', url }),
+        )
       }
     },
     /** Closed, nothing counted: for tests, which share `apiV2Breaker`. */
