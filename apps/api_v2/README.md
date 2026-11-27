@@ -602,7 +602,7 @@ Before every run, confirm in the Amplify Console that the environment's feature_
 
 Sandbox re-imports while no editor has written there (#3234). Staging (#3229) and prod (#3230) import after `v2-rewrite` merges into `main` (#3131), inside the #3164 cutover windows. Every run imports the snapshot on the deploying branch at the deployed commit.
 
-On sandbox, `.github/workflows/check-estate-drift.yml` runs step 5's check after each Deploy Sandbox run and nightly. Both triggers fire only for the file on `main`. Drift turns that workflow's run red, never the deploy's. #3311 deletes the workflow at sandbox's cutover, because from then on the database is the source of truth.
+On staging, `.github/workflows/check-estate-drift.yml` runs step 5's check after each Deploy Staging run and nightly, from a checkout of the `staging` branch. Both triggers fire only for the file on `main`. Drift turns that workflow's run red, never the deploy's. It checked sandbox until sandbox's cutover (#3311). #3227 deletes the workflow at staging's cutover, because from then on the database is the source of truth.
 
 The variables each environment needs, and where each value comes from, are listed in [docs/v2-environment-variables.md](../../docs/v2-environment-variables.md). Check them before a cutover.
 
