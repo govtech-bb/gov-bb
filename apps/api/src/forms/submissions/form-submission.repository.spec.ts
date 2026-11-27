@@ -1,5 +1,5 @@
 import type { Mock, Mocked } from "vitest";
-import { DataSource, EntityManager } from "typeorm";
+import { DataSource, EntityManager, IsNull } from "typeorm";
 import { FormSubmissionRepository } from "./form-submission.repository";
 import { FormSubmissionEntity } from "@/database/entities/form-submission.entity";
 
@@ -139,6 +139,34 @@ describe("FormSubmissionRepository", () => {
     });
   });
 
+  // When CaMS accepted the hand-off (#3714). Only the first acceptance is
+  // kept: a retry or redrive that reaches CaMS again does not move it.
+  describe("markCamsDelivered", () => {
+    // From the app's clock, as submitted_at is: the column has no time zone,
+    // so a database now() would be read back shifted by the app's offset.
+    it("stamps the submission once with the app's time, leaving an existing stamp alone", async () => {
+      const dataSource = makeDataSource();
+      const repo = new FormSubmissionRepository(dataSource);
+
+      const update = vi.fn().mockResolvedValue(undefined);
+      (repo as unknown as { update: Mock }).update = update;
+      const before = Date.now();
+
+      await repo.markCamsDelivered("sub-1");
+
+      expect(update).toHaveBeenCalledExactlyOnceWith(
+        { id: "sub-1", camsDeliveredAt: IsNull() },
+        { camsDeliveredAt: expect.any(Date) },
+      );
+      const [, set] = update.mock.calls[0] as [
+        unknown,
+        { camsDeliveredAt: Date },
+      ];
+      expect(set.camsDeliveredAt.getTime()).toBeGreaterThanOrEqual(before);
+      expect(set.camsDeliveredAt.getTime()).toBeLessThanOrEqual(Date.now());
+    });
+  });
+
   describe("findByReference (#3419)", () => {
     it("finds by reference code, reading only the columns a status answer needs", async () => {
       const dataSource = makeDataSource();
@@ -147,6 +175,7 @@ describe("FormSubmissionRepository", () => {
       const row = {
         formId: "food-handlers-permit",
         submittedAt: new Date("2026-10-21T18:28:00Z"),
+        camsDeliveredAt: null,
       };
       const findOne = vi.fn().mockResolvedValue(row);
       (repo as unknown as { findOne: Mock }).findOne = findOne;
@@ -157,7 +186,7 @@ describe("FormSubmissionRepository", () => {
       // Never `values` or `meta`: they hold the applicant's answers.
       expect(findOne).toHaveBeenCalledWith({
         where: { referenceCode: "MOH-TRL-2610-47E4AD6" },
-        select: { formId: true, submittedAt: true },
+        select: { formId: true, submittedAt: true, camsDeliveredAt: true },
       });
     });
 

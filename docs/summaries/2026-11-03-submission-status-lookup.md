@@ -2,6 +2,10 @@
 
 2026-11-03 · `api` submissions · #3419, #3434
 
+> **Superseded in part (#3714):** a CaMS form with no tracker record answers
+> `found` + `received` only once CaMS has accepted the hand-off
+> (`cams_delivered_at`), and `sending` until then. See `apps/api/SPEC.md`.
+
 ## Context
 
 The chat can show where an application has got to (govbb-chatbot#174), but

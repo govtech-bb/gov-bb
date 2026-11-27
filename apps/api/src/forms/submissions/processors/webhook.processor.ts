@@ -15,6 +15,7 @@ import { WebhookConfigError } from "./webhook-errors";
 import { WebhookDestinationsService } from "@/forms/webhook-destinations/webhook-destinations.service";
 import { FormDefinitionsService } from "../../form-definitions/form-definitions.service";
 import { deriveHigherRiskSelection } from "../derive-higher-risk";
+import { FormSubmissionRepository } from "../form-submission.repository";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_SIGNATURE_HEADER = "X-Webhook-Signature";
@@ -51,6 +52,7 @@ export class WebhookProcessor implements ISubmissionProcessor {
     private readonly http: HttpService,
     private readonly destinations: WebhookDestinationsService,
     private readonly formDefinitions: FormDefinitionsService,
+    private readonly submissions: FormSubmissionRepository,
   ) {}
 
   async process(payload: SubmissionCreatedEvent): Promise<ProcessorOutput> {
@@ -180,6 +182,14 @@ export class WebhookProcessor implements ISubmissionProcessor {
     }
 
     await timedPost(this.http, url, body, { headers, timeoutMs, method });
+
+    // CaMS has the case now. The status lookup reads this when the tracker has
+    // no record yet (#3714). A failed write throws, so SQS retries the
+    // hand-off, which CaMS treats as the same case. If it still fails on the
+    // last attempt, the DLQ alert reads as a failed delivery although CaMS has
+    // the case: a redrive is harmless and stamps it. (With SQS off, nothing
+    // retries, and the application answers "sending" until it is re-sent.)
+    if (mapping) await this.submissions.markCamsDelivered(payload.submissionId);
 
     this.logger.log(
       `[webhook] Delivered submission ${payload.submissionId} to ${url}`,

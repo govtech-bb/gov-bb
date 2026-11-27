@@ -52,6 +52,12 @@ const SUBMITTED = {
   formId: "apply-for-a-thing",
   status: FormSubmissionStatus.SUBMITTED,
   submittedAt: new Date("2026-09-12T14:04:00Z"),
+  camsDeliveredAt: null,
+};
+
+const DELIVERED = {
+  ...SUBMITTED,
+  camsDeliveredAt: new Date("2026-09-12T14:04:03Z"),
 };
 
 describe("SubmissionStatusService (#3419)", () => {
@@ -162,18 +168,49 @@ describe("SubmissionStatusService (#3419)", () => {
       });
     });
 
-    // Before its first status event, or while status publishing is off for
-    // that CaMS deployment. It really was received (Tarika, 3 Nov).
-    it("answers found + received, as of when it was submitted, when the tracker has no record yet", async () => {
-      const { service } = makeService(SUBMITTED, camsRecipe, async () => ({
+    // CaMS accepted the hand-off, but its first status hasn't reached the
+    // tracker: it was created before that ministry published statuses (they
+    // were never backfilled), or its outbox hasn't drained yet. The department
+    // has it, so it really was received, as of when CaMS took it (#3714).
+    it("answers found + received, as of the hand-off, when CaMS has it but the tracker has no record", async () => {
+      const { service } = makeService(DELIVERED, camsRecipe, async () => ({
         found: false,
       }));
       await expect(service.lookup("NRA-2609-7QK2M4D")).resolves.toEqual({
         kind: "found",
         reference: "NRA-2609-7QK2M4D",
         status: "received",
-        updatedAt: "2026-09-12T14:04:00.000Z",
+        updatedAt: "2026-09-12T14:04:03.000Z",
         formId: "apply-for-a-thing",
+      });
+    });
+
+    // Not handed off yet, or the hand-off failed or was refused: the
+    // department may never get it, so never "received" (#3714). Exact
+    // equality, as for untracked.
+    it("answers sending, with when it was received and the form, when CaMS doesn't have it yet", async () => {
+      const { service } = makeService(SUBMITTED, camsRecipe, async () => ({
+        found: false,
+      }));
+      await expect(service.lookup("NRA-2609-7QK2M4D")).resolves.toEqual({
+        kind: "sending",
+        reference: "NRA-2609-7QK2M4D",
+        receivedAt: "2026-09-12T14:04:00.000Z",
+        formId: "apply-for-a-thing",
+      });
+    });
+
+    // The tracker knows more than the hand-off does: a record always wins.
+    it("answers the tracker's status over the hand-off, once it has a record", async () => {
+      const { service } = makeService(DELIVERED, camsRecipe, async () => ({
+        found: true,
+        status: "approved",
+        occurredAt: "2026-10-01T12:00:00Z",
+      }));
+      await expect(service.lookup("NRA-2609-7QK2M4D")).resolves.toMatchObject({
+        kind: "found",
+        status: "approved",
+        updatedAt: "2026-10-01T12:00:00Z",
       });
     });
   });

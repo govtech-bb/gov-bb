@@ -14,6 +14,7 @@ import { WebhookConfigError } from "./webhook-errors";
 import type { WebhookDestinationsService } from "@/forms/webhook-destinations/webhook-destinations.service";
 import type { SubmissionCreatedEvent } from "../submissions.types";
 import type { FormDefinitionsService } from "../../form-definitions/form-definitions.service";
+import type { FormSubmissionRepository } from "../form-submission.repository";
 
 const request = vi.fn();
 const http = { request } as unknown as HttpService;
@@ -35,6 +36,12 @@ const findByFormId = vi.fn();
 const formDefinitions = {
   findByFormId,
 } as unknown as FormDefinitionsService;
+
+// Where the processor records that CaMS accepted a hand-off (#3714).
+const markCamsDelivered = vi.fn().mockResolvedValue(undefined);
+const submissions = {
+  markCamsDelivered,
+} as unknown as FormSubmissionRepository;
 
 /** Single config object passed to HttpService.request for call `i`. */
 function reqConfig(i = 0): {
@@ -96,6 +103,7 @@ describe("WebhookProcessor — generic (envelope) mode", () => {
       http,
       makeDestinations(null),
       formDefinitions,
+      submissions,
     );
   });
 
@@ -306,7 +314,12 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
 
   it("resolves the destination by formId and POSTs the mapped payload with X-API-Key", async () => {
     const destinations = makeDestinations(DEST);
-    const processor = new WebhookProcessor(http, destinations, formDefinitions);
+    const processor = new WebhookProcessor(
+      http,
+      destinations,
+      formDefinitions,
+      submissions,
+    );
 
     await processor.process(makeMappedPayload());
 
@@ -329,11 +342,75 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
     });
   });
 
+  // A tracker record only appears once CaMS has the case, so the status lookup
+  // needs to know the hand-off itself succeeded (#3714).
+  it("records that CaMS accepted the hand-off, once the POST succeeds", async () => {
+    const processor = new WebhookProcessor(
+      http,
+      makeDestinations(DEST),
+      formDefinitions,
+      submissions,
+    );
+
+    await processor.process(makeMappedPayload());
+
+    expect(markCamsDelivered).toHaveBeenCalledExactlyOnceWith(
+      makeMappedPayload().submissionId,
+    );
+  });
+
+  // The stamp failing must fail the hand-off, so SQS retries it: swallowing the
+  // error would leave an application CaMS has answering "sending" for good.
+  it("fails the hand-off when the stamp cannot be written, so it is retried", async () => {
+    markCamsDelivered.mockRejectedValueOnce(new Error("database down"));
+    const processor = new WebhookProcessor(
+      http,
+      makeDestinations(DEST),
+      formDefinitions,
+      submissions,
+    );
+
+    await expect(processor.process(makeMappedPayload())).rejects.toThrow(
+      "database down",
+    );
+  });
+
+  // Only a mapped webhook is a CaMS hand-off; an envelope webhook goes elsewhere.
+  it("records nothing for a webhook that is not a CaMS hand-off", async () => {
+    const processor = new WebhookProcessor(
+      http,
+      makeDestinations(DEST),
+      formDefinitions,
+      submissions,
+    );
+
+    await processor.process(makePayload());
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(markCamsDelivered).not.toHaveBeenCalled();
+  });
+
+  it("records nothing when CaMS refuses the hand-off", async () => {
+    request.mockReturnValue(
+      of({ status: 422, data: { error: "invalid_payload" } }),
+    );
+    const processor = new WebhookProcessor(
+      http,
+      makeDestinations(DEST),
+      formDefinitions,
+      submissions,
+    );
+
+    await expect(processor.process(makeMappedPayload())).rejects.toThrow();
+    expect(markCamsDelivered).not.toHaveBeenCalled();
+  });
+
   it("sends the answers as labelled sections, filtered by the audit trail (#2587)", async () => {
     const processor = new WebhookProcessor(
       http,
       makeDestinations(DEST),
       formDefinitions,
+      submissions,
     );
     // No `version`: recipes are versionless since ADR 0097 (#1196), so the
     // served contract has no such field. The fixture mirrors that.
@@ -378,6 +455,7 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
       http,
       makeDestinations(null),
       formDefinitions,
+      submissions,
     );
     await expect(processor.process(makeMappedPayload())).rejects.toBeInstanceOf(
       WebhookConfigError,
@@ -390,6 +468,7 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
       http,
       makeDestinations(DEST),
       formDefinitions,
+      submissions,
     );
     findByFormId.mockResolvedValue({
       steps: [
@@ -437,6 +516,7 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
       http,
       makeDestinations({ url: "https://10.0.0.5/api", secret: "k" }),
       formDefinitions,
+      submissions,
     );
     mockLookup.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
     await expect(processor.process(makeMappedPayload())).rejects.toThrow();
@@ -475,6 +555,7 @@ describe("WebhookProcessor — generic endpoint/auth branches", () => {
       http,
       makeDestinations(null),
       formDefinitions,
+      submissions,
     );
     process.env.WEBHOOK_URL = "http://cms.local";
   });

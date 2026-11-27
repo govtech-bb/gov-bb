@@ -36,6 +36,15 @@ export type SubmissionStatusAnswer =
       /** So the chat can name the service and link its page (#3434). */
       formId: string;
     }
+  | {
+      /** A CaMS application the department doesn't have yet (#3714). The
+       * fields mean what they do on untracked: `receivedAt` is when gov.bb
+       * received it, not CaMS. */
+      kind: "sending";
+      reference: string;
+      receivedAt: string;
+      formId: string;
+    }
   | { kind: "not_found"; reference: string };
 
 /**
@@ -95,16 +104,27 @@ export class SubmissionStatusService {
 
     if (!recipeSendsToCams) return untracked;
 
-    // No record yet (before its first status event, or while that CaMS
-    // deployment isn't publishing statuses): it really was received.
     const tracked = await this.askTracker(reference);
-    return tracked.found
-      ? found(reference, submission.formId, tracked)
-      : {
+    if (tracked.found) return found(reference, submission.formId, tracked);
+
+    // No tracker record says nothing on its own: a ministry's cases from
+    // before it published statuses were never backfilled, and the outbox takes
+    // a moment. Whether CaMS accepted the hand-off is what decides (#3714).
+    // Accepted: the department has it. Not yet: still being handed off, or the
+    // hand-off failed or was refused, so never "received", which it may never
+    // be.
+    return submission.camsDeliveredAt
+      ? {
           kind: "found",
           reference,
           status: "received",
-          updatedAt: submittedAt,
+          updatedAt: submission.camsDeliveredAt.toISOString(),
+          formId: submission.formId,
+        }
+      : {
+          kind: "sending",
+          reference,
+          receivedAt: submittedAt,
           formId: submission.formId,
         };
   }

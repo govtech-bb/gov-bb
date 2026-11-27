@@ -48,6 +48,7 @@ import { RenameTemporaryRestaurantFormId1787855665564 } from "./migrations/17878
 import { DeleteSupersededEnvironmentalHealthForms1787942065564 } from "./migrations/1787942065564-DeleteSupersededEnvironmentalHealthForms";
 import { RenameEnvironmentalHealthFormIds1788028465564 } from "./migrations/1788028465564-RenameEnvironmentalHealthFormIds";
 import { CreateWaterOpsAlerts1791536637000 } from "./migrations/1791536637000-CreateWaterOpsAlerts";
+import { AddCamsDeliveredAtToFormSubmissions1795590876000 } from "./migrations/1795590876000-AddCamsDeliveredAtToFormSubmissions";
 import { CreateWaterAlertsTables1785917644000 } from "./migrations/1785917644000-CreateWaterAlertsTables";
 
 export const entities = [
@@ -99,6 +100,7 @@ export const migrations = [
   DeleteSupersededEnvironmentalHealthForms1787942065564,
   RenameEnvironmentalHealthFormIds1788028465564,
   CreateWaterOpsAlerts1791536637000,
+  AddCamsDeliveredAtToFormSubmissions1795590876000,
   CreateWaterAlertsTables1785917644000,
 ];
 

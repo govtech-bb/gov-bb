@@ -55,7 +55,7 @@ Drafts have a **7-day inactivity TTL**. A daily cron job (`@Cron(EVERY_DAY_AT_MI
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/submissions` | Validate, persist, and dispatch a form submission. Requires the `Idempotency-Key` request header. Body is size-limited to **1 MiB** by `SubmissionPayloadSizePipe`. |
-| `GET` | `/submissions/:reference/status` | Where an application has got to, for the chat (#3419). Public and unauthenticated, like the application tracker: the reference is the access. `200` with `data.kind` `found` (`status`, `updatedAt`, `formId`), `untracked` (`receivedAt`, `formId`) or `not_found`; `503` when the tracker can't answer. The chat sends `X-Chat-Caller-Token` to be throttled as one caller (§6.2). |
+| `GET` | `/submissions/:reference/status` | Where an application has got to, for the chat (#3419). Public and unauthenticated, like the application tracker: the reference is the access. `200` with `data.kind` `found` (`status`, `updatedAt`, `formId`), `untracked` (`receivedAt`, `formId`), `sending` (`receivedAt`, `formId`) or `not_found`; `503` when the tracker can't answer. The chat sends `X-Chat-Caller-Token` to be throttled as one caller (§6.2). |
 
 Submission semantics:
 
@@ -75,7 +75,7 @@ Status lookup semantics:
 
 - **Reference.** Trimmed and uppercased, then matched exactly. Unknown, malformed and payment-pending (no `submitted_at`) all answer `not_found`, so a guess learns nothing extra.
 - **Not CaMS.** A form whose recipe doesn't send to CaMS answers `untracked`.
-- **CaMS.** The status comes from the application tracker's `GET /status/{reference}`, passed through unmapped (`received`, `in_progress`, `approved`, `rejected`, `closed`). With no tracker record yet it answers `found` + `received` as of `submitted_at`.
+- **CaMS.** The status comes from the application tracker's `GET /status/{reference}`, passed through unmapped (`received`, `in_progress`, `approved`, `rejected`, `closed`). With no tracker record, `cams_delivered_at` decides (#3714). The mapped webhook stamps it the first time CaMS accepts the hand-off (a 2xx). Stamped: `found` + `received` as of that moment, because the department has the application; a tracker record can be missing for a case CaMS has, since each ministry's cases from before it published statuses were never backfilled and the outbox takes a moment. Not stamped: `sending`, with `receivedAt` = `submitted_at`, because the hand-off is still under way, failed (operators are alerted) or was refused for good (`unknown_programme`, `file_threat_found`). It never says `received` until CaMS has accepted the application. Submissions from before the column existed were stamped with their `submitted_at`, so they keep the `received` they had.
 - **Deleted recipe.** The tracker decides: a record answers `found`, none answers `untracked`.
 - **Tracker failures.** Not configured, an address with no AWS region in its hostname, unreachable, slower than 5 s, a non-2xx or an unreadable body all answer `503`. The log line gives the reason, never the reference.
 
