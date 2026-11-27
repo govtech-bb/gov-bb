@@ -36,8 +36,8 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * for answers landing can't use (`rejected` — a 4xx other than 404, 408 and
  * 429, or for a page another 2xx or a 3xx other than 301 — `bad_redirect`,
  * `compile`). A 404 isn't logged. A breaker trip logs one
- * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
- * away aren't logged. Category, site-list and collection reads
+ * `{event: "api_v2_circuit_open", level, url}` at `console.error`; requests
+ * it turns away aren't logged. Category, site-list and collection reads
  * (api-v2-categories.ts, api-v2-site.ts, api-v2-collections.ts) log the same
  * lines and count toward the same breaker (api-v2-reader.ts), with the api_v2
  * path as `url`. A 4xx other than 404, 408 and 429 is `rejected` for them too,
