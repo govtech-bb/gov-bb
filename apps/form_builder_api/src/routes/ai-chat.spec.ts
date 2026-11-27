@@ -13,11 +13,22 @@ import { errorHandler } from "../middleware/error-handler";
 import { hasDocumentSignature } from "../storage/s3-uploads";
 import { aiUploadSchema, aiRecipeSchema } from "@govtech-bb/form-builder";
 
+// Lets a test hold the prompt or catalog read open, as a stalled database read would.
+const held = vi.hoisted(() => ({
+  prompt: undefined as (() => Promise<void>) | undefined,
+  catalog: undefined as (() => Promise<void>) | undefined,
+}));
 vi.mock("../ai/build-system-prompt.js", () => ({
-  buildSystemPrompt: async () => "Build forms.",
+  buildSystemPrompt: async () => {
+    await held.prompt?.();
+    return "Build forms.";
+  },
 }));
 vi.mock("../catalog.js", () => ({
-  getFullCatalog: async () => ({ components: [], blocks: [], custom: [] }),
+  getFullCatalog: async () => {
+    await held.catalog?.();
+    return { components: [], blocks: [], custom: [] };
+  },
 }));
 vi.mock("./validate-recipe.js", () => ({
   validateRecipeFully: async () => ({ ok: true }),
@@ -518,4 +529,188 @@ it("hides provider and document failures from the browser", async () => {
     .expect(503);
   expect(document.body.error).toContain("Retry");
   expect(document.text).not.toContain("private-document-details");
+});
+
+// Captures the route's 180-second time-out so a test can fire it at a chosen moment.
+function captureTimeout() {
+  const realSetTimeout = globalThis.setTimeout;
+  const timer: { fire?: () => void } = {};
+  vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+    callback: () => void,
+    ms?: number,
+  ) => {
+    if (ms !== 180000) return realSetTimeout(callback, ms);
+    timer.fire = callback;
+    return realSetTimeout(() => {}, 0);
+  }) as typeof setTimeout);
+  return () => {
+    if (!timer.fire) throw new Error("The route's time-out was not set");
+    timer.fire();
+  };
+}
+
+async function startClient() {
+  const { ChatClient } = await import("@tanstack/ai-client");
+  const { toolDefinition, uiMessagesToWire } = await import("@tanstack/ai");
+  const { proposeFormTool } = await import("@govtech-bb/form-builder");
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const port = (server.address() as { port: number }).port;
+  const chunks: string[] = [];
+  const onError = vi.fn();
+  const client = new ChatClient({
+    threadId: crypto.randomUUID(),
+    onError,
+    tools: [toolDefinition(proposeFormTool).client(() => ({ applied: true }))],
+    onChunk: (chunk) => chunks.push(chunk.type),
+    fetcher: (input, { signal }) =>
+      fetch("http://127.0.0.1:" + port + "/chat", {
+        method: "POST",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          Origin: origin,
+          Authorization: "Bearer " + token(),
+        },
+        body: JSON.stringify({
+          ...input,
+          messages: uiMessagesToWire(input.messages),
+          context: [],
+          state: {},
+          tools: [],
+          forwardedProps: context,
+        }),
+      }),
+  });
+  const close = async () => {
+    client.stop();
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  };
+  return { client, chunks, onError, close };
+}
+
+it("ends the run with RUN_ERROR when the server times out during a tool call", async () => {
+  const timeOut = captureTimeout();
+  vi.spyOn(BedrockRuntimeClient.prototype, "send").mockImplementation(
+    (_command: unknown, options: unknown) => {
+      const signal = (options as { abortSignal: AbortSignal }).abortSignal;
+      return Promise.resolve({
+        stream: (async function* () {
+          yield { messageStart: { role: "assistant" } };
+          yield {
+            contentBlockStart: {
+              contentBlockIndex: 0,
+              start: {
+                toolUse: { toolUseId: "slow-call", name: "apply_form_draft" },
+              },
+            },
+          };
+          yield {
+            contentBlockDelta: {
+              contentBlockIndex: 0,
+              delta: { toolUse: { input: '{"summary":"Ren' } },
+            },
+          };
+          timeOut();
+          await new Promise<void>((resolve) => {
+            if (signal.aborted) resolve();
+            else signal.addEventListener("abort", () => resolve());
+          });
+          throw new DOMException("Request aborted", "AbortError");
+        })(),
+      });
+    },
+  );
+  const { client, chunks, onError, close } = await startClient();
+  try {
+    await client.sendMessage("Rename this form");
+    // Before the fix the stream closed with no terminal event, so the client
+    // made up a successful RUN_FINISHED and the tool call was left pending.
+    expect(chunks).toEqual([
+      "RUN_STARTED",
+      "TOOL_CALL_START",
+      "TOOL_CALL_ARGS",
+      "RUN_ERROR",
+    ]);
+    expect(client.getIsLoading()).toBe(false);
+    expect(client.getStatus()).toBe("error");
+    expect(client.getError()?.message).toBe("This step didn't finish. Retry?");
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(client.getInterrupts()).toEqual([]);
+  } finally {
+    await close();
+  }
+});
+
+it("ends the run at the time-out while a server tool is still running, and drops its late events", async () => {
+  const timeOut = captureTimeout();
+  let release!: () => void;
+  held.catalog = () => {
+    timeOut();
+    return new Promise<void>((resolve) => (release = resolve));
+  };
+  vi.spyOn(BedrockRuntimeClient.prototype, "send").mockImplementation(() =>
+    Promise.resolve({
+      stream: (async function* () {
+        yield { messageStart: { role: "assistant" } };
+        yield {
+          contentBlockStart: {
+            contentBlockIndex: 0,
+            start: {
+              toolUse: { toolUseId: "lookup", name: "lookup_component" },
+            },
+          },
+        };
+        yield {
+          contentBlockDelta: {
+            contentBlockIndex: 0,
+            delta: { toolUse: { input: JSON.stringify({ ref: "address" }) } },
+          },
+        };
+        yield { contentBlockStop: { contentBlockIndex: 0 } };
+        yield { messageStop: { stopReason: "tool_use" } };
+      })(),
+    }),
+  );
+  const { client, chunks, close } = await startClient();
+  try {
+    // Resolves only if the run ends while the tool is still held open.
+    await client.sendMessage("Look up the address component");
+    expect(chunks.at(-1)).toBe("RUN_ERROR");
+    expect(chunks).not.toContain("TOOL_CALL_RESULT");
+    expect(chunks).not.toContain("RUN_FINISHED");
+    expect(client.getError()?.message).toBe("This step didn't finish. Retry?");
+    const seen = chunks.length;
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(chunks).toHaveLength(seen);
+  } finally {
+    held.catalog = undefined;
+    release?.();
+    await close();
+  }
+});
+
+it("returns 504 at the time-out while the prompt lookup is still running", async () => {
+  const timeOut = captureTimeout();
+  let release!: () => void;
+  held.prompt = () => {
+    timeOut();
+    return new Promise<void>((resolve) => (release = resolve));
+  };
+  const send = vi.spyOn(BedrockRuntimeClient.prototype, "send");
+  try {
+    // Answers only if the route stops waiting while the lookup is still held.
+    const response = await request(app)
+      .post("/chat")
+      .set({ Authorization: "Bearer " + token(), Origin: origin })
+      .send(body())
+      .expect(504);
+    expect(response.body.error).toContain("timed out");
+    expect(send).not.toHaveBeenCalled();
+  } finally {
+    held.prompt = undefined;
+    release?.();
+  }
 });

@@ -88,7 +88,24 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
   const controller = new AbortController();
   const abort = () => controller.abort();
   res.on("close", abort);
-  const timeout = setTimeout(abort, 180000);
+  // Work that takes no signal (a stalled tool or prompt lookup) races this instead.
+  const stopped = new Promise<"stopped">((resolve) =>
+    controller.signal.addEventListener("abort", () => resolve("stopped"), {
+      once: true,
+    }),
+  );
+  const loadFormPrompt = () =>
+    Promise.race([
+      buildSystemPrompt(),
+      stopped.then(() => {
+        throw controller.signal.reason;
+      }),
+    ]);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    abort();
+  }, 180000);
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   try {
     const documents = await Promise.all(
@@ -152,12 +169,12 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
     const instructions =
       context.kind === "workspace"
         ? [
-            await buildSystemPrompt(),
+            await loadFormPrompt(),
             getContentSystemPrompt(),
             workspacePrompt,
           ].join("\n\n")
         : context.kind === "form"
-          ? await buildSystemPrompt()
+          ? await loadFormPrompt()
           : getContentSystemPrompt();
     const stream = chat({
       adapter: bedrockText(
@@ -189,8 +206,15 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
       ],
     });
     async function* safeStream(): AsyncGenerator<StreamChunk> {
+      const iterator = stream[Symbol.asyncIterator]();
+      // A stalled server tool can ignore the abort, so stop waiting for it and drop its late events.
       try {
-        for await (const chunk of stream) {
+        while (!controller.signal.aborted) {
+          const next = iterator.next();
+          next.catch(() => {});
+          const result = await Promise.race([next, stopped]);
+          if (result === "stopped" || result.done) break;
+          const chunk = result.value;
           if (chunk.type === "RUN_ERROR")
             yield {
               type: EventType.RUN_ERROR,
@@ -209,6 +233,14 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
             message: "The AI response was interrupted. Retry to continue.",
           };
       }
+      if (controller.signal.aborted) void iterator.return?.().catch(() => {});
+      // The client is still listening after a time-out; end its run so no tool call stays pending.
+      if (timedOut)
+        yield {
+          type: EventType.RUN_ERROR,
+          timestamp: Date.now(),
+          message: "This step didn't finish. Retry?",
+        };
     }
     res.status(200).set({
       "Content-Type": "text/event-stream",
@@ -220,7 +252,8 @@ aiChatRouter.post("/chat", requireAiAccess, async (req, res) => {
       if (!res.writableNeedDrain) res.write(": heartbeat\n\n");
     }, 15000);
     await pipeline(
-      Readable.fromWeb(toServerSentEventsStream(safeStream(), controller)),
+      // No controller here: it would drop the time-out RUN_ERROR. A disconnect still aborts via "close".
+      Readable.fromWeb(toServerSentEventsStream(safeStream())),
       res,
     );
   } catch (error) {
