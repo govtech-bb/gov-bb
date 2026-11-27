@@ -70,6 +70,47 @@ describe('readApiV2CategoryTree', () => {
     await readApiV2CategoryTree()
     expect(previewTokens()).toEqual(['secret', null])
   })
+
+  it('logs a refused preview token as preview_token and shows the reviewer the public tree', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // landing's and api_v2's PREVIEW_SECRET differ: api_v2 refuses the token.
+    fetchImpl.mockImplementation(async (_url, init) =>
+      new Headers(init?.headers).has('x-preview-token')
+        ? Response.json({ error: 'invalid_preview_token' }, { status: 401 })
+        : Response.json({ categories: [] }),
+    )
+    cookie = 'preview'
+    const { readApiV2CategoryTree } = await import('./api-v2-categories')
+    expect(await readApiV2CategoryTree()).toEqual({
+      kind: 'found',
+      categories: [],
+    })
+    expect(previewTokens()).toEqual(['secret', null])
+    expect(error).toHaveBeenCalledOnce()
+    expect(JSON.parse(String(error.mock.calls[0][0]))).toMatchObject({
+      reason: 'preview_token',
+      url: '/categories',
+      status: 401,
+    })
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it("reads a reviewer's tree while the breaker is open", async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { readApiV2CategoryTree } = await import('./api-v2-categories')
+    const { apiV2Breaker } = await import('./api-v2-reader')
+    // Open the breaker, as failed public reads do.
+    while (!apiV2Breaker.isOpen(Date.now()))
+      apiV2Breaker.record(true, '/categories', Date.now())
+
+    cookie = 'preview'
+    expect(await readApiV2CategoryTree()).toEqual({
+      kind: 'found',
+      categories: [],
+    })
+    expect(previewTokens()).toEqual(['secret'])
+  })
 })
 
 describe('readApiV2CategoryListing', () => {

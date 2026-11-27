@@ -1,18 +1,15 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { getCookie } from '@tanstack/react-start/server'
 import { QueryClient, isCancelledError } from '@tanstack/react-query'
 import { z } from 'zod'
 import {
   apiV2Base,
   landingToken,
-  previewSecret,
-  previewTokenFor,
+  reviewerPreviewToken,
   siteVersionChanges,
 } from './api-v2-page'
 import { logFallback } from './api-v2-log'
 import { readApiV2, readPublic } from './api-v2-reader'
 import type { ApiV2Read, ApiV2ReadMiss } from './api-v2-reader'
-import { COOKIE_NAME, levelFromCookie } from './preview'
 
 /**
  * Categories from api_v2's public reads (ADR 0132). When `VITE_API_V2_URL` is
@@ -30,11 +27,16 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * so a category with only preview pages opens for them (#3940).
  */
 
+/** api_v2 refused a reviewer's preview token. */
+const PREVIEW_REFUSED = Symbol('preview refused')
+
 /**
  * A public read goes through the breaker. A reviewer's read (with a preview
- * token) skips it, as a page's does (`loadApiV2Page`).
+ * token) skips it, as a page's does (`loadApiV2Page`). A 401 to a reviewer's
+ * read (landing's and api_v2's PREVIEW_SECRET differ) is logged as
+ * `preview_token`, as a page's is, and the reviewer gets the public read.
  */
-function readCategories<T>(
+async function readCategories<T>(
   base: string,
   path: string,
   schema: z.ZodType<T>,
@@ -42,17 +44,23 @@ function readCategories<T>(
   landingToken?: string,
   previewToken?: string,
 ): Promise<ApiV2Read<T>> {
-  return previewToken
-    ? readApiV2(base, path, schema, fetchImpl, { landingToken, previewToken })
-    : readPublic(base, path, schema, fetchImpl, landingToken)
-}
+  if (!previewToken)
+    return readPublic(base, path, schema, fetchImpl, landingToken)
 
-/** The visitor's preview token, from the httpOnly grant cookie. Server-only. */
-function reviewerToken(): string | undefined {
-  return previewTokenFor(
-    levelFromCookie(getCookie(COOKIE_NAME)),
-    previewSecret(),
-  )
+  const result = await readApiV2(base, path, schema, fetchImpl, {
+    landingToken,
+    previewToken,
+    answer: async (response) => {
+      if (response.status !== 401) return undefined
+      await response.body?.cancel()
+      logFallback('preview_token', path, { status: response.status })
+      return PREVIEW_REFUSED
+    },
+  })
+
+  return result === PREVIEW_REFUSED
+    ? readPublic(base, path, schema, fetchImpl, landingToken)
+    : result
 }
 
 /** Copied from apps/api_v2/src/modules/navigation.ts (`CategoryRef`). */
@@ -305,7 +313,7 @@ export async function fetchCurrentCategoryTree(
  */
 export const readApiV2CategoryTree = createServerOnlyFn(
   async (): Promise<CategoryTreeResult> => {
-    const previewToken = reviewerToken()
+    const previewToken = reviewerPreviewToken()
     if (previewToken)
       return fetchCategoryTree(apiV2Base(), fetch, landingToken(), previewToken)
     return fetchCurrentCategoryTree(
@@ -333,7 +341,7 @@ export const readApiV2CategoryListing = createServerOnlyFn(
       path,
       fetch,
       landingToken(),
-      reviewerToken(),
+      reviewerPreviewToken(),
     ),
 )
 
