@@ -126,10 +126,12 @@ Surfaced as a first-class block on each form page:
   on its step), `network` (no readable response: offline, or a gateway error
   the browser blocked), `payment-init` (payment could not start), `server`
   (any other failure: an HTTP error status, 5xx and 429 too, a rejected answer
-  that matches no step, or the API said the submission failed). Before #3835,
-  HTTP errors counted as `network`. Any other value counts as `other`. The list
-  is `SUBMIT_ERROR_CODES` in `@govtech-bb/analytics`, shared with `/stats`
-  (#3826).
+  that matches no visible step, or the API said the submission failed),
+  `stale-definition` (the API rejected an answer for a step or a field that the
+  browser's copy of the form does not have: the form changed after the visitor
+  opened it, #3901). Before #3835, HTTP errors counted as `network`. Any other
+  value counts as `other`. The list is `SUBMIT_ERROR_CODES` in
+  `@govtech-bb/analytics`, shared with `/stats` (#3826).
 
 A failed submission is counted here, **distinct from abandonment** in the funnel:
 someone whose submit 500s reached Submit but isn't a "completed", and shows up as
@@ -146,4 +148,4 @@ Umami event name as `<formId>:<event>`:
 | `form-step-view` | a step is rendered (**reached**) | `step` (stepId) |
 | `form-review` | leaving the check-your-answers step | — |
 | `form-submit` | submission succeeded | `duration_seconds` |
-| `form-submit-error` | submission failed | `errors` (validation/network/payment-init/server) |
+| `form-submit-error` | submission failed | `errors` (validation/network/payment-init/server/stale-definition) |

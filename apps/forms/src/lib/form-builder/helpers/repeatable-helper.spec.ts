@@ -34,6 +34,7 @@ import type {
   FormMeta,
   RepeatableStepSettings,
 } from "@forms/types";
+import { formatDataForSubmission } from "@forms/form-api";
 import type {
   RepeatableBehaviour,
   SharedFieldsBehaviour,
@@ -1251,5 +1252,117 @@ describe("restoreRepeatableStepsFromStorage", () => {
     restoreRepeatableStepsFromStorage({}, formMeta, repeatSettings);
 
     expect(formMeta.steps).toHaveLength(1);
+  });
+
+  // #3901: the shared answers go into every instance from `sharedData`, which
+  // is filled only while the applicant is on the shared-values page. A page
+  // load past that page (a refresh, or the reload after the form changed)
+  // must still send them, so restore refills them from the saved base step.
+  describe("with sharedFields", () => {
+    function setUpVolunteers() {
+      const repeatSettings: RepeatableStepSettings = {};
+      const steps = setupRepeatSteps(
+        [
+          makeStep(
+            "volunteers",
+            ["team-name", "volunteer-name"],
+            [
+              makeRepeatableBehaviour(1, 2),
+              makeSharedFieldsBehaviour(["team-name"]),
+            ],
+          ),
+        ],
+        repeatSettings,
+      );
+      return { repeatSettings, formMeta: makeFormMeta(steps) };
+    }
+
+    const savedData: Record<string, unknown> = {
+      "volunteers_team-name": "Demo volunteers",
+      "volunteers~1_volunteer-name": "Sam Example",
+    };
+
+    it("refills the shared answers from the saved base step", () => {
+      const { repeatSettings, formMeta } = setUpVolunteers();
+
+      restoreRepeatableStepsFromStorage(savedData, formMeta, repeatSettings);
+
+      expect(repeatSettings.volunteers.sharedData).toEqual({
+        "team-name": "Demo volunteers",
+      });
+    });
+
+    it("sends the shared answers in the next submission", () => {
+      const { repeatSettings, formMeta } = setUpVolunteers();
+
+      restoreRepeatableStepsFromStorage(savedData, formMeta, repeatSettings);
+      const payload = formatDataForSubmission(
+        { ...savedData } as Record<string, string>,
+        repeatSettings,
+        [],
+      );
+
+      expect(payload.volunteers).toEqual([
+        { "team-name": "Demo volunteers", "volunteer-name": "Sam Example" },
+      ]);
+    });
+
+    // The new definition can hide a shared field that the old one showed.
+    // The restore keeps the saved answer, but the submission must not send it.
+    it("does not send a shared answer that the form now hides", () => {
+      const repeatSettings: RepeatableStepSettings = {};
+      const steps = setupRepeatSteps(
+        [
+          makeStep(
+            "volunteers",
+            ["team-name", "team-area", "volunteer-name"],
+            [
+              makeRepeatableBehaviour(1, 2),
+              makeSharedFieldsBehaviour(["team-name", "team-area"]),
+            ],
+          ),
+        ],
+        repeatSettings,
+      );
+      const saved = {
+        ...savedData,
+        "volunteers_team-area": "Christ Church",
+      };
+
+      restoreRepeatableStepsFromStorage(
+        saved,
+        makeFormMeta(steps),
+        repeatSettings,
+      );
+      const payload = formatDataForSubmission(
+        { ...saved } as Record<string, string>,
+        repeatSettings,
+        [makeField("team-area", "volunteers")],
+      );
+
+      expect(payload.volunteers).toEqual([
+        { "team-name": "Demo volunteers", "volunteer-name": "Sam Example" },
+      ]);
+      expect(payload.volunteers[0]).not.toHaveProperty("team-area");
+      // The form keeps the answer, in case the field shows again.
+      expect(repeatSettings.volunteers.sharedData).toEqual({
+        "team-name": "Demo volunteers",
+        "team-area": "Christ Church",
+      });
+    });
+
+    it("keeps a shared answer empty when nothing was saved for it", () => {
+      const { repeatSettings, formMeta } = setUpVolunteers();
+
+      restoreRepeatableStepsFromStorage(
+        { "volunteers~1_volunteer-name": "Sam Example" },
+        formMeta,
+        repeatSettings,
+      );
+
+      expect(repeatSettings.volunteers.sharedData).toEqual({
+        "team-name": "",
+      });
+    });
   });
 });

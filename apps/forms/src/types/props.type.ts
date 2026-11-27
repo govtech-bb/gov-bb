@@ -124,6 +124,14 @@ export interface SubmissionState {
    */
   processing?: boolean;
   /**
+   * Set on a failed submission when the API refused answers for a step or a
+   * field that the browser's copy of the form does not have: the form changed
+   * after the applicant opened it (#3901). The confirmation step then says so
+   * and offers a reload that goes to this step, instead of the general failure
+   * panel. Absent on every other state.
+   */
+  staleDefinitionStepId?: string;
+  /**
    * Name of the polyclinic the catchment router resolved for this submission
    * (from the submit response `meta.resolvedPolyclinic`). Used by the
    * confirmation page to name the Environmental Health Department the request

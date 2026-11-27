@@ -112,6 +112,8 @@ import {
   getSubmissionState,
   clearSubmissionState,
   storeSubmissionState,
+  getFormStartTime,
+  persistFormStartTime,
 } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
 import { rememberFormCategory } from "../../../lib/form-category";
@@ -293,6 +295,65 @@ describe("RouteComponent", () => {
     vi.spyOn(Route, "useSearch").mockReturnValue({ step: undefined });
     render(<Route.component />);
     expect(screen.getByTestId("form-renderer")).toBeInTheDocument();
+  });
+
+  // #3901: a page load that finds this form already started in the tab (a
+  // refresh, or the reload after the form changed) is the same application.
+  describe("form-start", () => {
+    it("counts the start and stamps its time on the first load", () => {
+      render(<Route.component />);
+
+      expect(trackEvent).toHaveBeenCalledWith("form-start", {
+        form: "test-form",
+        category: "test-category",
+      });
+      expect(persistFormStartTime).toHaveBeenCalledWith("test-form");
+    });
+
+    it("keeps the first start time and counts no second start on a reload", () => {
+      (getFormStartTime as Mock).mockReturnValueOnce(1_700_000_000_000);
+
+      render(<Route.component />);
+
+      expect(trackEvent).not.toHaveBeenCalledWith(
+        "form-start",
+        expect.anything(),
+      );
+      expect(persistFormStartTime).not.toHaveBeenCalled();
+    });
+
+    // A successful submit clears the start time. A refresh of its receipt
+    // must not start a timer, or the next application in the tab reuses it.
+    it("starts no timer on the receipt, and one on the next application", () => {
+      let startTime: number | null = null;
+      (getFormStartTime as Mock).mockImplementation(() => startTime);
+      (persistFormStartTime as Mock).mockImplementation(() => {
+        startTime = 1_700_000_000_000;
+      });
+      const formStarts = () =>
+        (trackEvent as Mock).mock.calls.filter(
+          ([name]) => name === "form-start",
+        );
+      vi.spyOn(Route, "useSearch").mockReturnValue({
+        step: "submission-confirmation",
+      });
+
+      const { rerender } = render(<Route.component />);
+
+      expect(formStarts()).toEqual([]);
+      expect(persistFormStartTime).not.toHaveBeenCalled();
+
+      // The applicant starts the same form again, in the same tab.
+      vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step1" });
+      rerender(<Route.component />);
+      vi.spyOn(Route, "useSearch").mockReturnValue({ step: "step2" });
+      rerender(<Route.component />);
+
+      expect(formStarts()).toEqual([
+        ["form-start", { form: "test-form", category: "test-category" }],
+      ]);
+      expect(persistFormStartTime).toHaveBeenCalledTimes(1);
+    });
   });
 
   // Refreshing the browser on the confirmation step must keep the user there.
@@ -1073,6 +1134,36 @@ describe("RouteComponent onSubmit handler", () => {
       ],
     };
 
+    // In the definition, but a condition hides it, so it is not visible.
+    const hiddenStep = {
+      stepId: "step2",
+      title: "Step 2",
+      behaviours: [],
+      fields: [
+        {
+          id: "step2_reason",
+          fieldId: "reason",
+          stepId: "step2",
+          name: "reason",
+          label: "Reason",
+          htmlType: "text",
+          disabled: false,
+          hidden: false,
+          conditionallyHidden: false,
+          behaviours: [],
+        },
+      ],
+    };
+
+    // The visible steps come from the definition, so it holds them too.
+    beforeEach(() => {
+      vi.spyOn(Route, "useLoaderData").mockReturnValue({
+        ...mockFormMeta,
+        steps: [stepWithParish, hiddenStep],
+        contractSteps: [stepWithParish, hiddenStep],
+      });
+    });
+
     function rejectWithFieldErrors(errors: unknown) {
       (postFormSubmission as Mock).mockRejectedValue(
         new FormValidationError("Validation failed", 422, errors),
@@ -1140,7 +1231,7 @@ describe("RouteComponent onSubmit handler", () => {
     it("falls back to the failure panel when no error maps to a field", async () => {
       mockGetVisibleSteps.mockReturnValue([stepWithParish]);
       const onSubmit = renderAndExtractOnSubmit();
-      rejectWithFieldErrors({ "step-that-moved": { parish: ["stale"] } });
+      rejectWithFieldErrors({ step2: { reason: ["Enter the reason"] } });
 
       await act(async () => {
         await onSubmit({ value: {} });
@@ -1150,12 +1241,16 @@ describe("RouteComponent onSubmit handler", () => {
       expect(mockFormRendererProps.current.submissionState).toEqual(
         expect.objectContaining({ submissionSuccess: false }),
       );
+      // A field that a condition hides is in the definition: not stale.
+      expect(
+        mockFormRendererProps.current.submissionState.staleDefinitionStepId,
+      ).toBeUndefined();
     });
 
     it("tracks 'server' when no error maps to a visible step (#3835)", async () => {
       mockGetVisibleSteps.mockReturnValue([stepWithParish]);
       const onSubmit = renderAndExtractOnSubmit();
-      rejectWithFieldErrors({ "step-that-moved": { parish: ["stale"] } });
+      rejectWithFieldErrors({ step2: { reason: ["Enter the reason"] } });
 
       await act(async () => {
         await onSubmit({ value: {} });
@@ -1165,6 +1260,161 @@ describe("RouteComponent onSubmit handler", () => {
         form: "test-form",
         category: "test-category",
         errors: "server",
+      });
+    });
+
+    // A repeatable step's per-instance bundle maps to nothing, but its step
+    // is in the definition: the general failure panel, as before.
+    it("keeps the failure panel for a repeatable step's bundle", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({
+        step1: {
+          _step: ["Provide at least 1 entry"],
+          instances: [{ parish: ["Select the parish"] }],
+        },
+      });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      expect(mockFormRendererProps.current.submissionState).toEqual({
+        submissionSuccess: false,
+        hasPayment: false,
+        referenceNumber: "",
+        date: "",
+        serviceName: "test-form",
+      });
+      expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+        form: "test-form",
+        category: "test-category",
+        errors: "server",
+      });
+    });
+
+    // #3886: the browser kept an old copy of the definition, so the 422 named
+    // a field that the form does not show. The citizen cannot fix it, so the
+    // confirmation step says that the form changed and offers a reload (#3901).
+    describe("a 422 for a step or a field the form does not have (#3901)", () => {
+      it.each([
+        {
+          names: "a field that is not in its step",
+          errors: { step1: { "regulations-acknowledged": ["Confirm this"] } },
+          stepId: "step1",
+        },
+        {
+          names: "a step that is not in the form",
+          errors: { "new-step": { "new-field": ["Answer this"] } },
+          stepId: "new-step",
+        },
+        {
+          names: "a known field and an unknown field",
+          errors: {
+            step1: { parish: ["Select the parish"] },
+            step2: { "new-field": ["Answer this"] },
+          },
+          stepId: "step1",
+        },
+        // On an ordinary step, `instances` can be a field ID.
+        {
+          names: "a field called `instances` that is not in its step",
+          errors: { step1: { instances: ["Required"] } },
+          stepId: "step1",
+        },
+      ])(
+        "tells the citizen the form changed when the 422 names $names",
+        async ({ errors, stepId }) => {
+          mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+          const onSubmit = renderAndExtractOnSubmit();
+          rejectWithFieldErrors(errors);
+
+          await act(async () => {
+            await onSubmit({ value: {} });
+          });
+
+          expect(mockFormRendererProps.current.submissionState).toEqual({
+            submissionSuccess: false,
+            hasPayment: false,
+            referenceNumber: "",
+            date: "",
+            serviceName: "test-form",
+            staleDefinitionStepId: stepId,
+          });
+          // No inline errors and no move to a step: the reload does that.
+          expect(mockFormInstance.setFieldMeta).not.toHaveBeenCalled();
+          expect(mockNavigate).not.toHaveBeenCalled();
+        },
+      );
+
+      // makeFetch throws FormValidationError for any status that carries
+      // `meta.errors`. Only a 422 is the API's verdict on the answers.
+      it("keeps the failure panel for a status other than 422", async () => {
+        mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+        const onSubmit = renderAndExtractOnSubmit();
+        (postFormSubmission as Mock).mockRejectedValue(
+          new FormValidationError("Invalid input", 400, {
+            "new-step": { "new-field": ["Answer this"] },
+          }),
+        );
+
+        await act(async () => {
+          await onSubmit({ value: {} });
+        });
+
+        expect(
+          mockFormRendererProps.current.submissionState.staleDefinitionStepId,
+        ).toBeUndefined();
+        expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+          form: "test-form",
+          category: "test-category",
+          errors: "server",
+        });
+      });
+
+      it("keeps the failure panel for a 422 that is not step errors", async () => {
+        mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+        const onSubmit = renderAndExtractOnSubmit();
+        rejectWithFieldErrors({ message: "Invalid input" });
+
+        await act(async () => {
+          await onSubmit({ value: {} });
+        });
+
+        expect(
+          mockFormRendererProps.current.submissionState.staleDefinitionStepId,
+        ).toBeUndefined();
+        expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+          form: "test-form",
+          category: "test-category",
+          errors: "server",
+        });
+      });
+
+      it("tracks form-submit-error with reason 'stale-definition'", async () => {
+        mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+        const onSubmit = renderAndExtractOnSubmit();
+        rejectWithFieldErrors({
+          step1: { "regulations-acknowledged": ["Confirm this"] },
+        });
+
+        await act(async () => {
+          await onSubmit({ value: {} });
+        });
+
+        const submitErrors = mockTrackEvent.mock.calls.filter(
+          ([name]) => name === "form-submit-error",
+        );
+        expect(submitErrors).toEqual([
+          [
+            "form-submit-error",
+            {
+              form: "test-form",
+              category: "test-category",
+              errors: "stale-definition",
+            },
+          ],
+        ]);
       });
     });
   });

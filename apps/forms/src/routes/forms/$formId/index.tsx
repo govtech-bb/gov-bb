@@ -44,7 +44,10 @@ import {
 } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
 import { LANDING_URL } from "../../../config/landing";
-import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
+import {
+  findStaleDefinitionStep,
+  resolveServerFieldErrors,
+} from "../../../lib/server-field-errors";
 import { resolveConditionalMarkdown } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../../../lib/form-builder/helpers/value-tree";
 import { formCategory, rememberFormCategory } from "../../../lib/form-category";
@@ -180,13 +183,21 @@ function FormView() {
     return stored ? applyPaymentReturn(stored, payment) : stored;
   });
 
+  // A page load that finds this form already started in the tab (a refresh,
+  // or the reload after the form changed, #3901) is the same application:
+  // keep the first start time, so `duration_seconds` covers all of it, and
+  // count no second start. A successful submit clears the start time. The
+  // receipt starts nothing: the next application in the tab starts its own
+  // timer on its first form step.
   React.useEffect(() => {
+    if (step === "submission-confirmation") return;
+    if (getFormStartTime(formMeta.formId) !== null) return;
     trackEvent("form-start", {
       form: formMeta.formId,
       category: formCategory(formMeta.formId),
     });
     persistFormStartTime(formMeta.formId);
-  }, [formMeta.formId]);
+  }, [formMeta.formId, step]);
 
   // Secret hygiene: once a `?preview=` token has unlocked the form, drop it from
   // the URL (matching landing) so the secret doesn't linger in history. Only
@@ -338,6 +349,15 @@ function FormView() {
         repeatableStepSettingsRef.current,
         hiddenFields,
       );
+      // A failed submission: the general failure panel, or with a stale step
+      // the form-changed panel. Both start from this state.
+      const failed: SubmissionState = {
+        submissionSuccess: false,
+        hasPayment: false,
+        referenceNumber: "",
+        date: "",
+        serviceName: formMeta.formId,
+      };
       let response;
       try {
         response = await postFormSubmission(formMeta, formattedData, preview);
@@ -346,10 +366,37 @@ function FormView() {
         // Put those messages back on the fields they name and return the
         // citizen to the step holding the first one, so they can see and fix
         // it — rather than the generic failure panel and a retry that would
-        // fail identically (#1257). A bundle nothing maps to (a renamed field,
-        // a repeatable step's per-instance shape) falls through to the panel:
-        // no feedback at all is worse than imprecise feedback.
+        // fail identically (#1257). A bundle nothing maps to (a step a
+        // condition hides, a repeatable step's per-instance shape) falls
+        // through to the panel: no feedback at all is worse than imprecise
+        // feedback.
         if (error instanceof FormValidationError) {
+          // A bundle that names a step or a field this copy of the form does
+          // not have: the browser kept an old definition (#3886). The citizen
+          // cannot fix a field the form does not show, so tell them the form
+          // changed and offer a reload (#3901). Checked against the contract's
+          // steps, keyed as the API keys the bundle: every step, not only the
+          // visible ones (a field a condition hides is not a missing field),
+          // and a repeatable step with all its fields, before the split
+          // across a shared page and one page per instance. Only a 422 is
+          // the API's verdict on the answers: makeFetch also throws this
+          // error for any other status that carries `meta.errors`.
+          const staleStepId =
+            error.status === 422
+              ? findStaleDefinitionStep(error.errors, formMeta.contractSteps)
+              : undefined;
+          if (staleStepId) {
+            trackEvent("form-submit-error", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+              errors: "stale-definition",
+            });
+            setSubmissionState({
+              ...failed,
+              staleDefinitionStepId: staleStepId,
+            });
+            return;
+          }
           const { byFieldId, stepId } = resolveServerFieldErrors(
             error.errors,
             visibleSteps,
@@ -392,13 +439,7 @@ function FormView() {
         // Commit a failed state so the confirmation step shows the
         // "Something went wrong" panel with a retry, instead of leaving the
         // citizen frozen with no feedback. No response means no reference data.
-        setSubmissionState({
-          submissionSuccess: false,
-          hasPayment: false,
-          referenceNumber: "",
-          date: "",
-          serviceName: formMeta.formId,
-        });
+        setSubmissionState(failed);
         return;
       }
 
