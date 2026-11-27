@@ -1,10 +1,18 @@
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+import { getCookie } from '@tanstack/react-start/server'
 import { QueryClient, isCancelledError } from '@tanstack/react-query'
 import { z } from 'zod'
-import { apiV2Base, landingToken, siteVersionChanges } from './api-v2-page'
+import {
+  apiV2Base,
+  landingToken,
+  previewSecret,
+  previewTokenFor,
+  siteVersionChanges,
+} from './api-v2-page'
 import { logFallback } from './api-v2-log'
-import { readPublic } from './api-v2-reader'
-import type { ApiV2ReadMiss } from './api-v2-reader'
+import { readApiV2, readPublic } from './api-v2-reader'
+import type { ApiV2Read, ApiV2ReadMiss } from './api-v2-reader'
+import { COOKIE_NAME, levelFromCookie } from './preview'
 
 /**
  * Categories from api_v2's public reads (ADR 0132). When `VITE_API_V2_URL` is
@@ -15,11 +23,37 @@ import type { ApiV2ReadMiss } from './api-v2-reader'
  * taxonomy: that would bring back categories an editor removed or renamed. So
  * every outcome is explicit and the caller decides what an outage shows.
  *
- * Only the public `/categories` reads, with no preview token: the editor's
- * `/editor/categories` carries private counts and is never called from here.
- * They carry landing's token, as `/pages` does, so api_v2's rate limit
- * doesn't count them (#3129).
+ * Only the public `/categories` reads: the editor's `/editor/categories`
+ * carries private counts and is never called from here. They carry landing's
+ * token, as `/pages` does, so api_v2's rate limit doesn't count them (#3129).
+ * A reviewer's read also carries the preview token, as a page's does (#2961),
+ * so a category with only preview pages opens for them (#3940).
  */
+
+/**
+ * A public read goes through the breaker. A reviewer's read (with a preview
+ * token) skips it, as a page's does (`loadApiV2Page`).
+ */
+function readCategories<T>(
+  base: string,
+  path: string,
+  schema: z.ZodType<T>,
+  fetchImpl: typeof fetch,
+  landingToken?: string,
+  previewToken?: string,
+): Promise<ApiV2Read<T>> {
+  return previewToken
+    ? readApiV2(base, path, schema, fetchImpl, { landingToken, previewToken })
+    : readPublic(base, path, schema, fetchImpl, landingToken)
+}
+
+/** The visitor's preview token, from the httpOnly grant cookie. Server-only. */
+function reviewerToken(): string | undefined {
+  return previewTokenFor(
+    levelFromCookie(getCookie(COOKIE_NAME)),
+    previewSecret(),
+  )
+}
 
 /** Copied from apps/api_v2/src/modules/navigation.ts (`CategoryRef`). */
 const CategoryRef = z.object({
@@ -95,20 +129,22 @@ export const CategoryPath = z.union([
 /** A category path: `[category]` or `[category, subcategory]`. */
 export type CategoryPath = z.infer<typeof CategoryPath>
 
-/** `GET /categories`: every category the public can browse, in order. */
+/** `GET /categories`: every category the viewer can browse, in order. */
 export async function fetchCategoryTree(
   base: string | null,
   fetchImpl: typeof fetch = fetch,
   landingToken?: string,
+  previewToken?: string,
 ): Promise<CategoryTreeResult> {
   if (!base) return { kind: 'disabled' }
 
-  const result = await readPublic(
+  const result = await readCategories(
     base,
     '/categories',
     CategoryTreeBody,
     fetchImpl,
     landingToken,
+    previewToken,
   )
 
   if (result.kind === 'ok')
@@ -134,18 +170,20 @@ export async function fetchCategoryListing(
   path: CategoryPath,
   fetchImpl: typeof fetch = fetch,
   landingToken?: string,
+  previewToken?: string,
 ): Promise<CategoryListingResult> {
   if (!base) return { kind: 'disabled' }
 
   if (!path.every((segment) => CATEGORY_SLUG.test(segment)))
     return { kind: 'not_found' }
 
-  const result = await readPublic(
+  const result = await readCategories(
     base,
     `/categories/${path.join('/')}`,
     CategoryListing,
     fetchImpl,
     landingToken,
+    previewToken,
   )
 
   if (result.kind === 'ok') return { kind: 'found', listing: result.value }
@@ -259,33 +297,61 @@ export async function fetchCurrentCategoryTree(
   return fetchCachedCategoryTree(base, fetchImpl, landingToken)
 }
 
-/** Server function: the current public tree from the configured api_v2. */
-export const getApiV2CategoryTree = createServerFn().handler(async () =>
-  fetchCurrentCategoryTree(
-    apiV2Base(),
-    await siteVersionChanges(),
-    fetch,
-    landingToken(),
-  ),
+/**
+ * `getApiV2CategoryTree`'s handler: the current public tree, or a reviewer's
+ * own. A reviewer's tree lists preview categories, so it is read every time and
+ * never enters the shared public cache. Exported for its test, which can't
+ * call a server function outside Start's runtime.
+ */
+export const readApiV2CategoryTree = createServerOnlyFn(
+  async (): Promise<CategoryTreeResult> => {
+    const previewToken = reviewerToken()
+    if (previewToken)
+      return fetchCategoryTree(apiV2Base(), fetch, landingToken(), previewToken)
+    return fetchCurrentCategoryTree(
+      apiV2Base(),
+      await siteVersionChanges(),
+      fetch,
+      landingToken(),
+    )
+  },
 )
 
-/** Server function: `fetchCategoryListing` against the configured api_v2. */
+/** Server function: `readApiV2CategoryTree`. */
+export const getApiV2CategoryTree = createServerFn().handler(() =>
+  readApiV2CategoryTree(),
+)
+
+/**
+ * `getApiV2CategoryListing`'s handler: `fetchCategoryListing` against the
+ * configured api_v2, as the visitor may see it. Exported for its test.
+ */
+export const readApiV2CategoryListing = createServerOnlyFn(
+  (path: CategoryPath): Promise<CategoryListingResult> =>
+    fetchCategoryListing(
+      apiV2Base(),
+      path,
+      fetch,
+      landingToken(),
+      reviewerToken(),
+    ),
+)
+
+/** Server function: `readApiV2CategoryListing`. */
 export const getApiV2CategoryListing = createServerFn()
   .validator(CategoryPath)
-  .handler(({ data: path }) =>
-    fetchCategoryListing(apiV2Base(), path, fetch, landingToken()),
-  )
+  .handler(({ data: path }) => readApiV2CategoryListing(path))
 
 /** A minute per cache layer, within api_v2's freshness/revalidation window. */
 export const CATEGORY_TREE_STALE_MS = 60_000
 
 /**
- * The public category tree, read once per QueryClient (one per request on the
- * server, one per tab in the browser) and reread once it is a minute old. A
- * failed read waits the same minute, so a down api_v2 doesn't add its timeout
- * to every navigation. The server function also caches the public response
- * between requests, separately from each request's viewer state. Disabled
- * never changes within a build.
+ * The category tree the visitor may see, read once per QueryClient (one per
+ * request on the server, one per tab in the browser) and reread once it is a
+ * minute old. A failed read waits the same minute, so a down api_v2 doesn't
+ * add its timeout to every navigation. The server function also caches the
+ * public response between requests, separately from each request's viewer
+ * state. Disabled never changes within a build.
  *
  * The tree is optional to every route that shows it, so the query never
  * rejects: a server-function call that fails in the browser is `unavailable`.

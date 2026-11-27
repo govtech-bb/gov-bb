@@ -190,7 +190,7 @@ export function previewTokenFor(
 }
 
 /** Same dual-source as `checkFormAccessible`. Server-only. */
-function previewSecret(): string | undefined {
+export function previewSecret(): string | undefined {
   const config = useRuntimeConfig() as { previewSecret?: string }
   return config.previewSecret || process.env.PREVIEW_SECRET || undefined
 }
