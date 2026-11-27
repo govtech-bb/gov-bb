@@ -26,8 +26,9 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * page"), or `static-fallback` (static markdown because api_v2 failed or sent
  * bad content). Category listings send `api_v2` when api_v2 lists them
  * (ADR 0132) and `static` otherwise. Each failed fetch logs one JSON line
- * `{event: "api_v2_fallback", reason, url, status?, error?}`, whichever header
- * follows (but the site-version check logs nothing: api-v2-version.ts)
+ * `{event: "api_v2_fallback", level, reason, url, status?, error?}`,
+ * whichever header follows (but the site-version check logs nothing:
+ * api-v2-version.ts)
  * — `console.error` for api_v2 failures (`status`, `timeout`, `network`,
  * `malformed`, `no_target`: these count toward the breaker) and for
  * `preview_token` (a reviewer's read refused with 401: landing's and api_v2's

@@ -148,6 +148,7 @@ describe('fetchCollectionRecords', () => {
       ).toBeNull()
       expect(JSON.parse(String(error.mock.calls[0][0]))).toMatchObject({
         event: 'api_v2_fallback',
+        level: 'error',
         url: '/collections/contacts/records',
       })
     },

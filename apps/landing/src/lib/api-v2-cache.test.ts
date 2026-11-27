@@ -155,6 +155,7 @@ describe('createApiV2Cache', () => {
     expect(error).toHaveBeenCalledTimes(1)
     expect(JSON.parse(error.mock.calls[0][0] as string)).toEqual({
       event: 'api_v2_circuit_open',
+      level: 'error',
       url: '/c',
     })
     error.mockRestore()

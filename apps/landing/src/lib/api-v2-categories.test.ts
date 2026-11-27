@@ -151,6 +151,7 @@ describe('fetchCategoryTree', () => {
     expect(await fetchCategoryTree(base)).toEqual({ kind: 'unavailable' })
     expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
+      level: 'error',
       reason: 'status',
       url: '/categories',
       status,
@@ -175,6 +176,7 @@ describe('fetchCategoryTree', () => {
     expect(await fetchCategoryTree(base)).toEqual({ kind: 'malformed' })
     expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
+      level: 'error',
       reason: 'malformed',
       url: '/categories',
     })
@@ -235,6 +237,7 @@ describe('fetchCategoryListing', () => {
     })
     expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
+      level: 'error',
       reason: 'status',
       url: '/categories/money/tax',
       status: 503,
