@@ -246,7 +246,7 @@ it("takes the After submission decisions as a pair, as the Details page does (#2
 
 it("refuses unknown services and pages without adopting them, redacts reads, and caps output size", async () => {
   await expect(readService({ serviceId: "unknown" })).rejects.toThrow(
-    "Open this service",
+    "has no draft in this browser's service workspace",
   );
   await expect(
     prepareServiceEdit("update_service_details", {
@@ -254,7 +254,9 @@ it("refuses unknown services and pages without adopting them, redacts reads, and
       target: { serviceId: "unknown" },
       patch: { title: "New" },
     }),
-  ).rejects.toThrow("Open this service");
+  ).rejects.toThrow(
+    "To edit the document open in the editor, leave out target",
+  );
   await expect(
     readPage({ serviceId, pagePath: "apps/landing/src/content/other.md" }),
   ).rejects.toThrow("does not belong");

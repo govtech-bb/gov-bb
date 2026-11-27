@@ -501,6 +501,20 @@ type CurrentEditor = React.RefObject<{
   open: boolean;
 }>;
 
+// The open form, named by its service or by its form id — the id the model
+// sees for it, and its only id when no service draft holds it (#3875). A
+// listed service with that id is a different service, so it keeps its own
+// draft.
+function isOpenForm(editor: CurrentEditor["current"], serviceId: string) {
+  const { kind, documentId, services } = editor.context;
+  return (
+    kind === "form" &&
+    (serviceId === editor.target?.serviceId ||
+      (serviceId === documentId &&
+        !services.some((service) => service.serviceId === serviceId)))
+  );
+}
+
 function ChatSession({
   conversation,
   controls,
@@ -702,12 +716,12 @@ function ChatSession({
       if (toolName === "update_service_details") return true;
       if (!proposal.target) return false;
       const editor = current.current;
+      if (toolName !== "apply_content_patch")
+        return !isOpenForm(editor, proposal.target.serviceId);
       return (
         proposal.target.serviceId !== editor.target?.serviceId ||
-        (toolName === "apply_content_patch"
-          ? editor.context.kind !== "content" ||
-            proposal.target.pagePath !== editor.target?.pagePath
-          : editor.context.kind !== "form")
+        editor.context.kind !== "content" ||
+        proposal.target.pagePath !== editor.target?.pagePath
       );
     },
     [current],
@@ -851,10 +865,24 @@ function ChatSession({
           withTimeout(readPage, READ_TOOL_TIMEOUT_MS, readTimedOut),
         ),
         toolDefinition(readFormTool).client(
-          withTimeout(readForm, READ_TOOL_TIMEOUT_MS, readTimedOut),
+          withTimeout(
+            async (input: { serviceId: string }) => {
+              const { serviceId } = readFormTool.inputSchema.parse(input);
+              const editor = current.current;
+              if (!isOpenForm(editor, serviceId))
+                return readForm({ serviceId });
+              return {
+                serviceId,
+                recipe: editor.context.document,
+                note: "This is the form open in the editor. Leave out target to edit it.",
+              };
+            },
+            READ_TOOL_TIMEOUT_MS,
+            readTimedOut,
+          ),
         ),
       ] as const,
-    [execute, editTimedOut],
+    [current, execute, editTimedOut],
   );
   const chat = useChat<typeof tools>({
     threadId: thread,
