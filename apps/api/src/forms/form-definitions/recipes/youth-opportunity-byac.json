@@ -1001,6 +1001,14 @@
               "maxYear": {
                 "currentYear": true,
                 "error": "Year cannot be in the future"
+              },
+              "minYear": {
+                "value": 1990,
+                "error": "Enter the year in full, like 2015"
+              },
+              "min": {
+                "value": 1990,
+                "error": "Enter the year in full, like 2015"
               }
             },
             "ui": {
@@ -1021,6 +1029,10 @@
               "maxYear": {
                 "currentYear": true,
                 "error": "Year cannot be in the future"
+              },
+              "minYear": {
+                "value": 1990,
+                "error": "Enter the year in full, like 2015"
               },
               "min": {
                 "referenceFieldId": "primary-school-start-year",
@@ -1171,6 +1183,14 @@
               "maxYear": {
                 "currentYear": true,
                 "error": "Year cannot be in the future"
+              },
+              "minYear": {
+                "value": 1990,
+                "error": "Enter the year in full, like 2015"
+              },
+              "min": {
+                "value": 1990,
+                "error": "Enter the year in full, like 2015"
               }
             },
             "ui": {
@@ -1214,6 +1234,10 @@
               "maxYear": {
                 "currentYear": true,
                 "error": "Year cannot be in the future"
+              },
+              "minYear": {
+                "value": 1990,
+                "error": "Enter the year in full, like 2015"
               },
               "min": {
                 "referenceFieldId": "secondary-school-start-year",
@@ -1380,6 +1404,14 @@
               "maxYear": {
                 "currentYear": true,
                 "error": "Year cannot be in the future"
+              },
+              "minYear": {
+                "value": 1990,
+                "error": "Enter the year in full, like 2015"
+              },
+              "min": {
+                "value": 1990,
+                "error": "Enter the year in full, like 2015"
               }
             },
             "ui": {
@@ -2690,7 +2722,7 @@
     "visibility": "preview"
   },
   "createdAt": "2026-05-21T00:00:00Z",
-  "updatedAt": "2026-11-26T00:00:00.000Z",
+  "updatedAt": "2026-11-27T22:27:14.000Z",
   "processors": [
     {
       "type": "email",
