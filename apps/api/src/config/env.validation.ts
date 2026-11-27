@@ -222,6 +222,12 @@ const baseSchema = z
     // (ADR 0106).
     MONITORING_API_TOKEN: z.string().optional(),
 
+    // Known team test inboxes (comma or newline separated) that GET
+    // /monitoring/mission6 leaves out of the Mission 6 figures, on top of the
+    // built-in rule in monitoring/mission6-test-rule.ts. A secret because this
+    // repo is public and the list is staff addresses. Unset = no named inboxes.
+    TEST_APPLICANT_EMAILS: z.string().optional(),
+
     // S3 file uploads (optional — required only when a form uses file fields)
     S3_BUCKET: z.string().default(""),
     S3_REGION: z.string().optional(),

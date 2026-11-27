@@ -1,3 +1,5 @@
+import { GUARDS_METADATA } from "@nestjs/common/constants";
+import { AdminTokenGuard } from "@/common/guards/admin-token.guard";
 import { MonitoringController } from "./monitoring.controller";
 
 const mockRepo = {
@@ -8,6 +10,10 @@ const mockWebhookDestinations = {
   getAudit: vi.fn(),
 };
 
+const mockMission6 = {
+  report: vi.fn(),
+};
+
 describe("MonitoringController", () => {
   let controller: MonitoringController;
 
@@ -16,6 +22,7 @@ describe("MonitoringController", () => {
     controller = new MonitoringController(
       mockRepo as never,
       mockWebhookDestinations as never,
+      mockMission6 as never,
     );
   });
 
@@ -33,6 +40,35 @@ describe("MonitoringController", () => {
 
       expect(result).toMatchObject({ status: "success" });
       expect(result.data).toEqual(audit);
+    });
+  });
+
+  describe("mission6Report (GET /monitoring/mission6)", () => {
+    it("returns the Mission 6 figures", async () => {
+      const report = {
+        generatedAt: "2026-11-26T19:00:00.000Z",
+        services: { "form-a": "Apply for A" },
+        applications: [],
+        payments: [],
+      };
+      mockMission6.report.mockResolvedValue(report);
+
+      const result = await controller.mission6Report();
+
+      expect(result).toMatchObject({ status: "success" });
+      expect(result.data).toEqual(report);
+    });
+
+    it("is behind the MONITORING_API_TOKEN guard", () => {
+      const guards = Reflect.getMetadata(
+        GUARDS_METADATA,
+        MonitoringController.prototype.mission6Report,
+      );
+      expect(guards).toHaveLength(1);
+      expect(guards[0]).toBeInstanceOf(AdminTokenGuard);
+      expect(guards[0]).toMatchObject({
+        envVarNames: ["MONITORING_API_TOKEN"],
+      });
     });
   });
 

@@ -9,6 +9,7 @@ import {
   WebhookDestinationsService,
   type WebhookDestinationsAudit,
 } from "@/forms/webhook-destinations/webhook-destinations.service";
+import { Mission6Service, type Mission6Report } from "./mission6.service";
 
 /** Read-only projection returned to the monitoring console's Delivery tab. */
 export interface NotificationLogRow {
@@ -50,7 +51,19 @@ export class MonitoringController {
   constructor(
     private readonly notificationLog: NotificationLogRepository,
     private readonly webhookDestinations: WebhookDestinationsService,
+    private readonly mission6: Mission6Service,
   ) {}
+
+  @Get("mission6")
+  @ApiBearerAuth()
+  @UseGuards(new AdminTokenGuard("MONITORING_API_TOKEN"))
+  async mission6Report(): Promise<ApiResponseShape<Mission6Report>> {
+    // Count-only figures for the console's Mission 6 page: applications and
+    // payments by service and month, team tests left out. No personal data.
+    return ApiResponse.success(await this.mission6.report(), {
+      message: "Mission 6 figures retrieved",
+    });
+  }
 
   @Get("webhook-destinations")
   @ApiBearerAuth()
