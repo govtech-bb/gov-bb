@@ -25,18 +25,32 @@ describe('createApiV2Cache', () => {
     expect(second).toBe(first)
   })
 
-  it('serves the old result at once past max-age and revalidates in the background', async () => {
+  it('waits for the refetch past max-age, so no read outlives the request (#3935)', async () => {
     const cache = createApiV2Cache(createApiV2Breaker())
-    const resolve = resolver(redirect('/old'), redirect('/new'))
-    await cache.get('/x', resolve, 0)
-    expect(await cache.get('/x', resolve, 60_000)).toMatchObject({
-      to: '/old',
+    await cache.get('/x', resolver(redirect('/old')), 0)
+    let finish!: (r: ApiV2Result) => void
+    const slow = vi.fn(() => new Promise<ApiV2Result>((r) => (finish = r)))
+    let settled = false
+    const read = cache.get('/x', slow, 60_000).finally(() => (settled = true))
+    await new Promise((r) => setTimeout(r))
+    expect(slow).toHaveBeenCalledTimes(1)
+    expect(settled).toBe(false)
+    finish(redirect('/new'))
+    expect(await read).toMatchObject({ to: '/new' })
+  })
+
+  it('counts a failed refetch of a stale entry toward the breaker', async () => {
+    const cache = createApiV2Cache(createApiV2Breaker())
+    for (const url of ['/a', '/b', '/c'])
+      await cache.get(url, resolver(redirect(url)), 0)
+    const failing = resolver({ kind: 'miss', reason: 'timeout' })
+    for (const url of ['/a', '/b', '/c'])
+      expect(await cache.get(url, failing, 60_000)).toMatchObject({ to: url })
+    expect(await cache.get('/d', failing, 60_001)).toEqual({
+      kind: 'miss',
+      reason: 'circuit_open',
     })
-    expect(resolve).toHaveBeenCalledTimes(2)
-    await new Promise((r) => setTimeout(r)) // let the background refetch land
-    expect(await cache.get('/x', resolve, 60_001)).toMatchObject({
-      to: '/new',
-    })
+    expect(failing).toHaveBeenCalledTimes(3)
   })
 
   it('serves the old result past the SWR window when the refetch fails', async () => {
@@ -57,23 +71,21 @@ describe('createApiV2Cache', () => {
     } as const
     const resolve = resolver(page, { kind: 'miss', reason: 'network' })
     await cache.get('/x', resolve, 0)
-    // Fresh, and stale-while-revalidate with no failure yet: plain api_v2.
+    // Fresh: plain api_v2.
     expect(await cache.get('/x', resolve, 1)).toBe(page)
-    expect(await cache.get('/x', resolve, 60_000)).toBe(page)
-    await new Promise((r) => setTimeout(r)) // let the background refetch land
-    // Past the SWR window, the refetch fails: the kept copy, marked.
-    expect(await cache.get('/x', resolve, 360_000)).toEqual({
+    // Past max-age, the refetch fails: the kept copy, marked.
+    expect(await cache.get('/x', resolve, 60_000)).toEqual({
       ...page,
       stale: true,
     })
     // Breaker open (three failures): the kept copy without a call, marked.
     const failing = resolver({ kind: 'miss', reason: 'network' })
-    for (const url of ['/a', '/b']) await cache.get(url, failing, 360_000)
-    expect(await cache.get('/x', resolve, 360_001)).toEqual({
+    for (const url of ['/a', '/b']) await cache.get(url, failing, 60_000)
+    expect(await cache.get('/x', resolve, 60_001)).toEqual({
       ...page,
       stale: true,
     })
-    expect(resolve).toHaveBeenCalledTimes(3)
+    expect(resolve).toHaveBeenCalledTimes(2)
   })
 
   it('keeps the cached page when a refetch is a status failure (e.g. a 429)', async () => {
@@ -81,8 +93,7 @@ describe('createApiV2Cache', () => {
     const old = redirect('/old')
     const resolve = resolver(old, { kind: 'miss', reason: 'status' })
     await cache.get('/x', resolve, 0)
-    await cache.get('/x', resolve, 60_000)
-    await new Promise((r) => setTimeout(r)) // let the background refetch land
+    expect(await cache.get('/x', resolve, 60_000)).toBe(old)
     expect(await cache.get('/x', resolve, 60_001)).toBe(old)
   })
 

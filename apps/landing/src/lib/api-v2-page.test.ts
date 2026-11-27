@@ -766,6 +766,32 @@ describe('loadApiV2Page', () => {
     ).toHaveLength(6)
   })
 
+  it('leaves no api_v2 read in flight once a read resolves, past max-age too (#3935)', async () => {
+    // Amplify compute (Lambda) freezes the process once the response is
+    // sent: a read still in flight then times out on the next request, as a
+    // false `timeout` that trips the breaker.
+    const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+    const cache = createApiV2Cache(createApiV2Breaker())
+    let inFlight = 0
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      inFlight++
+      await new Promise((r) => setTimeout(r, 5))
+      inFlight--
+      return jsonResponse(200, pageBody(), {
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+      })
+    })
+    // Fresh, cached, then past max-age: inside and beyond the SWR window.
+    for (const at of [0, 30_000, 60_000, 120_000, 400_000]) {
+      now.mockReturnValue(at)
+      expect(
+        await loadApiV2Page(cache, BASE, '/x', undefined, undefined, fetchImpl),
+      ).toMatchObject({ kind: 'page' })
+      expect(inFlight).toBe(0)
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(4)
+  })
+
   /** api_v2 with one preview page: a 404 to the public, the page to a reviewer. */
   function previewOnlyApi() {
     return vi.fn<typeof fetch>(async (_url, init) =>

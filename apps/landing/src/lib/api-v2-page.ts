@@ -20,7 +20,7 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  *
  * Contract for the #3140 smoke and #3364 metric filter. Every `$` response
  * that renders a page carries `x-content-source` (redirects and 404s do not):
- * `api_v2` (served by api_v2, fresh or within stale-while-revalidate),
+ * `api_v2` (served by api_v2: cached within its max-age, or just refetched),
  * `api_v2-stale` (a kept api_v2 copy, because api_v2 failed or the breaker is
  * open), `static` (static markdown, api_v2 unset, skipped or answered "no
  * page"), or `static-fallback` (static markdown because api_v2 failed or sent
