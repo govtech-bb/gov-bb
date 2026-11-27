@@ -1,21 +1,93 @@
 {
   "steps": [
     {
-      "title": "About you",
+      "stepId": "national-id-check",
+      "title": "Do you have a Barbados National Identification (ID) number?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-national-id",
+            "label": "Do you have a Barbados National Identification (ID) number?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "ui": {
+              "hideLabel": true
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have a Barbados National Identification (ID) number"
+              },
+              "pattern": {
+                "value": "^yes$",
+                "error": "You need a Barbados National Identification (ID) number to apply online"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "no-national-id-notice",
+            "variant": "warning",
+            "content": "You need a Barbados National Identification (ID) number to apply online.\n\nYou can still apply in person if you do not have one.\n\n[Find out how to apply in person](https://alpha.gov.bb/work-employment/apply-to-the-barbados-youthadvance-corps#how-to-apply)",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "has-national-id",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Barbados National Identification (ID) number is required"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "has-national-id",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
       "stepId": "applicant-details",
+      "title": "Your details",
       "elements": [
         {
           "ref": "components/first-name",
           "overrides": {
-            "fieldId": "applicant-first-name",
+            "fieldId": "applicant-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "label": "Middle name or names",
             "validations": {
               "required": {
-                "error": "First name is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "First name must be at least 2 characters",
-                "value": 2
+                "value": false
               }
             }
           }
@@ -23,105 +95,28 @@
         {
           "ref": "components/last-name",
           "overrides": {
-            "fieldId": "applicant-last-name",
-            "validations": {
-              "required": {
-                "error": "Last name is required",
-                "value": true
-              },
-              "minLength": {
-                "error": "Last name must be at least 2 characters",
-                "value": 2
-              }
-            }
+            "fieldId": "applicant-last-name"
           }
         },
         {
           "ref": "components/date-of-birth",
           "overrides": {
-            "hint": "Used to confirm you meet the age requirements for this opportunity.",
-            "label": "Date of birth",
             "fieldId": "applicant-dob",
             "validations": {
               "required": {
-                "error": "Date of birth is required",
-                "value": true
+                "value": true,
+                "error": "Date of birth is required"
               }
             }
           }
         },
         {
-          "ref": "components/email",
+          "ref": "components/sex",
           "overrides": {
-            "fieldId": "applicant-email",
             "validations": {
               "required": {
-                "error": "Email address is required",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/telephone",
-          "overrides": {
-            "fieldId": "applicant-phone"
-          }
-        },
-        {
-          "ref": "components/parish",
-          "overrides": {
-            "fieldId": "applicant-parish",
-            "options": [
-              {
-                "label": "Christ Church",
-                "value": "christ-church"
-              },
-              {
-                "label": "St. Andrew",
-                "value": "st-andrew"
-              },
-              {
-                "label": "St. George",
-                "value": "st-george"
-              },
-              {
-                "label": "St. James",
-                "value": "st-james"
-              },
-              {
-                "label": "St. John",
-                "value": "st-john"
-              },
-              {
-                "label": "St. Joseph",
-                "value": "st-joseph"
-              },
-              {
-                "label": "St. Lucy",
-                "value": "st-lucy"
-              },
-              {
-                "label": "St. Michael",
-                "value": "st-michael"
-              },
-              {
-                "label": "St. Peter",
-                "value": "st-peter"
-              },
-              {
-                "label": "St. Philip",
-                "value": "st-philip"
-              },
-              {
-                "label": "St. Thomas",
-                "value": "st-thomas"
-              }
-            ],
-            "validations": {
-              "required": {
-                "error": "Select your parish",
-                "value": true
+                "value": true,
+                "error": "Sex is required"
               }
             }
           }
@@ -129,16 +124,283 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "label": "Citizenship status",
-            "fieldId": "applicant-citizenship",
+            "fieldId": "barbados-citizen",
+            "label": "Are you a citizen of Barbados?",
             "options": [
               {
-                "label": "Barbadian citizen",
-                "value": "citizen"
+                "label": "Yes",
+                "value": "yes"
               },
               {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you are a citizen of Barbados"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/country",
+          "overrides": {
+            "fieldId": "citizenship-country",
+            "label": "Which country are you a citizen of?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select the country you are a citizen of"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "barbados-citizen",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "residency-status",
+            "label": "What is your residency status in Barbados?",
+            "options": [
+              {
                 "label": "Permanent resident",
-                "value": "resident"
+                "value": "permanent-resident"
+              },
+              {
+                "label": "Temporary resident",
+                "value": "temporary-resident"
+              },
+              {
+                "label": "Student",
+                "value": "student"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              },
+              {
+                "label": "Not sure",
+                "value": "not-sure"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select your residency status in Barbados"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "barbados-citizen",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "permission-to-study",
+            "label": "Do you have permission from the Immigration Department to study in Barbados?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              },
+              {
+                "label": "Application pending",
+                "value": "application-pending"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have permission to study in Barbados"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "barbados-citizen",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "residency-proof-note",
+            "variant": "inset",
+            "content": "You will need to show proof of your residency in Barbados at your interview. You can upload a copy later in this form.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "barbados-citizen",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "study-permission-note",
+            "variant": "inset",
+            "content": "You will also need to show your permission to study in Barbados. You can upload a copy later in this form.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "barbados-citizen",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "permission-to-study",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "your-address-and-contact-details",
+      "title": "Your contact details",
+      "description": "BYAC will use these details to contact you about your application.",
+      "elements": [
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "fieldId": "address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Address line 1 is required"
+              }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "address-line-2",
+              "parishFieldId": "parish"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish"
+        },
+        {
+          "ref": "components/telephone"
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "other-telephone",
+            "label": "Other telephone number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "applicant-email"
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "parent-or-guardian",
+      "title": "Your parent or guardian",
+      "description": "BYAC will use these details to contact your parent or guardian about your application.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "parent-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "parent-middle-name",
+            "label": "Middle name or names",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "parent-last-name"
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "parent-relationship",
+            "label": "What is their relationship to you?",
+            "options": [
+              {
+                "label": "Mother",
+                "value": "mother"
+              },
+              {
+                "label": "Father",
+                "value": "father"
+              },
+              {
+                "label": "Step-parent",
+                "value": "step-parent"
+              },
+              {
+                "label": "Grandparent",
+                "value": "grandparent"
+              },
+              {
+                "label": "Other relative",
+                "value": "other-relative"
+              },
+              {
+                "label": "Legal guardian",
+                "value": "legal-guardian"
               },
               {
                 "label": "Other",
@@ -147,49 +409,2258 @@
             ],
             "validations": {
               "required": {
-                "error": "Select your citizenship status",
-                "value": true
+                "value": true,
+                "error": "Select their relationship to you"
               }
             }
           }
-        }
-      ],
-      "description": "Tell us who you are so we know how to get in touch."
-    },
-    {
-      "title": "About your interest",
-      "stepId": "your-interest",
-      "elements": [
+        },
         {
-          "ref": "components/additional-details",
+          "ref": "components/generic-text",
           "overrides": {
-            "hint": "Tell us a bit about what you hope to get out of taking part.",
-            "label": "Why are you applying?",
-            "fieldId": "interest-motivation",
+            "fieldId": "parent-relationship-other",
+            "label": "What is their relationship to you?",
             "validations": {
               "required": {
-                "error": "Tell us why you're applying",
-                "value": true
+                "value": true,
+                "error": "Enter their relationship to you"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "parent-relationship",
+                "operator": "equal",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "parent-telephone"
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "parent-other-telephone",
+            "label": "Other telephone number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "parent-email",
+            "hint": "Required if you're under 16.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your parent or guardian's email address"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "optionalIf",
+                "targetStepId": "applicant-details",
+                "targetFieldId": "applicant-dob",
+                "operator": "gte",
+                "transform": "yearsSince",
+                "value": 16
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "parent-same-address",
+            "label": "Is your parent or guardian's address the same as yours?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
               },
-              "minLength": {
-                "error": "Please write at least 20 characters",
-                "value": 20
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if your parent or guardian's address is the same as yours"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address-lookup",
+          "overrides": {
+            "fieldId": "parent-address",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Address line 1 is required"
+              }
+            },
+            "geocodeTargets": {
+              "line2FieldId": "parent-address-line-2",
+              "parishFieldId": "parent-parish"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "parent-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "parent-address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "parent-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "parent-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "parent-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/confirmation",
+          "overrides": {
+            "fieldId": "parent-is-emergency-contact",
+            "label": "Emergency contact",
+            "options": [
+              {
+                "label": "This person is also my emergency contact",
+                "value": "yes"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "ui": {
+              "hideLabel": true
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applicant-details",
+          "targetFieldId": "applicant-dob",
+          "operator": "lt",
+          "transform": "yearsSince",
+          "value": 18
+        }
+      ]
+    },
+    {
+      "stepId": "emergency-contact",
+      "title": "Your emergency contact",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "overrides": {
+            "fieldId": "emergency-contact-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "emergency-contact-middle-name",
+            "label": "Middle name or names",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "overrides": {
+            "fieldId": "emergency-contact-last-name"
+          }
+        },
+        {
+          "ref": "components/relationship",
+          "overrides": {
+            "fieldId": "emergency-contact-relationship",
+            "label": "How do you know this person?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us how you know this person"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "emergency-contact-telephone"
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "overrides": {
+            "fieldId": "emergency-contact-other-telephone",
+            "label": "Other telephone number",
+            "validations": {
+              "required": {
+                "value": false
               }
             }
           }
         }
       ],
-      "description": "A short paragraph about why Barbados YouthADVANCE Corps (BYAC) is right for you."
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "parent-or-guardian",
+          "targetFieldId": "parent-is-emergency-contact",
+          "operator": "notEqual",
+          "value": "yes"
+        }
+      ]
     },
     {
-      "title": "Confirm and submit your application",
+      "stepId": "your-education",
+      "title": "Your education",
+      "elements": [
+        {
+          "ref": "components/primary-school",
+          "overrides": {
+            "label": "Primary school",
+            "options": [
+              {
+                "label": "A Dacosta Edwards",
+                "value": "a-dacosta-edwards"
+              },
+              {
+                "label": "All Saints' Primary",
+                "value": "all-saints-primary"
+              },
+              {
+                "label": "Arthur Smith Primary",
+                "value": "arthur-smith-primary"
+              },
+              {
+                "label": "Bay Primary School",
+                "value": "bay-primary-school"
+              },
+              {
+                "label": "Bayley's Primary",
+                "value": "bayleys-primary"
+              },
+              {
+                "label": "Belmont Primary",
+                "value": "belmont-primary"
+              },
+              {
+                "label": "Blackman/Gollop Primary",
+                "value": "blackman-gollop-primary"
+              },
+              {
+                "label": "Charles F Broome",
+                "value": "charles-f-broome"
+              },
+              {
+                "label": "Christ Church Girls",
+                "value": "christ-church-girls"
+              },
+              {
+                "label": "Cuthbert Moore Primary",
+                "value": "cuthbert-moore-primary"
+              },
+              {
+                "label": "Deacons Primary",
+                "value": "deacons-primary"
+              },
+              {
+                "label": "Eagle Hall Primary",
+                "value": "eagle-hall-primary"
+              },
+              {
+                "label": "Eden Lodge",
+                "value": "eden-lodge"
+              },
+              {
+                "label": "Ellerton Primary",
+                "value": "ellerton-primary"
+              },
+              {
+                "label": "Elliot Belgrave",
+                "value": "elliot-belgrave"
+              },
+              {
+                "label": "Good Shepherd Primary",
+                "value": "good-shepherd-primary"
+              },
+              {
+                "label": "Gordon Greenidge Primary",
+                "value": "gordon-greenidge-primary"
+              },
+              {
+                "label": "Gordon Walters",
+                "value": "gordon-walters"
+              },
+              {
+                "label": "Grantley Prescod Memorial",
+                "value": "grantley-prescod-memorial"
+              },
+              {
+                "label": "Grazettes Primary",
+                "value": "grazettes-primary"
+              },
+              {
+                "label": "Half Moon Fort",
+                "value": "half-moon-fort"
+              },
+              {
+                "label": "Hilda Skeene Primary",
+                "value": "hilda-skeene-primary"
+              },
+              {
+                "label": "Hillaby Turner's Hall",
+                "value": "hillaby-turners-hall"
+              },
+              {
+                "label": "Hindsbury Primary",
+                "value": "hindsbury-primary"
+              },
+              {
+                "label": "Holy Innocents' Primary",
+                "value": "holy-innocents-primary"
+              },
+              {
+                "label": "Ignatius Byer Primary",
+                "value": "ignatius-byer-primary"
+              },
+              {
+                "label": "Lawrence T Gay",
+                "value": "lawrence-t-gay"
+              },
+              {
+                "label": "Luther Thorne Memorial",
+                "value": "luther-thorne-memorial"
+              },
+              {
+                "label": "Milton Lynch Primary",
+                "value": "milton-lynch-primary"
+              },
+              {
+                "label": "Mount Tabor Primary School",
+                "value": "mount-tabor-primary-school"
+              },
+              {
+                "label": "New Horizon Academy",
+                "value": "new-horizon-academy"
+              },
+              {
+                "label": "Reynold Weekes Primary School",
+                "value": "reynold-weekes-primary-school"
+              },
+              {
+                "label": "Roland Edwards Primary",
+                "value": "roland-edwards-primary"
+              },
+              {
+                "label": "Selah Primary School",
+                "value": "selah-primary-school"
+              },
+              {
+                "label": "Sharon Primary",
+                "value": "sharon-primary"
+              },
+              {
+                "label": "St. Albans Primary",
+                "value": "st-albans-primary"
+              },
+              {
+                "label": "St. Ambrose Primary",
+                "value": "st-ambrose-primary"
+              },
+              {
+                "label": "St. Bartholomew Primary",
+                "value": "st-bartholomew-primary"
+              },
+              {
+                "label": "St. Bernard's Primary",
+                "value": "st-bernards-primary"
+              },
+              {
+                "label": "St. Catherine's Primary",
+                "value": "st-catherines-primary"
+              },
+              {
+                "label": "St. Christopher Primary",
+                "value": "st-christopher-primary"
+              },
+              {
+                "label": "St. Elizabeth Primary",
+                "value": "st-elizabeth-primary"
+              },
+              {
+                "label": "St. George Primary",
+                "value": "st-george-primary"
+              },
+              {
+                "label": "St. Giles Primary",
+                "value": "st-giles-primary"
+              },
+              {
+                "label": "St. James Primary",
+                "value": "st-james-primary"
+              },
+              {
+                "label": "St. John's Primary",
+                "value": "st-johns-primary"
+              },
+              {
+                "label": "St. Joseph Primary",
+                "value": "st-joseph-primary"
+              },
+              {
+                "label": "St. Jude's Primary",
+                "value": "st-judes-primary"
+              },
+              {
+                "label": "St. Lawrence Primary",
+                "value": "st-lawrence-primary"
+              },
+              {
+                "label": "St. Lucy's Primary",
+                "value": "st-lucys-primary"
+              },
+              {
+                "label": "St. Lukes/Brighton Primary",
+                "value": "st-lukes-brighton-primary"
+              },
+              {
+                "label": "St. Margaret's Primary School",
+                "value": "st-margarets-primary-school"
+              },
+              {
+                "label": "St. Marks Primary",
+                "value": "st-marks-primary"
+              },
+              {
+                "label": "St. Martins Mangrove",
+                "value": "st-martins-mangrove"
+              },
+              {
+                "label": "St. Mary's Primary",
+                "value": "st-marys-primary"
+              },
+              {
+                "label": "St. Matthew's Primary",
+                "value": "st-matthews-primary"
+              },
+              {
+                "label": "St. Paul Primary",
+                "value": "st-paul-primary"
+              },
+              {
+                "label": "St. Philip Primary",
+                "value": "st-philip-primary"
+              },
+              {
+                "label": "St. Silas Primary",
+                "value": "st-silas-primary"
+              },
+              {
+                "label": "St. Stephen's Primary",
+                "value": "st-stephens-primary"
+              },
+              {
+                "label": "The Ann Hill School",
+                "value": "the-ann-hill-school"
+              },
+              {
+                "label": "The Irving Wilson School",
+                "value": "the-irving-wilson-school"
+              },
+              {
+                "label": "Vauxhall Primary",
+                "value": "vauxhall-primary"
+              },
+              {
+                "label": "Welches Primary",
+                "value": "welches-primary"
+              },
+              {
+                "label": "Wesley Hall Infants",
+                "value": "wesley-hall-infants"
+              },
+              {
+                "label": "Wesley Hall Junior",
+                "value": "wesley-hall-junior"
+              },
+              {
+                "label": "West Terrace",
+                "value": "west-terrace"
+              },
+              {
+                "label": "Westbury Primary",
+                "value": "westbury-primary"
+              },
+              {
+                "label": "Wilkie Cumberbatch",
+                "value": "wilkie-cumberbatch"
+              },
+              {
+                "label": "Workman's Primary",
+                "value": "workmans-primary"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Primary school is required"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-primary-school",
+            "label": "Name of your primary school",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of your primary school"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "primary-school",
+                "operator": "equal",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "primary-school-start-year",
+            "label": "Year you started primary school",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Year you started primary school is required"
+              },
+              "maxYear": {
+                "currentYear": true,
+                "error": "Year cannot be in the future"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "primary-school-end-year",
+            "label": "Year you left primary school",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Year you left primary school is required"
+              },
+              "maxYear": {
+                "currentYear": true,
+                "error": "Year cannot be in the future"
+              },
+              "min": {
+                "referenceFieldId": "primary-school-start-year",
+                "error": "Year you left must be the same as or after the year you started"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/secondary-school",
+          "overrides": {
+            "label": "Secondary school",
+            "options": [
+              {
+                "label": "Alexandra School",
+                "value": "alexandra-school"
+              },
+              {
+                "label": "Alleyne School",
+                "value": "alleyne-school"
+              },
+              {
+                "label": "Christ Church Foundation School",
+                "value": "christ-church-foundation-school"
+              },
+              {
+                "label": "Coleridge & Parry School",
+                "value": "coleridge-parry-school"
+              },
+              {
+                "label": "Combermere School",
+                "value": "combermere-school"
+              },
+              {
+                "label": "Daryll Jordan Secondary School",
+                "value": "daryll-jordan-secondary-school"
+              },
+              {
+                "label": "Deighton Griffith Secondary School",
+                "value": "deighton-griffith-secondary-school"
+              },
+              {
+                "label": "Ellerslie Secondary School",
+                "value": "ellerslie-secondary-school"
+              },
+              {
+                "label": "Grantley Adams Memorial School",
+                "value": "grantley-adams-memorial-school"
+              },
+              {
+                "label": "Graydon Sealy Secondary School",
+                "value": "graydon-sealy-secondary-school"
+              },
+              {
+                "label": "Harrison College",
+                "value": "harrison-college"
+              },
+              {
+                "label": "Parkinson Memorial Secondary School",
+                "value": "parkinson-memorial-secondary-school"
+              },
+              {
+                "label": "Princess Margaret Secondary School",
+                "value": "princess-margaret-secondary-school"
+              },
+              {
+                "label": "Queen's College",
+                "value": "queens-college"
+              },
+              {
+                "label": "Springer Memorial Secondary School",
+                "value": "springer-memorial-secondary-school"
+              },
+              {
+                "label": "The Frederick Smith Secondary School",
+                "value": "frederick-smith-secondary-school"
+              },
+              {
+                "label": "The Lester Vaughan School",
+                "value": "lester-vaughan-school"
+              },
+              {
+                "label": "The Lodge School",
+                "value": "lodge-school"
+              },
+              {
+                "label": "The St. George Secondary School",
+                "value": "st-george-secondary-school"
+              },
+              {
+                "label": "The St. Leonard's Boys' Secondary School",
+                "value": "st-leonards-boys-secondary-school"
+              },
+              {
+                "label": "The St. Michael School",
+                "value": "st-michael-school"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Secondary school is required"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-secondary-school",
+            "label": "Name of your secondary school",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of your secondary school"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "secondary-school",
+                "operator": "equal",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "secondary-school-start-year",
+            "label": "Year you started secondary school",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Year you started secondary school is required"
+              },
+              "maxYear": {
+                "currentYear": true,
+                "error": "Year cannot be in the future"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "still-at-secondary-school",
+            "label": "Are you still attending this school?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you are still attending this school"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "secondary-school-end-year",
+            "label": "Year you left secondary school",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Year you left secondary school is required"
+              },
+              "maxYear": {
+                "currentYear": true,
+                "error": "Year cannot be in the future"
+              },
+              "min": {
+                "referenceFieldId": "secondary-school-start-year",
+                "error": "Year you left must be the same as or after the year you started"
+              }
+            },
+            "ui": {
+              "width": "short"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "still-at-secondary-school",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "has-qualifications-check",
+      "title": "Your qualifications",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-qualifications",
+            "label": "Do you have any qualifications or certificates?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have any qualifications or certificates"
+              }
+            },
+            "hint": "For example, CSEC, CCSLC, CVQ or City & Guilds"
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "qualifications",
+      "title": "Tell us about your qualification",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "subject",
+            "label": "Subject or qualification",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Subject or qualification is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "examining-body",
+            "label": "Examining body",
+            "options": [
+              {
+                "label": "Caribbean Examinations Council (CXC)",
+                "value": "cxc"
+              },
+              {
+                "label": "City & Guilds",
+                "value": "city-and-guilds"
+              },
+              {
+                "label": "TVET Council",
+                "value": "tvet-council"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Examining body is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "examining-body-other",
+            "label": "Name of the examining body",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of the examining body"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "examining-body",
+                "operator": "equal",
+                "value": "other"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "level",
+            "label": "Level",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "For example, CSEC, CAPE or Level 2",
+            "ui": {
+              "width": "medium"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "grade",
+            "label": "Grade",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Grade is required"
+              }
+            },
+            "hint": "For example, I, II, A or Pass",
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-number",
+          "overrides": {
+            "fieldId": "year",
+            "label": "Year",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Year is required"
+              },
+              "maxYear": {
+                "currentYear": true,
+                "error": "Year cannot be in the future"
+              }
+            },
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 15,
+          "addAnotherLabel": "Do you want to add another qualification?",
+          "instanceLabel": "Qualification"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "has-qualifications-check",
+          "targetFieldId": "has-qualifications",
+          "operator": "equal",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "stepId": "your-interests-and-plans",
+      "title": "Your interests and plans",
+      "elements": [
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "employment-status",
+            "label": "Are you currently working?",
+            "options": [
+              {
+                "label": "Yes, full-time",
+                "value": "yes-full-time"
+              },
+              {
+                "label": "Yes, part-time",
+                "value": "yes-part-time"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you are currently working"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "club-member",
+            "label": "Are you a member of a youth group, community group or sports club?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you are a member of a youth group, community group or sports club"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "club-name",
+            "label": "Name of group or club",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Name of group or club is required"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "club-member",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "interests",
+            "label": "Tell us about your interests and skills",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us about your interests and skills"
+              }
+            },
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "career",
+            "label": "What kind of work would you like to do?",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "It is okay if you are not sure yet."
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "alternative-careers",
+            "label": "Other jobs you would like to do",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "You can list up to 3.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "career",
+                "operator": "exists",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "swimming-ability",
+            "label": "Can you swim?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you can swim"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "why-join-byac",
+      "title": "Why you want to join BYAC",
+      "description": "Write a few sentences in your own words. Tell us why you want to join, what you enjoy and what you hope to learn.",
+      "elements": [
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "why-join-examples",
+            "variant": "details",
+            "content": "“I want to learn new skills and become more confident. I enjoy sports and would like to train for a job.”\n\n“I like helping people and I am interested in the fire service. I want to get fitter, work with others and learn about jobs I could do.”\n\nThese are examples only. Use your own words.",
+            "summary": "Examples to help you get started"
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "why-join",
+            "label": "Why you want to join BYAC",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us why you want to join BYAC"
+              }
+            },
+            "ui": {
+              "width": "long",
+              "hideLabel": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "uniform-sizes",
+      "title": "Your uniform sizes",
+      "description": "BYAC provides your uniform. Tell us your sizes so we can have it ready.",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "shirt-size",
+            "label": "Shirt size",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Shirt size is required"
+              }
+            },
+            "hint": "For example, M",
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "pants-size",
+            "label": "Pants size",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Pants size is required"
+              }
+            },
+            "hint": "For example, 32",
+            "ui": {
+              "width": "short"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "shoe-size",
+            "label": "Shoe size",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Shoe size is required"
+              }
+            },
+            "hint": "For example, 9",
+            "ui": {
+              "width": "short"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "health-conditions",
+      "title": "Your health",
+      "description": "BYAC includes physical training, so we ask about your health to make sure the programme is safe for you.",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "rheumatic-fever",
+            "label": "Have you ever had rheumatic fever?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have ever had rheumatic fever"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "rheumatic-fever-details",
+            "label": "Tell us about your rheumatic fever",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us about your rheumatic fever"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "rheumatic-fever",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "hint": "For example, when you had it and how long it lasted.",
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "rheumatic-fever-doctors",
+            "label": "Which doctors did you see about your rheumatic fever?",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "Give their names and addresses if you know them.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "rheumatic-fever",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "asthma",
+            "label": "Have you ever had asthma?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have ever had asthma"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "asthma-details",
+            "label": "Tell us about your asthma",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us about your asthma"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "asthma",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "hint": "For example, when it started and whether you still have it.",
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "asthma-doctors",
+            "label": "Which doctors did you see about your asthma?",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "Give their names and addresses if you know them.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "asthma",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "allergies",
+            "label": "Do you have any allergies?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have any allergies"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "allergies-details",
+            "label": "What are you allergic to?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us what you are allergic to"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "allergies",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "hint": "For example, peanuts, bee stings or dust.",
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "allergies-doctors",
+            "label": "Which doctors did you see about your allergies?",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "Give their names and addresses if you know them.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "allergies",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "more-health-conditions",
+      "title": "More about your health",
+      "description": "BYAC includes physical training, so we ask about your health to make sure the programme is safe for you.",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "epilepsy",
+            "label": "Have you ever had epilepsy?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have ever had epilepsy"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "epilepsy-details",
+            "label": "Tell us about your epilepsy",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us about your epilepsy"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "epilepsy",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "hint": "For example, when it started and whether you still have seizures.",
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "epilepsy-doctors",
+            "label": "Which doctors did you see about your epilepsy?",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "Give their names and addresses if you know them.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "epilepsy",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "diabetes",
+            "label": "Do you have diabetes?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have diabetes"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "diabetes-details",
+            "label": "Tell us about your diabetes",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us about your diabetes"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "diabetes",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "hint": "For example, which type and how you manage it.",
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "diabetes-doctors",
+            "label": "Which doctors did you see about your diabetes?",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "hint": "Give their names and addresses if you know them.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "diabetes",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "other-disorders",
+            "label": "Do you have any other physical or mental health conditions?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have any other health conditions"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "other-disorders-explanation",
+            "label": "Tell us about your other health conditions",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us about your other health conditions"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "other-disorders",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "other-health-information",
+      "title": "Medicines, blood type and diet",
+      "description": "We use this to keep you safe and to plan meals during the residential programme.",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "medication-allergies",
+            "label": "Are you allergic to any medicines?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you are allergic to any medicines"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "medication-allergies-details",
+            "label": "Which medicines are you allergic to?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us which medicines you are allergic to"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "medication-allergies",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "blood-type",
+            "label": "What is your blood type?",
+            "options": [
+              {
+                "label": "A+",
+                "value": "a-positive"
+              },
+              {
+                "label": "A−",
+                "value": "a-negative"
+              },
+              {
+                "label": "B+",
+                "value": "b-positive"
+              },
+              {
+                "label": "B−",
+                "value": "b-negative"
+              },
+              {
+                "label": "AB+",
+                "value": "ab-positive"
+              },
+              {
+                "label": "AB−",
+                "value": "ab-negative"
+              },
+              {
+                "label": "O+",
+                "value": "o-positive"
+              },
+              {
+                "label": "O−",
+                "value": "o-negative"
+              },
+              {
+                "label": "I don't know",
+                "value": "dont-know"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select your blood type, or select I don't know"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "special-diet",
+            "label": "Do you follow a special diet?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you follow a special diet"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "special-diet-explanation",
+            "label": "Tell us about your diet",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us about your diet"
+              }
+            },
+            "hint": "For example, vegetarian, halal or a diet for a medical condition.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "special-diet",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "religion-and-disability",
+      "title": "Religion and disability",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "religion",
+            "label": "What is your religion?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Religion is required"
+              }
+            },
+            "hint": "If you don't have a religion, enter 'None'."
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-disability",
+            "label": "Do you have a disability?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us if you have a disability"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "disability-details",
+            "label": "Tell us about your disability and any support you might need",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us about your disability"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "has-disability",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ],
+            "ui": {
+              "width": "long"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "documents",
+      "title": "Upload your documents",
+      "description": "Upload a photo and copies of the documents below.",
+      "elements": [
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "documents-note",
+            "variant": "warning",
+            "content": "You must bring your original documents to your interview, even if you upload copies here. If you do not have a document yet, you can still continue."
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-photo",
+            "label": "Upload 1 recent passport-sized photo",
+            "multiple": false,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The photo must be a JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-birth-certificate",
+            "label": "Upload your birth certificate",
+            "multiple": false,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-school-report",
+            "label": "Upload your most recent school report",
+            "multiple": false,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-qualifications",
+            "label": "Upload your qualifications or certificates",
+            "multiple": true,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "has-qualifications",
+                "operator": "equal",
+                "value": "yes",
+                "targetStepId": "has-qualifications-check"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-residency-proof",
+            "label": "Upload your proof of residency in Barbados",
+            "multiple": false,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "barbados-citizen",
+                "operator": "equal",
+                "value": "no",
+                "targetStepId": "applicant-details"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-study-permission",
+            "label": "Upload your proof of permission to study in Barbados",
+            "multiple": false,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "barbados-citizen",
+                "operator": "equal",
+                "value": "no",
+                "targetStepId": "applicant-details"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "permission-to-study",
+                "operator": "equal",
+                "value": "yes",
+                "targetStepId": "applicant-details"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-police-certificate",
+            "label": "Upload your Police Certificate of Character",
+            "multiple": false,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            },
+            "hint": "You can still apply if you have a criminal record."
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "referee-testimonials",
+      "title": "Referee testimonials",
+      "description": "A referee testimonial is a letter from someone who knows you and can speak about your character.",
+      "elements": [
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "testimonial-guidance",
+            "variant": "text",
+            "content": "Each testimonial should include:\n\n- the name, address and telephone number of the person writing the letter\n- what you do well\n- what you could improve\n- your behaviour\n- how you get along with others"
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-testimonial-1",
+            "label": "Upload your first referee testimonial",
+            "multiple": false,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/upload-document",
+          "overrides": {
+            "fieldId": "upload-testimonial-2",
+            "label": "Upload your second referee testimonial",
+            "multiple": false,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 5242880,
+                "error": "The file must be smaller than 5 MB"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "how-did-you-hear-about-us",
+      "title": "How did you hear about us?",
+      "elements": [
+        {
+          "ref": "components/generic-select",
+          "overrides": {
+            "fieldId": "referral-source",
+            "label": "How did you hear about us?",
+            "ui": {
+              "hideLabel": true
+            },
+            "options": [
+              {
+                "label": "Social media",
+                "value": "social-media"
+              },
+              {
+                "label": "School",
+                "value": "school"
+              },
+              {
+                "label": "Guidance counsellor",
+                "value": "guidance-counsellor"
+              },
+              {
+                "label": "Radio or TV",
+                "value": "radio-or-tv"
+              },
+              {
+                "label": "Career showcase",
+                "value": "career-showcase"
+              },
+              {
+                "label": "Family or friend",
+                "value": "family-or-friend"
+              },
+              {
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select how you heard about us"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "referral-source-other",
+            "label": "Where did you hear about us?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Tell us where you heard about us"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "referral-source",
+                "operator": "equal",
+                "value": "other"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
       "stepId": "declaration",
+      "title": "Confirm and submit your application",
       "elements": [
         {
           "ref": "components/confirmation",
           "overrides": {
-            "label": "Declaration",
             "fieldId": "declaration-confirmed",
+            "label": "Declaration",
             "options": [
               {
                 "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
@@ -198,8 +2669,8 @@
             ],
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to continue.",
-                "value": true
+                "value": true,
+                "error": "You must confirm the declaration to continue."
               }
             }
           }
@@ -207,22 +2678,25 @@
       ]
     },
     {
-      "title": "Application received",
       "stepId": "submission-confirmation",
+      "title": "Application submitted",
       "elements": [],
-      "markdownContent": "## What happens next\n\nThe team running this opportunity will review your application. If you meet the eligibility criteria, they will get in touch using the contact details you provided. If we need anything else from you, we will reach out by email or phone. Thank you for your interest."
+      "markdownContent": "## What happens next\n\nBYAC will review your application and contact you about an interview.\n\nBring your original documents to the interview.\n\nIf you are under 16, your parent or guardian must attend the interview with you.\n\n## If you need help\n\nTelephone: (246) 535-0180\n\nEmail: byac@barbados.gov.bb\n\nHave your application reference number ready when contacting us."
     }
   ],
-  "title": "Apply for Barbados YouthADVANCE Corps (BYAC)",
+  "title": "Apply to the Barbados YouthADVANCE Corps (BYAC)",
   "formId": "youth-opportunity-byac",
+  "meta": {
+    "visibility": "preview"
+  },
   "createdAt": "2026-05-21T00:00:00Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-26T00:00:00.000Z",
   "processors": [
     {
       "type": "email",
       "config": {
-        "subject": "Your application for Barbados YouthADVANCE Corps (BYAC) has been received",
-        "recipientField": "applicant-details.applicant-email"
+        "subject": "Barbados YouthADVANCE Corps: application received",
+        "recipientField": "your-address-and-contact-details.applicant-email"
       }
     },
     {
@@ -235,8 +2709,8 @@
               "applicant-details.applicant-first-name",
               "applicant-details.applicant-last-name"
             ],
-            "email": "applicant-details.applicant-email",
-            "phone": "applicant-details.applicant-phone"
+            "email": "your-address-and-contact-details.applicant-email",
+            "phone": "your-address-and-contact-details.telephone"
           },
           "excludeSteps": [
             "declaration",
@@ -246,5 +2720,5 @@
       }
     }
   ],
-  "description": "Register your interest in Barbados YouthADVANCE Corps (BYAC)."
+  "description": "Apply to join the Barbados YouthADVANCE Corps (BYAC)."
 }
