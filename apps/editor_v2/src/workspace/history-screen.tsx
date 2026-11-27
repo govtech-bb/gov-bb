@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useLayoutEffect, useRef, useState } from "react";
-import type { EditorApi, PageHistoryEntry } from "../api/client";
+import { PAGE_VERSIONS, type EditorApi, type PageHistoryEntry } from "../api/client";
 import { writes } from "../api/writes";
 import { pageFieldLabel } from "../api/page-fields";
 import { historyQuery, pageQuery, permissionsQuery } from "../api/queries";
@@ -32,15 +32,6 @@ const ACTIONS: Record<PageHistoryEntry["action"], string> = {
   rejected: "Rejected",
   discarded: "Review closed when the page was taken out of public view",
 };
-
-/** Entries whose snapshot is the page itself, so a restore can bring it back (ADR 0135). */
-const VERSIONS = new Set<PageHistoryEntry["action"]>([
-  "created",
-  "updated",
-  "published",
-  "unpublished",
-  "reverted",
-]);
 
 /**
  * Whether an edit is the live write an approval let through: the API writes it in the approval's transaction, so
@@ -83,21 +74,23 @@ export function HistoryScreen({
     pageId: string;
     version: number;
     isPublic: boolean;
+    historyVersion: number;
   }>();
 
   // The page's current version is the newest one: restoring it would change nothing
-  const current = entries?.find((entry) => VERSIONS.has(entry.action))?.version_no;
+  const current = entries?.find((entry) => PAGE_VERSIONS.has(entry.action))?.version_no;
   const restore = useWrite(api, writes.restorePage);
   const outcome = restore.outcome;
 
   useLayoutEffect(() => {
     if (outcome?.kind === "landed") {
-      const restoredPage = outcome.answer;
+      // The restored page, or the history that confirmed a lost answer for a page that isn't public
+      const answer = outcome.answer;
       toast("Version restored", {
         description:
-          restoredPage.visibility !== "public"
+          Array.isArray(answer) || answer.visibility !== "public"
             ? "Saved as a new change at the top of the history."
-            : restoredPage.pending_revision?.status === "submitted"
+            : answer.pending_revision?.status === "submitted"
               ? "The change is still waiting for review."
               : "Saved as a change. Submit it for review to publish it.",
       });
@@ -169,14 +162,14 @@ export function HistoryScreen({
                 )}
                 {editor &&
                   page.data &&
-                  VERSIONS.has(entry.action) &&
+                  PAGE_VERSIONS.has(entry.action) &&
                   entry.version_no !== current && (
                     <Button
                       variant="secondary"
                       size="sm"
                       className="mt-1 w-fit"
                       onClick={() => {
-                        if (!page.data) return;
+                        if (!page.data || current === undefined) return;
                         const { id, version, visibility } = page.data;
 
                         restore.forget();
@@ -185,6 +178,7 @@ export function HistoryScreen({
                           pageId: id,
                           version,
                           isPublic: visibility === "public",
+                          historyVersion: current,
                         });
                       }}
                     >
@@ -238,6 +232,8 @@ export function HistoryScreen({
             id: restoring.pageId,
             versionNo: restoring.entry.version_no,
             version: restoring.version,
+            isPublic: restoring.isPublic,
+            historyVersion: restoring.historyVersion,
           }));
         }}
       />
